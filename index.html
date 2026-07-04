@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pack Service Tracker</title>
-   <style>
-    /* Tablet-Optimized DASHBOARD Mode (No Scroll) */
+<style>
+    /* Tablet-Optimized DASHBOARD Mode (Hybrid Flex/Scroll) */
     :root {
         --primary: #3B82F6; 
         --primary-hover: #2563EB;
@@ -18,128 +18,142 @@
         --text-main: #F8FAFC; 
         --text-muted: #94A3B8;
         --border-color: #334155; 
-        --radius-lg: 12px;
-        --radius-md: 8px;
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-pill: 50px; /* New pill shape for buttons */
     }
 
-    /* 1. LOCK THE VIEWPORT */
     body, html {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background-color: var(--bg-color);
         margin: 0;
         padding: 0;
         color: var(--text-main);
-        height: 100%; 
-        width: 100%;
-        overflow: hidden; /* Prevents all body scrolling */
+        min-height: 100vh; /* Allows growing if needed */
         -webkit-tap-highlight-color: transparent; 
     }
 
-    /* 2. FILL THE SCREEN */
+    /* Container fills screen but allows natural scrolling if content expands */
     .container {
-        height: 100vh;
-        width: 100vw;
+        min-height: 100vh;
         max-width: none;
         margin: 0;
         background: var(--card-bg);
-        padding: 12px 20px;
+        padding: 16px 24px;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
     }
 
-    /* Header Shrink */
+    /* Header */
     .app-header { 
         display: flex; align-items: center; justify-content: space-between; 
-        margin-bottom: 12px; padding-bottom: 8px; 
+        margin-bottom: 16px; padding-bottom: 12px; 
         border-bottom: 1px solid var(--border-color); 
-        flex-shrink: 0;
     }
-    .app-header h1 { margin: 0; text-align: center; flex: 1; font-size: 1.3rem; font-weight: 700;}
+    .app-header h1 { margin: 0; text-align: center; flex: 1; font-size: 1.4rem; font-weight: 700;}
+    
+    /* Smoother, rounded main buttons */
     .header-btn { 
         background-color: rgba(59, 130, 246, 0.1); color: var(--primary); 
         border: 1px solid rgba(59, 130, 246, 0.2); font-weight: 600; 
-        cursor: pointer; padding: 8px 16px; font-size: 0.9rem; 
-        border-radius: var(--radius-md); transition: all 0.2s ease;
+        cursor: pointer; padding: 10px 18px; font-size: 0.95rem; 
+        border-radius: var(--radius-pill); transition: all 0.2s ease;
     }
     .header-btn:active { transform: scale(0.96); }
     .header-btn.secondary { background-color: var(--input-bg); color: var(--text-main); border-color: transparent; }
     .header-edge { flex: 1; display: flex; }
-    .header-edge.right { justify-content: flex-end; gap: 8px; }
+    .header-edge.right { justify-content: flex-end; gap: 10px; }
 
-    h2, h3 { text-align: center; margin: 0 0 12px 0; font-size: 1.2rem;}
-    label { font-weight: 600; display: block; margin-bottom: 4px; font-size: 0.95rem; color: var(--text-muted);}
+    h2, h3 { text-align: center; margin: 0 0 16px 0; font-size: 1.25rem;}
+    label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.95rem; color: var(--text-muted);}
     select, input {
-        width: 100%; padding: 12px; font-size: 1rem; 
+        width: 100%; padding: 14px; font-size: 1.05rem; 
         border-radius: var(--radius-md); border: 1px solid var(--border-color); 
-        margin-bottom: 12px; box-sizing: border-box; 
+        margin-bottom: 16px; box-sizing: border-box; 
         background-color: var(--input-bg); color: var(--text-main); 
     }
 
     /* Global Buttons */
-    button { cursor: pointer; font-weight: 600; transition: all 0.1s ease; user-select: none; }
+    button { cursor: pointer; font-weight: 600; transition: all 0.15s ease; user-select: none; }
     button:active { transform: scale(0.97); }
-    .btn-primary { background-color: var(--primary); color: white; border: none; }
-    .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); }
-    .btn-secondary { background-color: var(--secondary); color: white; border: none; }
-    .btn-danger { background-color: var(--danger); color: white; border: none; }
-    .btn-success { background-color: var(--success); color: white; border: none; }
+    .btn-primary { background-color: var(--primary); color: white; border: none; border-radius: var(--radius-md); }
+    .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: var(--radius-md); }
+    .btn-secondary { background-color: var(--secondary); color: white; border: none; border-radius: var(--radius-md); }
+    .btn-danger { background-color: var(--danger); color: white; border: none; border-radius: var(--radius-md); }
+    .btn-success { background-color: var(--success); color: white; border: none; border-radius: var(--radius-md); }
 
-    .app-section { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .app-section { display: none; flex: 1; flex-direction: column; }
     .app-section.active { display: flex; animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Service Main - Flex Core */
-    .service-main { flex: 1; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; } 
+    /* Service Main Layout */
+    .service-main { flex: 1; display: flex; flex-direction: column; } 
     
-    .progress-container { width: 100%; background: var(--bg-color); border-radius: 4px; height: 8px; margin-bottom: 6px; flex-shrink: 0;}
-    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #60A5FA); width: 0%; transition: width 0.3s; }
-    .pack-counter-text { text-align: center; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; flex-shrink: 0;}
+    .progress-container { width: 100%; background: var(--bg-color); border-radius: var(--radius-pill); height: 10px; margin-bottom: 8px;}
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #60A5FA); width: 0%; transition: width 0.3s; border-radius: var(--radius-pill); }
+    .pack-counter-text { text-align: center; color: var(--text-muted); font-weight: 600; font-size: 1rem; margin-bottom: 12px;}
 
-    /* 3. DENSE GRIDS */
-    /* Pack has 4 parts, Gun has 9. Force columns to fit. */
-    #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; flex-shrink: 0;}
-    #gunPartsContainer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; flex-shrink: 0;}
+    /* Tightly packed grids */
+    #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+    #gunPartsContainer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
     
-    .grid-header { font-size: 0.95rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin: 4px 0; color: var(--text-muted); text-transform: uppercase; flex-shrink: 0;}
+    .grid-header { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 12px 0; color: var(--text-muted); text-transform: uppercase;}
 
-    /* 4. COMPACT CARDS */
-    .part-section { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column; justify-content: space-between;}
-    .part-header { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+    /* Card styling */
+    .part-section { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column;}
+    .part-header { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
     
-    .button-group { display: flex; background: var(--bg-color); border-radius: 6px; padding: 2px; border: 1px solid var(--border-color);}
-    .btn-good, .btn-issue { flex: 1; min-height: 38px; color: var(--text-muted); background: transparent; border: none; border-radius: 4px; font-size: 0.9rem; margin: 0; padding: 0 4px;}
+    /* SLEEK PILL TOGGLES instead of blocky buttons */
+    .button-group { 
+        display: flex; 
+        background: rgba(0,0,0,0.3); 
+        border-radius: var(--radius-pill); 
+        padding: 4px; 
+        border: 1px solid var(--border-color);
+    }
+    .btn-good, .btn-issue { 
+        flex: 1; 
+        min-height: 40px; 
+        color: var(--text-muted); 
+        background: transparent; 
+        border: none; 
+        border-radius: var(--radius-pill); 
+        font-size: 0.9rem; 
+        margin: 0; 
+        padding: 0 4px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
     
-    .btn-good.active { background-color: rgba(16, 185, 129, 0.15) !important; color: var(--success) !important; font-weight: 700; }
-    .btn-issue.active { background-color: rgba(239, 68, 68, 0.15) !important; color: var(--danger) !important; font-weight: 700; }
+    .btn-good.active { background-color: rgba(16, 185, 129, 0.2) !important; color: var(--success) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+    .btn-issue.active { background-color: rgba(239, 68, 68, 0.2) !important; color: var(--danger) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
 
-    /* Lock Notes Height so it doesn't break the layout */
-    .notes-area { display: none; margin-top: 6px; }
+    /* Notes Area (expands gracefully now without breaking the layout) */
+    .notes-area { display: none; margin-top: 10px; animation: expandDown 0.2s ease-out;}
+    @keyframes expandDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     .notes-area.visible { display: block; }
-    .notes-area textarea { width: 100%; height: 42px; padding: 6px; font-size: 0.85rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: none; margin-bottom: 0;}
+    .notes-area textarea { width: 100%; height: 50px; padding: 8px; font-size: 0.9rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; margin-bottom: 0;}
 
-    /* Footer Navigation */
-    #packAllOkBtn { padding: 12px; margin: 4px 0; font-size: 1rem; border-radius: var(--radius-md); flex-shrink: 0;}
-    .nav-controls { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 12px; border-radius: var(--radius-md); margin-top: 4px; gap: 12px; border: 1px solid var(--border-color); flex-shrink: 0;}
-    .nav-controls button { flex: 1; max-width: 160px; margin: 0; padding: 12px; font-size: 1rem; border-radius: var(--radius-md);}
+    /* Footer Controls */
+    #packAllOkBtn, #generalAllOkBtn { padding: 14px; margin: 12px 0; font-size: 1.05rem; border-radius: var(--radius-md); }
+    .nav-controls { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 14px; border-radius: var(--radius-md); margin-top: auto; gap: 12px; border: 1px solid var(--border-color); }
+    .nav-controls button { flex: 1; max-width: 160px; margin: 0; padding: 14px; font-size: 1.05rem; border-radius: var(--radius-md);}
     .nav-status { flex: 2; display: flex; flex-direction: column; justify-content: center; text-align: center; }
-    .save-indicator { font-size: 0.9rem; color: var(--text-muted); font-weight: 600;}
+    .save-indicator { font-size: 0.95rem; color: var(--text-muted); font-weight: 600;}
 
-    /* Slide Out Menu & Modals */
+    /* Modals and Sidebars */
     .slide-out-menu { position: fixed; top: 0; right: -340px; width: 340px; height: 100%; background-color: var(--card-bg); z-index: 2000; transition: right 0.3s; padding: 24px; overflow-y: auto; border-left: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;}
     .slide-out-menu.open { right: 0; }
     .menu-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
     .menu-backdrop.show { visibility: visible; opacity: 1; }
-    .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 32px; font-weight: 400; cursor: pointer; float: right; padding: 0; line-height: 1;}
+    .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 32px; cursor: pointer; float: right; padding: 0; line-height: 1;}
     .sidebar-title { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; clear: both;}
     .slide-out-menu button { padding: 12px; font-size: 1rem; margin-bottom: 12px; border-radius: var(--radius-md); width: 100%;}
     
-    .accordion-toggle { display: flex; justify-content: space-between; padding: 12px; background: var(--input-bg); border-radius: var(--radius-md); margin-top: 12px; font-weight: 600; cursor: pointer;}
+    .accordion-toggle { display: flex; justify-content: space-between; padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); margin-top: 12px; font-weight: 600; cursor: pointer;}
     .accordion-content { display: none; padding-top: 12px; }
     .accordion-content.open { display: block; }
-    .accordion-content textarea { height: 80px; }
 
-    /* Modals */
     .modal { display: none; position: fixed; z-index: 2500; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.9); }
     .modal-content { background-color: var(--card-bg); margin: 20px auto; padding: 24px; border-radius: var(--radius-lg); width: 95%; max-width: 1400px; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid rgba(255,255,255,0.05); }
     .modal-close-btn { position: absolute; top: 16px; right: 20px; color: var(--text-muted); font-size: 28px; cursor: pointer; border: none; background: none;}
@@ -153,8 +167,19 @@
     .cross { color: var(--danger); font-weight: bold; font-size: 1.1rem;}
     .pending { color: var(--text-muted); }
 
+    /* PRINT FIX: Forces browser to ignore locks and flow properly onto paper */
     #printOnlyArea { display: none; }
-    @media print { /* Print styles remain identical */ }
+    @media print {
+        body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background-color: white !important; color: black !important; }
+        .container, .app-header, .app-section, .nav-controls, .menu-backdrop, .slide-out-menu, .modal { display: none !important; }
+        #printOnlyArea { display: block !important; position: static !important; padding: 0; }
+        #printOnlyArea, #printOnlyArea * { visibility: visible; }
+        .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .print-section-title { font-size: 1.4rem; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; color: #000 !important;}
+        .print-issue-list { margin: 0; padding-left: 20px; color: black; }
+        .print-issue-list li { margin-bottom: 8px; font-size: 1.1rem;}
+        h1, h2, h3, p { color: black !important; }
+    }
 </style>
 </head>
 <body>
