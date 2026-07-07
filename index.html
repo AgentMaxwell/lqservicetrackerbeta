@@ -86,14 +86,19 @@
             background-color: var(--input-bg); color: var(--text-main); 
         }
 
-        /* Global Buttons */
+        /* Global Buttons - Updated to unified pill UX */
         button { cursor: pointer; font-weight: 600; transition: all 0.15s ease; user-select: none; }
         button:active { transform: scale(0.97); }
-        .btn-primary { background-color: var(--primary); color: white; border: none; border-radius: var(--radius-md); }
-        .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: var(--radius-md); }
-        .btn-secondary { background-color: var(--secondary); color: white; border: none; border-radius: var(--radius-md); }
-        .btn-danger { background-color: var(--danger); color: white; border: none; border-radius: var(--radius-md); }
-        .btn-success { background-color: var(--success); color: white; border: none; border-radius: var(--radius-md); }
+        .btn-primary, .btn-outline, .btn-secondary, .btn-danger, .btn-success { 
+            border-radius: var(--radius-pill); 
+            padding: 14px 20px; 
+            font-size: 1.05rem;
+        }
+        .btn-primary { background-color: var(--primary); color: white; border: none; }
+        .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-secondary { background-color: var(--secondary); color: white; border: none; }
+        .btn-danger { background-color: var(--danger); color: white; border: none; }
+        .btn-success { background-color: var(--success); color: white; border: none; }
 
         .app-section { display: none; flex: 1; flex-direction: column; }
         .app-section.active { display: flex; animation: fadeIn 0.2s ease; }
@@ -102,13 +107,14 @@
         /* Service Main Layout */
         .service-main { flex: 1; display: flex; flex-direction: column; } 
         
-        .progress-container { width: 100%; background: var(--bg-color); border-radius: var(--radius-pill); height: 10px; margin-bottom: 8px;}
+        .progress-container { width: 100%; background: rgba(0,0,0,0.4); border-radius: var(--radius-pill); height: 8px; margin-bottom: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);}
         .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #60A5FA); width: 0%; transition: width 0.3s; border-radius: var(--radius-pill); }
-        .pack-counter-text { text-align: center; color: var(--text-muted); font-weight: 600; font-size: 1rem; margin-bottom: 12px;}
+        .pack-counter-text { text-align: center; color: var(--text-main); font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; margin-top: 0;}
 
-        /* Tightly packed grids */
+        /* Tightly packed grids - Updated General Grid to match */
         #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
         #gunPartsContainer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
+        #generalPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
         
         .grid-header { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 12px 0; color: var(--text-muted); text-transform: uppercase;}
 
@@ -146,12 +152,17 @@
         .notes-area.visible { display: block; }
         .notes-area textarea { width: 100%; height: 50px; padding: 8px; font-size: 0.9rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; margin-bottom: 0;}
 
-        /* Footer Controls */
-        #packAllOkBtn, #generalAllOkBtn { padding: 14px; margin: 12px 0; font-size: 1.05rem; border-radius: var(--radius-md); }
-        .nav-controls { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 14px; border-radius: var(--radius-md); margin-top: auto; gap: 12px; border: 1px solid var(--border-color); }
-        .nav-controls button { flex: 1; max-width: 160px; margin: 0; padding: 14px; font-size: 1.05rem; border-radius: var(--radius-md);}
-        .nav-status { flex: 2; display: flex; flex-direction: column; justify-content: center; text-align: center; }
-        .save-indicator { font-size: 0.95rem; color: var(--text-muted); font-weight: 600;}
+        /* Top Navigation Controls */
+        .nav-controls { display: flex; justify-content: space-between; align-items: center; background: var(--input-bg); padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 16px; margin-top: 0; gap: 16px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2);}
+        .nav-controls button { flex: 1; max-width: 140px; margin: 0; padding: 12px; font-size: 1.05rem;}
+        .nav-status { flex: 2; display: flex; flex-direction: column; justify-content: center; text-align: center; padding: 0 10px;}
+        .save-indicator { font-size: 0.85rem; color: var(--text-muted); font-weight: 600;}
+
+        /* Bottom Action Buttons */
+        #packAllOkBtn, #generalAllOkBtn { padding: 16px; margin-top: auto; font-size: 1.1rem; width: 100%; }
+        
+        /* Admin Tweaks for Pills */
+        .admin-controls .admin-btn { border-radius: var(--radius-pill); padding: 8px 16px; }
 
         /* Modals and Sidebars */
         .slide-out-menu { position: fixed; top: 0; right: -340px; width: 340px; height: 100%; background-color: var(--card-bg); z-index: 2000; transition: right 0.3s; padding: 24px; overflow-y: auto; border-left: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;}
@@ -160,7 +171,7 @@
         .menu-backdrop.show { visibility: visible; opacity: 1; }
         .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 32px; cursor: pointer; float: right; padding: 0; line-height: 1;}
         .sidebar-title { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; clear: both;}
-        .slide-out-menu button { padding: 12px; font-size: 1rem; margin-bottom: 12px; border-radius: var(--radius-md); width: 100%;}
+        .slide-out-menu button { padding: 12px; font-size: 1rem; margin-bottom: 12px; width: 100%;}
         
         .accordion-toggle { display: flex; justify-content: space-between; padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); margin-top: 12px; font-weight: 600; cursor: pointer;}
         .accordion-content { display: none; padding-top: 12px; }
@@ -200,7 +211,7 @@
     <div class="app-header">
         <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
         
-        <h1>Pack Service Tracker <span class="version-badge">v1.2</span></h1>
+        <h1>Pack Service Tracker <span class="version-badge">v1.3</span></h1>
         
         <div class="header-edge right">
             <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
@@ -214,12 +225,12 @@
             <option value="">Loading sites...</option>
         </select>
         
-        <div id="serviceTypeSelection" style="display: none; background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-            <p style="text-align: center; font-size: 1.2rem; font-weight: bold; margin-top: 0; color: #fff;">Site Selected. Prepare for Service:</p>
+        <div id="serviceTypeSelection" style="display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
+            <p style="text-align: center; font-size: 1.2rem; font-weight: bold; margin-top: 0; color: var(--text-main);">Site Selected. Prepare for Service:</p>
             
             <div class="action-group" id="initialLoadGroup" style="margin-top: 20px;">
-                <button class="btn-primary" id="startNewServiceBtn">Start New Service</button>
-                <button class="btn-secondary" id="fetchDatesBtn">Load Previous Service</button>
+                <button class="btn-primary" id="startNewServiceBtn" style="flex:1;">Start New Service</button>
+                <button class="btn-secondary" id="fetchDatesBtn" style="flex:1;">Load Previous Service</button>
             </div>
             
             <div id="dateSelectionUI" style="display: none; margin-top: 15px;">
@@ -228,14 +239,14 @@
                     <option value="">-- Choose Date --</option>
                 </select>
                 <div class="action-group">
-                    <button class="btn-primary" id="confirmLoadBtn">Load Selected Date</button>
-                    <button class="btn-outline" id="cancelLoadBtn">Cancel</button>
+                    <button class="btn-primary" id="confirmLoadBtn" style="flex:1;">Load Selected Date</button>
+                    <button class="btn-outline" id="cancelLoadBtn" style="flex:1;">Cancel</button>
                 </div>
             </div>
 
-            <div id="loadStatusMsg" style="text-align: center; font-weight: bold; margin-top: 10px;"></div>
+            <div id="loadStatusMsg" style="text-align: center; font-weight: bold; margin-top: 15px;"></div>
         </div>
-        <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+        <button class="btn-outline" id="toggleAdminBtn" style="width: 100%;">⚙️ Manage Sites Database</button>
     </div>
 
     <div id="adminSection" class="app-section">
@@ -247,44 +258,45 @@
         <input type="text" id="newSiteName" placeholder="e.g. Site Delta">
         <label>Number of Packs:</label>
         <input type="number" id="newSiteCount" placeholder="e.g. 12">
-        <button class="btn-primary" id="saveSiteBtn">Save New Site</button>
+        <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
     </div>
 
     <div id="generalChecksSection" class="app-section">
-        <h2>General Site Checks</h2>
-        <div id="generalPartsContainer" class="parts-grid"></div>
+        <div class="nav-controls">
+            <button class="btn-primary" id="backToPacksBtn">&laquo; Back to Service</button>
+            <div class="nav-status">
+                <div class="pack-counter-text">General Site Checks</div>
+                <div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div>
+            </div>
+            <div style="flex: 1; max-width: 140px;"></div>
+        </div>
+        
+        <div id="generalPartsContainer"></div>
         
         <button class="btn-success" id="generalAllOkBtn">✔ Mark Remaining as "All Good"</button>
-        
-        <div class="nav-controls" style="justify-content: space-between;">
-            <button class="btn-primary" id="backToPacksBtn">&laquo; Back to Active Service</button>
-            <div class="nav-status"><div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div></div>
-            <div style="flex: 1; max-width: 150px;"></div>
-        </div>
     </div>
 
     <div id="serviceSection" class="app-section">
         <div class="service-main">
-            <div class="progress-container">
-                <div class="progress-fill" id="progressBarFill"></div>
-            </div>
-            <div class="pack-counter-text" id="packCounterText">Pack 1 of X</div>
-
-            <div class="grid-header">Pack Elements</div>
-            <div id="packPartsContainer" class="parts-grid"></div>
-
-            <div class="grid-header">Gun Elements</div>
-            <div id="gunPartsContainer" class="parts-grid"></div>
-            
-            <button class="btn-success" id="packAllOkBtn">✔ Mark Remaining Parts as "All Good"</button>
-
             <div class="nav-controls">
                 <button class="btn-primary" id="prevBtn" disabled>&laquo; Back</button>
                 <div class="nav-status">
+                    <div class="pack-counter-text" id="packCounterText">Pack 1 of X</div>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="progressBarFill"></div>
+                    </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
                 <button class="btn-primary" id="nextBtn">Next &raquo;</button>
             </div>
+
+            <div class="grid-header">Pack Elements</div>
+            <div id="packPartsContainer"></div>
+
+            <div class="grid-header">Gun Elements</div>
+            <div id="gunPartsContainer"></div>
+            
+            <button class="btn-success" id="packAllOkBtn">✔ Mark Remaining Parts as "All Good"</button>
         </div>
     </div>
 </div>
@@ -338,7 +350,7 @@
         <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 20px;">
             </div>
         
-        <button class="btn-success" id="saveScreensBtn" style="padding: 16px; font-size: 1.1rem; width: 100%; border-radius: var(--radius-md);">Save Replaced Screens</button>
+        <button class="btn-success" id="saveScreensBtn" style="padding: 16px; font-size: 1.1rem; width: 100%; border-radius: var(--radius-pill);">Save Replaced Screens</button>
     </div>
 </div>
 
@@ -361,7 +373,6 @@
     // --- Arrays ---
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables", "Screens"];
     const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
-    // "Screen" removed from gun list
     const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
     const allPackElements = [...packPartsList, ...gunPartsList]; 
 
@@ -595,7 +606,7 @@
         const container = document.getElementById('generalPartsContainer');
         container.innerHTML = '';
         document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
-        document.getElementById('generalSaveIndicator').style.color = "#aaa";
+        document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
 
         generalChecksList.forEach(item => {
             if (!generalChecksCache[item]) generalChecksCache[item] = { status: null, notes: "" };
@@ -635,7 +646,7 @@
                 site: currentSiteName, date: activeServiceDate, checks: generalChecksCache, lastUpdated: serverTimestamp()
             }, { merge: true });
             document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
-            document.getElementById('generalSaveIndicator').style.color = "#aaa";
+            document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
         } catch (error) { document.getElementById('generalSaveIndicator').innerText = "Sync Failed"; }
     }
 
@@ -831,7 +842,7 @@
                 serviceDate: activeServiceDate, nextServiceDue: nextDueDateStr, serviceDetails: dataToSave, lastUpdated: serverTimestamp()
             });
             document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
-            document.getElementById('saveIndicator').style.color = "#aaa";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
         } catch (error) {
             document.getElementById('saveIndicator').innerText = "Sync Failed ✗";
             document.getElementById('saveIndicator').style.color = "var(--danger)";
@@ -868,7 +879,7 @@
         if (changed) {
             isDirty = true;
             document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
-            document.getElementById('saveIndicator').style.color = "#aaa";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
         }
         
         await triggerBackgroundSave();
@@ -905,7 +916,7 @@
             document.getElementById('nextBtn').innerText = currentpackIndex === totalpacks ? "Finish" : "Next \u00BB";
             document.getElementById('progressBarFill').style.width = `${(currentpackIndex / totalpacks) * 100}%`;
             document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
-            document.getElementById('saveIndicator').style.color = "#aaa";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
 
             if (!packDataCache[currentpackIndex]) packDataCache[currentpackIndex] = {};
             allPackElements.forEach(part => {
@@ -959,13 +970,13 @@
                         openScreensModal();
                     }
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-                    document.getElementById('generalSaveIndicator').style.color = "#aaa";
+                    document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
                 } else {
                     packDataCache[currentpackIndex][part].status = isGoodBtn ? "Good" : "Issue";
                     if(isGoodBtn) packDataCache[currentpackIndex][part].notes = "";
                     isDirty = true;
                     document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
-                    document.getElementById('saveIndicator').style.color = "#aaa";
+                    document.getElementById('saveIndicator').style.color = "var(--text-muted)";
                 }
             });
         });
@@ -978,12 +989,12 @@
                 if (type === 'general') {
                     generalChecksCache[part].notes = e.target.value;
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-                    document.getElementById('generalSaveIndicator').style.color = "#aaa";
+                    document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
                 } else {
                     packDataCache[currentpackIndex][part].notes = e.target.value;
                     isDirty = true;
                     document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
-                    document.getElementById('saveIndicator').style.color = "#aaa";
+                    document.getElementById('saveIndicator').style.color = "var(--text-muted)";
                 }
             });
             ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
@@ -1043,7 +1054,7 @@
         
         screensModal.style.display = "none";
         document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-        document.getElementById('generalSaveIndicator').style.color = "#aaa";
+        document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
     });
 
 </script>
