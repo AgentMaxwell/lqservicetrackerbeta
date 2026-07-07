@@ -33,6 +33,20 @@
         -webkit-tap-highlight-color: transparent; 
     }
 
+    /* Version Badge */
+.version-badge {
+    font-size: 0.55em;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    padding: 4px 8px;
+    border-radius: var(--radius-pill);
+    vertical-align: middle;
+    margin-left: 8px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
     /* Container fills screen but allows natural scrolling if content expands */
     .container {
         min-height: 100vh;
@@ -46,13 +60,16 @@
     }
 
     /* Header */
-    .app-header { 
-        display: flex; align-items: center; justify-content: space-between; 
-        margin-bottom: 16px; padding-bottom: 12px; 
-        border-bottom: 1px solid var(--border-color); 
-    }
-    .app-header h1 { margin: 0; text-align: center; flex: 1; font-size: 1.4rem; font-weight: 700;}
+<div class="app-header">
+    <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
     
+    <h1>Pack Service Tracker <span class="version-badge">v1.1</span></h1>
+    
+    <div class="header-edge right">
+        <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
+        <button id="fullscreenBtn" class="header-btn secondary">🔲 Full</button>
+    </div>
+</div>
     /* Smoother, rounded main buttons */
     .header-btn { 
         background-color: rgba(59, 130, 246, 0.1); color: var(--primary); 
@@ -331,10 +348,11 @@
     let fetchedServiceDocs = []; 
     let isDirty = false;    
 
-    // Categorized Lists (Includes User Additions)
-    const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables"];
-    const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
-    const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Screen", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
+
+    // --- Expanded App State ---
+const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables", "Screens"];
+const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
+const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
     const allPackElements = [...packPartsList, ...gunPartsList]; 
 
     let generalChecksCache = {}; 
@@ -676,17 +694,27 @@
 
         let hasGeneralIssues = false;
         let generalHtml = `<div class="print-section-title">General Site Checks</div><ul class="print-issue-list">`;
-        generalChecksList.forEach(item => {
-            if (generalChecksCache[item]) {
-                if (generalChecksCache[item].status === 'Issue') {
-                    hasGeneralIssues = true;
-                    generalHtml += `<li><strong>${item}:</strong> ${generalChecksCache[item].notes || "Issue logged"}</li>`;
-                } else if (generalChecksCache[item].status === 'Good') {
-                    hasGeneralIssues = true;
-                    generalHtml += `<li><strong>${item}:</strong> Checked all good</li>`;
-                }
+generalChecksList.forEach(item => {
+    if (generalChecksCache[item]) {
+        // Special formatting rules for Screens
+        if (item === 'Screens') {
+            hasGeneralIssues = true; 
+            if (generalChecksCache[item].status === 'Issue') {
+                generalHtml += `<li><strong>All Screens Checked:</strong> ${generalChecksCache[item].notes || "Issues logged"}</li>`;
+            } else if (generalChecksCache[item].status === 'Good') {
+                generalHtml += `<li><strong>All Screens Checked, All Good</strong></li>`;
             }
-        });
+        } 
+        // Standard formatting for everything else
+        else if (generalChecksCache[item].status === 'Issue') {
+            hasGeneralIssues = true;
+            generalHtml += `<li><strong>${item}:</strong> ${generalChecksCache[item].notes || "Issue logged"}</li>`;
+        } else if (generalChecksCache[item].status === 'Good') {
+            hasGeneralIssues = true;
+            generalHtml += `<li><strong>${item}:</strong> Checked all good</li>`;
+        }
+    }
+});
         generalHtml += `</ul>`;
         if (hasGeneralIssues) html += generalHtml;
 
@@ -922,12 +950,17 @@
                     notesArea.classList.add('visible');
                 }
 
-                if (type === 'general') {
-                    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
-                    if(isGoodBtn) generalChecksCache[part].notes = "";
-                    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-                    document.getElementById('generalSaveIndicator').style.color = "#aaa";
-                } else {
+if (type === 'general') {
+    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
+    if (isGoodBtn) {
+        generalChecksCache[part].notes = "";
+    } else if (part === "Screens") {
+        // Intercept the click and open our custom modal
+        openScreensModal();
+    }
+    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+    document.getElementById('generalSaveIndicator').style.color = "#aaa";
+} else {
                     packDataCache[currentpackIndex][part].status = isGoodBtn ? "Good" : "Issue";
                     if(isGoodBtn) packDataCache[currentpackIndex][part].notes = "";
                     isDirty = true;
@@ -956,6 +989,77 @@
             ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
         });
     }
+
+    <div id="screensIssueModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <button class="modal-close-btn" id="closeScreensModalBtn">&times;</button>
+        <h2 style="margin-top: 0;">Select Screen Issues</h2>
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">Tap the packs below that required a screen replacement.</p>
+        
+        <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 20px;">
+            </div>
+        
+        <button class="btn-success" id="saveScreensBtn" style="padding: 16px; font-size: 1.1rem; width: 100%; border-radius: var(--radius-md);">Save Replaced Screens</button>
+    </div>
+</div>
+
+    // --- CUSTOM SCREENS MODAL LOGIC ---
+const screensModal = document.getElementById('screensIssueModal');
+let selectedScreenPacks = new Set();
+
+function openScreensModal() {
+    screensModal.style.display = "block";
+    const grid = document.getElementById('screensGrid');
+    grid.innerHTML = '';
+    
+    // Check if we already have saved replacements so they stay highlighted if re-opened
+    const existingNotes = generalChecksCache['Screens'].notes || "";
+    selectedScreenPacks.clear();
+    if (existingNotes.includes('Replaced')) {
+        const matches = existingNotes.match(/\d+/g);
+        if (matches) matches.forEach(n => selectedScreenPacks.add(parseInt(n)));
+    }
+
+    // Generate the button grid
+    for (let i = 1; i <= totalpacks; i++) {
+        const btn = document.createElement('button');
+        btn.innerText = i;
+        btn.style.cssText = `padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); background: ${selectedScreenPacks.has(i) ? 'rgba(239, 68, 68, 0.2)' : 'var(--input-bg)'}; color: ${selectedScreenPacks.has(i) ? 'var(--danger)' : 'var(--text-main)'}; font-weight: bold; transition: all 0.1s;`;
+        
+        btn.addEventListener('click', () => {
+            if (selectedScreenPacks.has(i)) {
+                selectedScreenPacks.delete(i);
+                btn.style.background = 'var(--input-bg)';
+                btn.style.color = 'var(--text-main)';
+            } else {
+                selectedScreenPacks.add(i);
+                btn.style.background = 'rgba(239, 68, 68, 0.2)';
+                btn.style.color = 'var(--danger)';
+            }
+        });
+        grid.appendChild(btn);
+    }
+}
+
+document.getElementById('closeScreensModalBtn').addEventListener('click', () => screensModal.style.display = "none");
+
+document.getElementById('saveScreensBtn').addEventListener('click', () => {
+    const sortedPacks = Array.from(selectedScreenPacks).sort((a, b) => a - b);
+    const notesArea = document.querySelector('#notes-screens textarea');
+    
+    if (sortedPacks.length > 0) {
+        const noteStr = `Pack ${sortedPacks.join(', ')} Replaced`;
+        generalChecksCache['Screens'].notes = noteStr;
+        if(notesArea) notesArea.value = noteStr;
+    } else {
+        generalChecksCache['Screens'].notes = "";
+        if(notesArea) notesArea.value = "";
+    }
+    
+    screensModal.style.display = "none";
+    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+    document.getElementById('generalSaveIndicator').style.color = "#aaa";
+});
 
 </script>
 </body>
