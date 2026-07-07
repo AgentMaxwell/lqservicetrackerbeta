@@ -1,6 +1,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-// 🔴 REPLACE THIS with your actual Firebase Config
+import { 
+    initializeFirestore, 
+    persistentLocalCache, 
+    persistentMultipleTabManager 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// Your existing Firebase configuration object
   const firebaseConfig = {
     apiKey: "AIzaSyDvtVFsGd37aAWNoLSgAQWxhVa7-gNc1Y8",
     authDomain: "lqservicetracker.firebaseapp.com",
@@ -15,7 +20,9 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with offline persistence enabled
+// Initialize Firestore with persistent offline cache enabled
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
 });
