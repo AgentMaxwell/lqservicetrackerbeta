@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pack Service Tracker</title>
+    <style>
+        /* ============================================
+           PACK SERVICE TRACKER v1.4 — Tablet Facelift
+           ============================================ */
+        :root {
+            --primary: #6366F1;
+            --primary-hover: #4F46E5;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --accent: #38BDF8;
+            --secondary: #475569;
+            --success: #10B981;
+            --success-glow: rgba(16, 185, 129, 0.25);
+            --danger: #F43F5E;
+            --danger-glow: rgba(244, 63, 94, 0.25);
+
+            --bg-color: #0B1120;
+            --bg-gradient: radial-gradient(ellipse at top, #1E1B4B 0%, #0B1120 45%, #030712 100%);
+            --card-bg: #111827;
+            --card-bg-elevated: #1F2937;
+            --input-bg: #1F2937;
+            --input-border: #374151;
+
+            --text-main: #F9FAFB;
+            --text-muted: #94A3B8;
+            --text-dim: #64748B;
+            --border-color: rgba(148, 163, 184, 0.12);
+            --border-strong: rgba(148, 163, 184, 0.22);
+
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 10px;
+            --radius-pill: 999px;
+
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.35);
+            --shadow-lg: 0 20px 45px rgba(0,0,0,0.45);
+        }
+
+        * { -webkit-tap-highlight-color: transparent; }
+
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-color);
+            background-image: var(--bg-gradient);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+            min-height: 100vh;
+            font-size: 16px;
+            letter-spacing: -0.005em;
+        }
+
+        /* ---------- Layout ---------- */
+        .container {
+            min-height: 100vh;
+            padding: 14px 22px 22px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ---------- Header ---------- */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            margin-bottom: 18px;
+            background: rgba(17, 24, 39, 0.72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 8px;
+            z-index: 100;
+        }
+        .app-header h1 {
+            margin: 0;
+            text-align: center;
+            flex: 1;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #E0E7FF, #FFFFFF, #BAE6FD);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .version-badge {
+            font-size: 0.6em;
+            background: rgba(99, 102, 241, 0.15);
+            color: #A5B4FC;
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+            vertical-align: middle;
+            margin-left: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            text-transform: uppercase;
+            -webkit-text-fill-color: #A5B4FC;
+        }
+        .header-btn {
+            background: rgba(99, 102, 241, 0.12);
+            color: #C7D2FE;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            border-radius: var(--radius-pill);
+            transition: all 0.2s ease;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-btn:hover { background: rgba(99, 102, 241, 0.2); }
+        .header-btn:active { transform: scale(0.96); }
+        .header-btn.secondary {
+            background: rgba(148, 163, 184, 0.08);
+            color: var(--text-main);
+            border-color: var(--border-strong);
+        }
+        .header-btn.secondary:hover { background: rgba(148, 163, 184, 0.14); }
+        .header-edge { flex: 1; display: flex; align-items: center; }
+        .header-edge.right { justify-content: flex-end; gap: 10px; }
+
+        /* ---------- Typography ---------- */
+        h2, h3 { text-align: center; margin: 0 0 18px 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* ---------- Inputs ---------- */
+        select, input, textarea {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 1.05rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--input-border);
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-family: inherit;
+            transition: all 0.2s ease;
+            min-height: 52px;
+        }
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 18px center;
+            padding-right: 48px;
+        }
+
+        /* ---------- Buttons ---------- */
+        button { cursor: pointer; font-weight: 600; transition: all 0.15s ease; user-select: none; font-family: inherit; }
+        button:active { transform: scale(0.97); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        button:disabled:active { transform: none; }
+
+        .btn-primary, .btn-outline, .btn-secondary, .btn-danger, .btn-success {
+            border-radius: var(--radius-pill);
+            padding: 14px 22px;
+            font-size: 1.02rem;
+            min-height: 52px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 20px var(--primary-glow); }
+        .btn-outline {
+            background: transparent;
+            color: #C7D2FE;
+            border: 2px solid rgba(99, 102, 241, 0.5);
+        }
+        .btn-outline:hover { background: rgba(99, 102, 241, 0.1); }
+        .btn-secondary { background: var(--secondary); color: white; border: none; }
+        .btn-secondary:hover { background: #556074; }
+        .btn-danger { background: var(--danger); color: white; border: none; box-shadow: 0 4px 14px var(--danger-glow); }
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 14px var(--success-glow);
+        }
+
+        /* ---------- Sections ---------- */
+        .app-section { display: none; flex: 1; flex-direction: column; }
+        .app-section.active { display: flex; animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ---------- Home ---------- */
+        #setupSection {
+            max-width: 720px;
+            margin: 0 auto;
+            width: 100%;
+            padding-top: 20px;
+        }
+        .hero-card {
+            background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02));
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .hero-card h2 {
+            font-size: 1.5rem;
+            margin: 0 0 8px 0;
+            text-align: left;
+        }
+        .hero-subtitle {
+            color: var(--text-muted);
+            margin: 0 0 24px 0;
+            text-align: left;
+            font-size: 1rem;
+        }
+        .service-type-panel {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 22px;
+            border-radius: var(--radius-md);
+            margin-top: 18px;
+            border: 1px solid var(--border-color);
+            animation: fadeIn 0.3s ease;
+        }
+        .service-type-panel .panel-title {
+            text-align: center;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin: 0 0 18px 0;
+            color: var(--text-main);
+        }
+        .action-group { display: flex; gap: 12px; margin-top: 12px; }
+        .action-group button { flex: 1; }
+        #toggleAdminBtn { width: 100%; }
+
+        /* ---------- Admin ---------- */
+        #adminSection { max-width: 780px; margin: 0 auto; width: 100%; padding-top: 12px; }
+        .admin-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .site-manager-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 18px;
+            background: var(--card-bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            transition: border-color 0.2s;
+            gap: 12px;
+        }
+        .site-manager-item:hover { border-color: var(--border-strong); }
+        .site-manager-item strong { font-size: 1.05rem; }
+        .admin-controls { display: flex; gap: 8px; flex-shrink: 0; }
+        .admin-controls .admin-btn {
+            border-radius: var(--radius-pill);
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            border: none;
+            min-height: 44px;
+            font-weight: 600;
+        }
+        .btn-edit { background: rgba(99, 102, 241, 0.15); color: #C7D2FE; }
+        .btn-edit:hover { background: rgba(99, 102, 241, 0.25); }
+        .btn-del { background: rgba(244, 63, 94, 0.15); color: #FDA4AF; }
+        .btn-del:hover { background: rgba(244, 63, 94, 0.25); }
+
+        /* ---------- Service / General ---------- */
+        .service-main { flex: 1; display: flex; flex-direction: column; padding-bottom: 90px; }
+        #generalChecksSection { padding-bottom: 90px; }
+
+        .nav-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            margin-bottom: 16px;
+            gap: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 78px;
+            z-index: 50;
+        }
+        .nav-controls button {
+            flex: 1;
+            max-width: 150px;
+            margin: 0;
+            padding: 12px 16px;
+            font-size: 1rem;
+            min-height: 48px;
+        }
+        .nav-status {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            padding: 0 8px;
+            gap: 6px;
+        }
+        .pack-counter-text {
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+        .progress-container {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border-radius: var(--radius-pill);
+            height: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            width: 0%;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: var(--radius-pill);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        .save-indicator {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* ---------- Grids ---------- */
+        #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; transition: opacity 0.2s ease; }
+        #gunPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; transition: opacity 0.2s ease; }
+        #generalPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+
+        .grid-header {
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0 4px 8px 4px;
+            margin: 8px 0 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .grid-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border-strong), transparent);
+        }
+
+        /* ---------- Part Cards ---------- */
+        .part-section {
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 14px 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease;
+        }
+        .part-section:hover { border-color: var(--border-strong); }
+        .part-section:has(.btn-issue.active) {
+            border-color: rgba(244, 63, 94, 0.35);
+            background: linear-gradient(180deg, rgba(244,63,94,0.05), rgba(244,63,94,0.01));
+        }
+        .part-section:has(.btn-good.active) {
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .part-header {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-main);
+        }
+
+        /* ---------- Segmented Toggles ---------- */
+        .button-group {
+            display: flex;
+            background: rgba(0,0,0,0.35);
+            border-radius: var(--radius-pill);
+            padding: 4px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+        }
+        .btn-good, .btn-issue {
+            flex: 1;
+            min-height: 44px;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-pill);
+            font-size: 0.88rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 0 6px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-good:hover { color: #6EE7B7; }
+        .btn-issue:hover { color: #FDA4AF; }
+        .btn-good.active {
+            background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.15)) !important;
+            color: #6EE7B7 !important;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(16,185,129,0.2), inset 0 0 0 1px rgba(16,185,129,0.3);
+        }
+        .btn-issue.active {
+            background: linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.15)) !important;
+            color: #FDA4AF !important;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(244,63,94,0.2), inset 0 0 0 1px rgba(244,63,94,0.3);
+        }
+
+        /* ---------- Notes ---------- */
+        .notes-area { display: none; margin-top: 12px; animation: expandDown 0.2s ease-out; }
+        @keyframes expandDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+        .notes-area.visible { display: block; }
+        .notes-area textarea {
+            width: 100%;
+            height: 60px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--input-border);
+            background: rgba(0,0,0,0.35);
+            color: var(--text-main);
+            resize: vertical;
+            margin-bottom: 0;
+            min-height: 60px;
+        }
+
+        /* ---------- Sticky Bottom Action Bar ---------- */
+        .sticky-action-bar {
+            position: fixed;
+            left: 22px;
+            right: 22px;
+            bottom: 16px;
+            z-index: 80;
+            display: flex;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(17, 24, 39, 0.92);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-pill);
+            box-shadow: var(--shadow-lg);
+        }
+        .sticky-action-bar button {
+            flex: 1;
+            margin: 0;
+            padding: 14px 18px;
+            font-size: 1.05rem;
+            min-height: 52px;
+        }
+
+        /* ---------- Sidebar ---------- */
+        .slide-out-menu {
+            position: fixed;
+            top: 0;
+            right: -380px;
+            width: 380px;
+            height: 100%;
+            background: var(--card-bg);
+            background-image: linear-gradient(180deg, rgba(99,102,241,0.06), transparent 30%);
+            z-index: 2000;
+            transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 24px;
+            overflow-y: auto;
+            border-left: 1px solid var(--border-color);
+            box-sizing: border-box;
+            box-shadow: var(--shadow-lg);
+        }
+        .slide-out-menu.open { right: 0; }
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 7, 18, 0.75);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        .menu-backdrop.show { visibility: visible; opacity: 1; }
+        .close-menu-btn {
+            background: rgba(148, 163, 184, 0.1);
+            border: none;
+            color: var(--text-muted);
+            font-size: 22px;
+            cursor: pointer;
+            float: right;
+            padding: 0;
+            line-height: 1;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-menu-btn:hover { background: rgba(148, 163, 184, 0.18); color: var(--text-main); }
+        .sidebar-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 22px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            clear: both;
+        }
+        .slide-out-menu button {
+            padding: 14px 18px;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+        /* Sidebar action buttons – unified dark styling */
+        #sidebarGeneralChecksBtn,
+        #viewOverlayGridBtn,
+        #sidebarPrintBtn {
+            background: var(--card-bg-elevated) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-color) !important;
+            justify-content: flex-start;
+            text-align: left;
+        }
+        #sidebarGeneralChecksBtn:hover,
+        #viewOverlayGridBtn:hover,
+        #sidebarPrintBtn:hover {
+            background: rgba(148, 163, 184, 0.1) !important;
+            border-color: var(--border-strong) !important;
+        }
+        #sidebarGeneralChecksBtn { color: #6EE7B7 !important; border-color: rgba(16,185,129,0.3) !important; }
+
+        .accordion-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--card-bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-top: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .accordion-toggle:hover { background: rgba(148, 163, 184, 0.1); }
+        .accordion-content {
+            display: none;
+            padding: 14px 4px 4px 4px;
+            animation: fadeIn 0.2s ease;
+        }
+        .accordion-content.open { display: block; }
+        .accordion-content textarea { min-height: 100px; }
+        .accordion-content .btn-primary { width: 100%; }
+
+        /* ---------- Modals ---------- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2500;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            margin: 24px auto;
+            padding: 28px;
+            border-radius: var(--radius-lg);
+            width: 95%;
+            max-width: 1400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            color: var(--text-muted);
+            font-size: 22px;
+            cursor: pointer;
+            border: none;
+            background: rgba(148, 163, 184, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close-btn:hover { background: rgba(148, 163, 184, 0.18); color: var(--text-main); }
+
+        /* ---------- Table ---------- */
+        .table-responsive { overflow-x: auto; border-radius: var(--radius-md); background: var(--bg-color); border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th, td { border-bottom: 1px solid var(--border-color); padding: 12px 10px; text-align: center; font-size: 0.9rem; }
+        th { background: var(--card-bg-elevated); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); position: sticky; top: 0; }
+        tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+        tr:hover { background: rgba(99, 102, 241, 0.05); }
+        .tick { color: var(--success); font-weight: bold; font-size: 1.15rem; }
+        .cross { color: var(--danger); font-weight: bold; font-size: 1.15rem; }
+        .pending { color: var(--text-dim); }
+        .notes-cell { text-align: left !important; font-size: 0.82rem; max-width: 300px; }
+
+        /* ---------- Tablet responsive ---------- */
+        @media (max-width: 900px) {
+            #packPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
+            .app-header h1 { font-size: 1.05rem; }
+            .header-btn { padding: 10px 14px; font-size: 0.85rem; }
+            .slide-out-menu { width: 88vw; right: -88vw; }
+        }
+        @media (orientation: portrait) and (max-width: 1100px) {
+            #packPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ---------- Print (unchanged behavior) ---------- */
+        #printOnlyArea { display: none; }
+        @media print {
+            body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background-color: white !important; color: black !important; }
+            .container, .app-header, .app-section, .nav-controls, .menu-backdrop, .slide-out-menu, .modal, .sticky-action-bar { display: none !important; }
+            #printOnlyArea { display: block !important; position: static !important; padding: 0; }
+            #printOnlyArea, #printOnlyArea * { visibility: visible; }
+            .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .print-section-title { font-size: 1.4rem; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; color: #000 !important;}
+            .print-issue-list { margin: 0; padding-left: 20px; color: black; }
+            .print-issue-list li { margin-bottom: 8px; font-size: 1.1rem;}
+            h1, h2, h3, p { color: black !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="app-header">
+        <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
+
+        <h1>Pack Service Tracker <span class="version-badge">v1.4</span></h1>
+
+        <div class="header-edge right">
+            <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
+            <button id="fullscreenBtn" class="header-btn secondary">⛶ Full</button>
+        </div>
+    </div>
+
+    <!-- ============ HOME / SETUP ============ -->
+    <div id="setupSection" class="app-section active">
+        <div class="hero-card">
+            <h2>Start a Service</h2>
+            <p class="hero-subtitle">Choose a site below to begin a new inspection or review a previous service.</p>
+
+            <label for="siteSelect">Site</label>
+            <select id="siteSelect">
+                <option value="">Loading sites...</option>
+            </select>
+
+            <div id="serviceTypeSelection" class="service-type-panel" style="display: none;">
+                <p class="panel-title">Site Selected — Choose Action</p>
+
+                <div class="action-group" id="initialLoadGroup">
+                    <button class="btn-primary" id="startNewServiceBtn">▶ Start New Service</button>
+                    <button class="btn-secondary" id="fetchDatesBtn">📂 Load Previous</button>
+                </div>
+
+                <div id="dateSelectionUI" style="display: none; margin-top: 18px;">
+                    <label>Select Historical Service Date</label>
+                    <select id="serviceDateSelect">
+                        <option value="">-- Choose Date --</option>
+                    </select>
+                    <div class="action-group">
+                        <button class="btn-primary" id="confirmLoadBtn">Load Selected</button>
+                        <button class="btn-outline" id="cancelLoadBtn">Cancel</button>
+                    </div>
+                </div>
+
+                <div id="loadStatusMsg" style="text-align: center; font-weight: 600; margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+    </div>
+
+    <!-- ============ ADMIN ============ -->
+    <div id="adminSection" class="app-section">
+        <div class="admin-card">
+            <h2 style="text-align:left;">Sites Database</h2>
+            <div id="adminSiteList"><p style="color: var(--text-muted); text-align:center;">Loading sites...</p></div>
+        </div>
+
+        <div class="admin-card">
+            <h3 style="text-align:left; margin-bottom: 18px;">➕ Add New Site</h3>
+            <label>Site Name</label>
+            <input type="text" id="newSiteName" placeholder="e.g. Site Delta">
+            <label>Number of Packs</label>
+            <input type="number" id="newSiteCount" placeholder="e.g. 12">
+            <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
+        </div>
+    </div>
+
+    <!-- ============ GENERAL CHECKS ============ -->
+    <div id="generalChecksSection" class="app-section">
+        <div class="nav-controls">
+            <button class="btn-primary" id="backToPacksBtn">&laquo; Back</button>
+            <div class="nav-status">
+                <div class="pack-counter-text">☑️ General Site Checks</div>
+                <div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div>
+            </div>
+            <div style="flex: 1; max-width: 150px;"></div>
+        </div>
+
+        <div class="grid-header">Facility Equipment</div>
+        <div id="generalPartsContainer"></div>
+
+        <div class="sticky-action-bar">
+            <button class="btn-success" id="generalAllOkBtn">✔ Mark Remaining as "All Good"</button>
+        </div>
+    </div>
+
+    <!-- ============ SERVICE ============ -->
+    <div id="serviceSection" class="app-section">
+        <div class="service-main">
+            <div class="nav-controls">
+                <button class="btn-primary" id="prevBtn" disabled>&laquo; Back</button>
+                <div class="nav-status">
+                    <div class="pack-counter-text" id="packCounterText">Pack 1 of X</div>
+                    <div class="progress-container">
+                        <div class="progress-fill" id="progressBarFill"></div>
+                    </div>
+                    <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
+                </div>
+                <button class="btn-primary" id="nextBtn">Next &raquo;</button>
+            </div>
+
+            <div class="grid-header">🎽 Pack Elements</div>
+            <div id="packPartsContainer"></div>
+
+            <div class="grid-header">🔫 Gun Elements</div>
+            <div id="gunPartsContainer"></div>
+        </div>
+
+        <div class="sticky-action-bar">
+            <button class="btn-success" id="packAllOkBtn">✔ Mark Remaining Parts as "All Good"</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ SIDEBAR ============ -->
+<div class="menu-backdrop" id="menuBackdrop"></div>
+<div class="slide-out-menu" id="slideOutMenu">
+    <button class="close-menu-btn" id="closeMenuBtn">&times;</button>
+    <div class="sidebar-title">Service Controls</div>
+
+    <button class="btn-outline" id="sidebarGeneralChecksBtn">☑️ General Site Checks</button>
+    <button class="btn-outline" id="viewOverlayGridBtn">📊 View Grid Overlay</button>
+    <button class="btn-outline" id="sidebarPrintBtn">🖨️ Print Active Report</button>
+
+    <div class="accordion-toggle" id="repAccordionToggle">
+        <span>👤 Representative</span>
+        <span id="repAccordionIcon">▼</span>
+    </div>
+    <div class="accordion-content" id="repAccordionContent">
+        <input type="text" id="sidebarRepNameInput" placeholder="Enter your name..." style="margin-bottom: 10px;">
+        <button class="btn-primary" id="saveRepNameBtn">Save Name</button>
+        <div id="sidebarRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+    </div>
+
+    <div class="accordion-toggle" id="notesAccordionToggle">
+        <span>📝 General Site Notes</span>
+        <span id="accordionIcon">▼</span>
+    </div>
+    <div class="accordion-content" id="notesAccordionContent">
+        <textarea id="sidebarSiteNotes" placeholder="Enter broad facility issues, missing packs, etc..."></textarea>
+        <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
+        <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+    </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div id="gridOverlayModal" class="modal">
+    <div class="modal-content">
+        <button class="modal-close-btn" id="closeModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">📊 Live Service Grid</h2>
+        <div id="modalTableContainer" class="table-responsive">
+            <p style="text-align: center; padding: 40px;">Loading data...</p>
+        </div>
+    </div>
+</div>
+
+<div id="screensIssueModal" class="modal">
+    <div class="modal-content" style="max-width: 640px;">
+        <button class="modal-close-btn" id="closeScreensModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">🖥️ Select Screen Issues</h2>
+        <p style="text-align: center; color: var(--text-muted); margin: 0 0 22px 0;">Tap the packs below that required a screen replacement.</p>
+
+        <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-bottom: 24px;"></div>
+
+        <button class="btn-success" id="saveScreensBtn" style="width: 100%;">Save Replaced Screens</button>
+    </div>
+</div>
+
+<div id="printOnlyArea"></div>
+
+<script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, addDoc, setDoc, getDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // --- Expanded App State ---
+    let sitesData = {}; 
+    let currentSiteName = "";
+    let currentRepresentative = ""; 
+    let activeServiceDate = ""; 
+    let totalpacks = 0;
+    let currentpackIndex = 1;
+    let fetchedServiceDocs = []; 
+    let isDirty = false;    
+
+    // --- Arrays ---
+    const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables", "Screens"];
+    const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
+    const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
+    const allPackElements = [...packPartsList, ...gunPartsList]; 
+
+    let generalChecksCache = {}; 
+    let packDataCache = {}; 
+
+    // DOM Elements
+    const sections = document.querySelectorAll('.app-section');
+    const serviceTypeSelection = document.getElementById('serviceTypeSelection');
+    const gridModal = document.getElementById('gridOverlayModal');
+    
+    // Burger Menu Elements
+    const burgerBtn = document.getElementById('burgerMenuBtn');
+    const slideOutMenu = document.getElementById('slideOutMenu');
+    const menuBackdrop = document.getElementById('menuBackdrop');
+    const closeMenuBtn = document.getElementById('closeMenuBtn');
+
+    // --- 0. MENU NAVIGATION & UTILITIES ---
+    function toggleMenu() {
+        const isOpen = slideOutMenu.classList.contains('open');
+        if (isOpen) {
+            slideOutMenu.classList.remove('open');
+            menuBackdrop.classList.remove('show');
+        } else {
+            slideOutMenu.classList.add('open');
+            menuBackdrop.classList.add('show');
+        }
+    }
+    burgerBtn.addEventListener('click', toggleMenu);
+    closeMenuBtn.addEventListener('click', toggleMenu);
+    menuBackdrop.addEventListener('click', toggleMenu);
+
+    async function navigateTo(sectionId) {
+        if (document.getElementById('generalChecksSection').classList.contains('active')) await saveGeneralChecks();
+        if (document.getElementById('serviceSection').classList.contains('active')) await triggerBackgroundSave();
+
+        sections.forEach(sec => sec.classList.remove('active'));
+        document.getElementById(sectionId).classList.add('active');
+        
+        document.getElementById('siteSelect').value = "";
+        serviceTypeSelection.style.display = 'none';
+        document.getElementById('initialLoadGroup').style.display = 'flex';
+        document.getElementById('dateSelectionUI').style.display = 'none';
+        
+        if (sectionId === 'serviceSection' || sectionId === 'generalChecksSection') {
+            burgerBtn.style.display = 'inline-flex';
+        } else {
+            burgerBtn.style.display = 'none';
+            slideOutMenu.classList.remove('open');
+            menuBackdrop.classList.remove('show');
+        }
+
+        if(sectionId === 'adminSection') renderAdminList();
+    }
+
+    document.getElementById('navHomeBtn').addEventListener('click', () => navigateTo('setupSection'));
+    document.getElementById('toggleAdminBtn').addEventListener('click', () => navigateTo('adminSection'));
+
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((err) => console.log(err));
+            fullscreenBtn.innerHTML = '🗗 Exit Full';
+        } else {
+            document.exitFullscreen();
+            fullscreenBtn.innerHTML = '⛶ Full';
+        }
+    });
+
+    // --- 1. INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+        const savedName = localStorage.getItem('inspectorName');
+        if(savedName) {
+            currentRepresentative = savedName;
+            document.getElementById('sidebarRepNameInput').value = savedName;
+        }
+        loadSites();
+    });
+
+    async function loadSites() {
+        const select = document.getElementById('siteSelect');
+        select.innerHTML = '<option value="">-- Choose Site --</option>';
+        try {
+            const querySnapshot = await getDocs(collection(db, "sites"));
+            sitesData = {};
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const count = data.packCount || data.gearCount || 0; 
+                sitesData[data.name] = { id: doc.id, count: count };
+                select.innerHTML += `<option value="${data.name}">${data.name} (${count} Packs)</option>`;
+            });
+        } catch (error) { console.error(error); }
+    }
+
+    // --- 2. ADMIN CRUD ---
+    function renderAdminList() {
+        const listDiv = document.getElementById('adminSiteList');
+        listDiv.innerHTML = '';
+        if (Object.keys(sitesData).length === 0) { listDiv.innerHTML = '<p style="color: var(--text-muted); text-align:center;">No sites found.</p>'; return; }
+        Object.keys(sitesData).forEach(siteName => {
+            const siteInfo = sitesData[siteName];
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'site-manager-item';
+            itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Packs</span></div>
+                <div class="admin-controls"><button class="admin-btn btn-edit" data-id="${siteInfo.id}" data-name="${siteName}" data-count="${siteInfo.count}">Edit</button><button class="admin-btn btn-del" data-id="${siteInfo.id}" data-name="${siteName}">Delete</button></div>`;
+            listDiv.appendChild(itemDiv);
+        });
+        document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditSite));
+        document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
+    }
+    async function handleEditSite(e) {
+        const docId = e.target.getAttribute('data-id'); const oldName = e.target.getAttribute('data-name'); const oldCount = e.target.getAttribute('data-count');
+        const newName = prompt("Edit Site Name:", oldName); if (!newName) return; 
+        const newCountStr = prompt("Edit Pack Count:", oldCount); if (!newCountStr) return; 
+        const newCount = parseInt(newCountStr); if (!newName.trim() || isNaN(newCount) || newCount <= 0) return alert("Invalid data.");
+        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), packCount: newCount }); await loadSites
