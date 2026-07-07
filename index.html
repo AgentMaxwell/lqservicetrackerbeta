@@ -4,207 +4,204 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pack Service Tracker</title>
-<style>
-    /* Tablet-Optimized DASHBOARD Mode (Hybrid Flex/Scroll) */
-    :root {
-        --primary: #3B82F6; 
-        --primary-hover: #2563EB;
-        --secondary: #475569; 
-        --success: #10B981; 
-        --danger: #EF4444; 
-        --bg-color: #0F172A; 
-        --card-bg: #1E293B; 
-        --input-bg: #334155; 
-        --text-main: #F8FAFC; 
-        --text-muted: #94A3B8;
-        --border-color: #334155; 
-        --radius-lg: 16px;
-        --radius-md: 12px;
-        --radius-pill: 50px; /* New pill shape for buttons */
-    }
+    <style>
+        /* Tablet-Optimized DASHBOARD Mode (Hybrid Flex/Scroll) */
+        :root {
+            --primary: #3B82F6; 
+            --primary-hover: #2563EB;
+            --secondary: #475569; 
+            --success: #10B981; 
+            --danger: #EF4444; 
+            --bg-color: #0F172A; 
+            --card-bg: #1E293B; 
+            --input-bg: #334155; 
+            --text-main: #F8FAFC; 
+            --text-muted: #94A3B8;
+            --border-color: #334155; 
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-pill: 50px;
+        }
 
-    body, html {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background-color: var(--bg-color);
-        margin: 0;
-        padding: 0;
-        color: var(--text-main);
-        min-height: 100vh; /* Allows growing if needed */
-        -webkit-tap-highlight-color: transparent; 
-    }
+        body, html {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-main);
+            min-height: 100vh; 
+            -webkit-tap-highlight-color: transparent; 
+        }
 
-    /* Version Badge */
-.version-badge {
-    font-size: 0.55em;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-muted);
-    padding: 4px 8px;
-    border-radius: var(--radius-pill);
-    vertical-align: middle;
-    margin-left: 8px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
+        /* Version Badge */
+        .version-badge {
+            font-size: 0.55em;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: var(--radius-pill);
+            vertical-align: middle;
+            margin-left: 8px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-    /* Container fills screen but allows natural scrolling if content expands */
-    .container {
-        min-height: 100vh;
-        max-width: none;
-        margin: 0;
-        background: var(--card-bg);
-        padding: 16px 24px;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-    }
+        .container {
+            min-height: 100vh;
+            max-width: none;
+            margin: 0;
+            background: var(--card-bg);
+            padding: 16px 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
 
-    /* Header */
-<div class="app-header">
-    <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
-    
-    <h1>Pack Service Tracker <span class="version-badge">v1.1</span></h1>
-    
-    <div class="header-edge right">
-        <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
-        <button id="fullscreenBtn" class="header-btn secondary">🔲 Full</button>
-    </div>
-</div>
-    /* Smoother, rounded main buttons */
-    .header-btn { 
-        background-color: rgba(59, 130, 246, 0.1); color: var(--primary); 
-        border: 1px solid rgba(59, 130, 246, 0.2); font-weight: 600; 
-        cursor: pointer; padding: 10px 18px; font-size: 0.95rem; 
-        border-radius: var(--radius-pill); transition: all 0.2s ease;
-    }
-    .header-btn:active { transform: scale(0.96); }
-    .header-btn.secondary { background-color: var(--input-bg); color: var(--text-main); border-color: transparent; }
-    .header-edge { flex: 1; display: flex; }
-    .header-edge.right { justify-content: flex-end; gap: 10px; }
+        /* Header */
+        .app-header { 
+            display: flex; align-items: center; justify-content: space-between; 
+            margin-bottom: 16px; padding-bottom: 12px; 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .app-header h1 { margin: 0; text-align: center; flex: 1; font-size: 1.4rem; font-weight: 700;}
+        
+        .header-btn { 
+            background-color: rgba(59, 130, 246, 0.1); color: var(--primary); 
+            border: 1px solid rgba(59, 130, 246, 0.2); font-weight: 600; 
+            cursor: pointer; padding: 10px 18px; font-size: 0.95rem; 
+            border-radius: var(--radius-pill); transition: all 0.2s ease;
+        }
+        .header-btn:active { transform: scale(0.96); }
+        .header-btn.secondary { background-color: var(--input-bg); color: var(--text-main); border-color: transparent; }
+        .header-edge { flex: 1; display: flex; }
+        .header-edge.right { justify-content: flex-end; gap: 10px; }
 
-    h2, h3 { text-align: center; margin: 0 0 16px 0; font-size: 1.25rem;}
-    label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.95rem; color: var(--text-muted);}
-    select, input {
-        width: 100%; padding: 14px; font-size: 1.05rem; 
-        border-radius: var(--radius-md); border: 1px solid var(--border-color); 
-        margin-bottom: 16px; box-sizing: border-box; 
-        background-color: var(--input-bg); color: var(--text-main); 
-    }
+        h2, h3 { text-align: center; margin: 0 0 16px 0; font-size: 1.25rem;}
+        label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 0.95rem; color: var(--text-muted);}
+        select, input {
+            width: 100%; padding: 14px; font-size: 1.05rem; 
+            border-radius: var(--radius-md); border: 1px solid var(--border-color); 
+            margin-bottom: 16px; box-sizing: border-box; 
+            background-color: var(--input-bg); color: var(--text-main); 
+        }
 
-    /* Global Buttons */
-    button { cursor: pointer; font-weight: 600; transition: all 0.15s ease; user-select: none; }
-    button:active { transform: scale(0.97); }
-    .btn-primary { background-color: var(--primary); color: white; border: none; border-radius: var(--radius-md); }
-    .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: var(--radius-md); }
-    .btn-secondary { background-color: var(--secondary); color: white; border: none; border-radius: var(--radius-md); }
-    .btn-danger { background-color: var(--danger); color: white; border: none; border-radius: var(--radius-md); }
-    .btn-success { background-color: var(--success); color: white; border: none; border-radius: var(--radius-md); }
+        /* Global Buttons */
+        button { cursor: pointer; font-weight: 600; transition: all 0.15s ease; user-select: none; }
+        button:active { transform: scale(0.97); }
+        .btn-primary { background-color: var(--primary); color: white; border: none; border-radius: var(--radius-md); }
+        .btn-outline { background-color: transparent; color: var(--primary); border: 2px solid var(--primary); border-radius: var(--radius-md); }
+        .btn-secondary { background-color: var(--secondary); color: white; border: none; border-radius: var(--radius-md); }
+        .btn-danger { background-color: var(--danger); color: white; border: none; border-radius: var(--radius-md); }
+        .btn-success { background-color: var(--success); color: white; border: none; border-radius: var(--radius-md); }
 
-    .app-section { display: none; flex: 1; flex-direction: column; }
-    .app-section.active { display: flex; animation: fadeIn 0.2s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .app-section { display: none; flex: 1; flex-direction: column; }
+        .app-section.active { display: flex; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Service Main Layout */
-    .service-main { flex: 1; display: flex; flex-direction: column; } 
-    
-    .progress-container { width: 100%; background: var(--bg-color); border-radius: var(--radius-pill); height: 10px; margin-bottom: 8px;}
-    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #60A5FA); width: 0%; transition: width 0.3s; border-radius: var(--radius-pill); }
-    .pack-counter-text { text-align: center; color: var(--text-muted); font-weight: 600; font-size: 1rem; margin-bottom: 12px;}
+        /* Service Main Layout */
+        .service-main { flex: 1; display: flex; flex-direction: column; } 
+        
+        .progress-container { width: 100%; background: var(--bg-color); border-radius: var(--radius-pill); height: 10px; margin-bottom: 8px;}
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #60A5FA); width: 0%; transition: width 0.3s; border-radius: var(--radius-pill); }
+        .pack-counter-text { text-align: center; color: var(--text-muted); font-weight: 600; font-size: 1rem; margin-bottom: 12px;}
 
-    /* Tightly packed grids */
-    #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
-    #gunPartsContainer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
-    
-    .grid-header { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 12px 0; color: var(--text-muted); text-transform: uppercase;}
+        /* Tightly packed grids */
+        #packPartsContainer { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+        #gunPartsContainer { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 12px; }
+        
+        .grid-header { font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin: 12px 0; color: var(--text-muted); text-transform: uppercase;}
 
-    /* Card styling */
-    .part-section { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column;}
-    .part-header { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-    
-    /* SLEEK PILL TOGGLES instead of blocky buttons */
-    .button-group { 
-        display: flex; 
-        background: rgba(0,0,0,0.3); 
-        border-radius: var(--radius-pill); 
-        padding: 4px; 
-        border: 1px solid var(--border-color);
-    }
-    .btn-good, .btn-issue { 
-        flex: 1; 
-        min-height: 40px; 
-        color: var(--text-muted); 
-        background: transparent; 
-        border: none; 
-        border-radius: var(--radius-pill); 
-        font-size: 0.9rem; 
-        margin: 0; 
-        padding: 0 4px;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .btn-good.active { background-color: rgba(16, 185, 129, 0.2) !important; color: var(--success) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
-    .btn-issue.active { background-color: rgba(239, 68, 68, 0.2) !important; color: var(--danger) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+        /* Card styling */
+        .part-section { border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px; background: rgba(255,255,255,0.02); display: flex; flex-direction: column;}
+        .part-header { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        /* SLEEK PILL TOGGLES */
+        .button-group { 
+            display: flex; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: var(--radius-pill); 
+            padding: 4px; 
+            border: 1px solid var(--border-color);
+        }
+        .btn-good, .btn-issue { 
+            flex: 1; 
+            min-height: 40px; 
+            color: var(--text-muted); 
+            background: transparent; 
+            border: none; 
+            border-radius: var(--radius-pill); 
+            font-size: 0.9rem; 
+            margin: 0; 
+            padding: 0 4px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-good.active { background-color: rgba(16, 185, 129, 0.2) !important; color: var(--success) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
+        .btn-issue.active { background-color: rgba(239, 68, 68, 0.2) !important; color: var(--danger) !important; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2);}
 
-    /* Notes Area (expands gracefully now without breaking the layout) */
-    .notes-area { display: none; margin-top: 10px; animation: expandDown 0.2s ease-out;}
-    @keyframes expandDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    .notes-area.visible { display: block; }
-    .notes-area textarea { width: 100%; height: 50px; padding: 8px; font-size: 0.9rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; margin-bottom: 0;}
+        /* Notes Area */
+        .notes-area { display: none; margin-top: 10px; animation: expandDown 0.2s ease-out;}
+        @keyframes expandDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .notes-area.visible { display: block; }
+        .notes-area textarea { width: 100%; height: 50px; padding: 8px; font-size: 0.9rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); resize: vertical; margin-bottom: 0;}
 
-    /* Footer Controls */
-    #packAllOkBtn, #generalAllOkBtn { padding: 14px; margin: 12px 0; font-size: 1.05rem; border-radius: var(--radius-md); }
-    .nav-controls { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 14px; border-radius: var(--radius-md); margin-top: auto; gap: 12px; border: 1px solid var(--border-color); }
-    .nav-controls button { flex: 1; max-width: 160px; margin: 0; padding: 14px; font-size: 1.05rem; border-radius: var(--radius-md);}
-    .nav-status { flex: 2; display: flex; flex-direction: column; justify-content: center; text-align: center; }
-    .save-indicator { font-size: 0.95rem; color: var(--text-muted); font-weight: 600;}
+        /* Footer Controls */
+        #packAllOkBtn, #generalAllOkBtn { padding: 14px; margin: 12px 0; font-size: 1.05rem; border-radius: var(--radius-md); }
+        .nav-controls { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 14px; border-radius: var(--radius-md); margin-top: auto; gap: 12px; border: 1px solid var(--border-color); }
+        .nav-controls button { flex: 1; max-width: 160px; margin: 0; padding: 14px; font-size: 1.05rem; border-radius: var(--radius-md);}
+        .nav-status { flex: 2; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+        .save-indicator { font-size: 0.95rem; color: var(--text-muted); font-weight: 600;}
 
-    /* Modals and Sidebars */
-    .slide-out-menu { position: fixed; top: 0; right: -340px; width: 340px; height: 100%; background-color: var(--card-bg); z-index: 2000; transition: right 0.3s; padding: 24px; overflow-y: auto; border-left: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;}
-    .slide-out-menu.open { right: 0; }
-    .menu-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
-    .menu-backdrop.show { visibility: visible; opacity: 1; }
-    .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 32px; cursor: pointer; float: right; padding: 0; line-height: 1;}
-    .sidebar-title { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; clear: both;}
-    .slide-out-menu button { padding: 12px; font-size: 1rem; margin-bottom: 12px; border-radius: var(--radius-md); width: 100%;}
-    
-    .accordion-toggle { display: flex; justify-content: space-between; padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); margin-top: 12px; font-weight: 600; cursor: pointer;}
-    .accordion-content { display: none; padding-top: 12px; }
-    .accordion-content.open { display: block; }
+        /* Modals and Sidebars */
+        .slide-out-menu { position: fixed; top: 0; right: -340px; width: 340px; height: 100%; background-color: var(--card-bg); z-index: 2000; transition: right 0.3s; padding: 24px; overflow-y: auto; border-left: 1px solid rgba(255,255,255,0.05); box-sizing: border-box;}
+        .slide-out-menu.open { right: 0; }
+        .menu-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1999; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
+        .menu-backdrop.show { visibility: visible; opacity: 1; }
+        .close-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 32px; cursor: pointer; float: right; padding: 0; line-height: 1;}
+        .sidebar-title { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; clear: both;}
+        .slide-out-menu button { padding: 12px; font-size: 1rem; margin-bottom: 12px; border-radius: var(--radius-md); width: 100%;}
+        
+        .accordion-toggle { display: flex; justify-content: space-between; padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); margin-top: 12px; font-weight: 600; cursor: pointer;}
+        .accordion-content { display: none; padding-top: 12px; }
+        .accordion-content.open { display: block; }
 
-    .modal { display: none; position: fixed; z-index: 2500; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.9); }
-    .modal-content { background-color: var(--card-bg); margin: 20px auto; padding: 24px; border-radius: var(--radius-lg); width: 95%; max-width: 1400px; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid rgba(255,255,255,0.05); }
-    .modal-close-btn { position: absolute; top: 16px; right: 20px; color: var(--text-muted); font-size: 28px; cursor: pointer; border: none; background: none;}
-    
-    .table-responsive { overflow-x: auto; border-radius: var(--radius-md); background: var(--bg-color); }
-    table { width: 100%; border-collapse: collapse; min-width: 1000px; } 
-    th, td { border-bottom: 1px solid var(--border-color); padding: 10px; text-align: center; font-size: 0.9rem;}
-    th { background-color: var(--input-bg); font-size: 0.85rem; }
-    tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
-    .tick { color: var(--success); font-weight: bold; font-size: 1.1rem;}
-    .cross { color: var(--danger); font-weight: bold; font-size: 1.1rem;}
-    .pending { color: var(--text-muted); }
+        .modal { display: none; position: fixed; z-index: 2500; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.9); }
+        .modal-content { background-color: var(--card-bg); margin: 20px auto; padding: 24px; border-radius: var(--radius-lg); width: 95%; max-width: 1400px; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid rgba(255,255,255,0.05); }
+        .modal-close-btn { position: absolute; top: 16px; right: 20px; color: var(--text-muted); font-size: 28px; cursor: pointer; border: none; background: none;}
+        
+        .table-responsive { overflow-x: auto; border-radius: var(--radius-md); background: var(--bg-color); }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; } 
+        th, td { border-bottom: 1px solid var(--border-color); padding: 10px; text-align: center; font-size: 0.9rem;}
+        th { background-color: var(--input-bg); font-size: 0.85rem; }
+        tr:nth-child(even) { background-color: rgba(255,255,255,0.02); }
+        .tick { color: var(--success); font-weight: bold; font-size: 1.1rem;}
+        .cross { color: var(--danger); font-weight: bold; font-size: 1.1rem;}
+        .pending { color: var(--text-muted); }
 
-    /* PRINT FIX: Forces browser to ignore locks and flow properly onto paper */
-    #printOnlyArea { display: none; }
-    @media print {
-        body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background-color: white !important; color: black !important; }
-        .container, .app-header, .app-section, .nav-controls, .menu-backdrop, .slide-out-menu, .modal { display: none !important; }
-        #printOnlyArea { display: block !important; position: static !important; padding: 0; }
-        #printOnlyArea, #printOnlyArea * { visibility: visible; }
-        .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-        .print-section-title { font-size: 1.4rem; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; color: #000 !important;}
-        .print-issue-list { margin: 0; padding-left: 20px; color: black; }
-        .print-issue-list li { margin-bottom: 8px; font-size: 1.1rem;}
-        h1, h2, h3, p { color: black !important; }
-    }
-</style>
+        /* PRINT FIX */
+        #printOnlyArea { display: none; }
+        @media print {
+            body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background-color: white !important; color: black !important; }
+            .container, .app-header, .app-section, .nav-controls, .menu-backdrop, .slide-out-menu, .modal { display: none !important; }
+            #printOnlyArea { display: block !important; position: static !important; padding: 0; }
+            #printOnlyArea, #printOnlyArea * { visibility: visible; }
+            .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .print-section-title { font-size: 1.4rem; font-weight: bold; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; color: #000 !important;}
+            .print-issue-list { margin: 0; padding-left: 20px; color: black; }
+            .print-issue-list li { margin-bottom: 8px; font-size: 1.1rem;}
+            h1, h2, h3, p { color: black !important; }
+        }
+    </style>
 </head>
 <body>
 
 <div class="container">
     <div class="app-header">
         <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
-        <h1>Pack Service Tracker</h1>
+        
+        <h1>Pack Service Tracker <span class="version-badge">v1.2</span></h1>
+        
         <div class="header-edge right">
             <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
             <button id="fullscreenBtn" class="header-btn secondary">🔲 Full</button>
@@ -332,6 +329,19 @@
     </div>
 </div>
 
+<div id="screensIssueModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <button class="modal-close-btn" id="closeScreensModalBtn">&times;</button>
+        <h2 style="margin-top: 0;">Select Screen Issues</h2>
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">Tap the packs below that required a screen replacement.</p>
+        
+        <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 20px;">
+            </div>
+        
+        <button class="btn-success" id="saveScreensBtn" style="padding: 16px; font-size: 1.1rem; width: 100%; border-radius: var(--radius-md);">Save Replaced Screens</button>
+    </div>
+</div>
+
 <div id="printOnlyArea"></div>
 
 <script type="module">
@@ -348,11 +358,11 @@
     let fetchedServiceDocs = []; 
     let isDirty = false;    
 
-
-    // --- Expanded App State ---
-const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables", "Screens"];
-const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
-const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
+    // --- Arrays ---
+    const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "Music", "HSDU", "Cables", "Screens"];
+    const packPartsList = ["Right Shoulder", "Left Shoulder", "Front", "Back"];
+    // "Screen" removed from gun list
+    const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Rattle", "Rubber Ring Present", "Screws Present", "Numbered Sticker"];
     const allPackElements = [...packPartsList, ...gunPartsList]; 
 
     let generalChecksCache = {}; 
@@ -396,7 +406,6 @@ const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Ra
         document.getElementById('initialLoadGroup').style.display = 'flex';
         document.getElementById('dateSelectionUI').style.display = 'none';
         
-        // Only show Burger Menu inside active service areas
         if (sectionId === 'serviceSection' || sectionId === 'generalChecksSection') {
             burgerBtn.style.display = 'block';
         } else {
@@ -502,7 +511,7 @@ const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Ra
         activeServiceDate = new Date().toISOString().split('T')[0]; 
         
         await loadSidebarNotes(); 
-        navigateTo('serviceSection'); // Defaulting to pack 1
+        navigateTo('serviceSection'); 
         renderpackUI();
     });
 
@@ -565,11 +574,11 @@ const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Ra
 
         currentpackIndex = 1;
         await loadSidebarNotes(); 
-        navigateTo('serviceSection'); // Defaulting to pack 1
+        navigateTo('serviceSection'); 
         renderpackUI();
     });
 
-    // --- 4. GENERAL CHECKS SECTION (Accessed from Burger Menu) ---
+    // --- 4. GENERAL CHECKS SECTION ---
     document.getElementById('sidebarGeneralChecksBtn').addEventListener('click', () => {
         toggleMenu();
         navigateTo('generalChecksSection');
@@ -656,7 +665,6 @@ const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Ra
         setTimeout(() => msg.innerText = "", 3000);
     });
 
-    // Accordion Toggle Handlers
     document.getElementById('repAccordionToggle').addEventListener('click', () => {
         const c = document.getElementById('repAccordionContent'); const i = document.getElementById('repAccordionIcon');
         c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
@@ -694,27 +702,24 @@ const gunPartsList = ["Trigger", "Speaker", "Button Reader", "Laser and IR", "Ra
 
         let hasGeneralIssues = false;
         let generalHtml = `<div class="print-section-title">General Site Checks</div><ul class="print-issue-list">`;
-generalChecksList.forEach(item => {
-    if (generalChecksCache[item]) {
-        // Special formatting rules for Screens
-        if (item === 'Screens') {
-            hasGeneralIssues = true; 
-            if (generalChecksCache[item].status === 'Issue') {
-                generalHtml += `<li><strong>All Screens Checked:</strong> ${generalChecksCache[item].notes || "Issues logged"}</li>`;
-            } else if (generalChecksCache[item].status === 'Good') {
-                generalHtml += `<li><strong>All Screens Checked, All Good</strong></li>`;
+        generalChecksList.forEach(item => {
+            if (generalChecksCache[item]) {
+                if (item === 'Screens') {
+                    hasGeneralIssues = true; 
+                    if (generalChecksCache[item].status === 'Issue') {
+                        generalHtml += `<li><strong>All Screens Checked:</strong> ${generalChecksCache[item].notes || "Issues logged"}</li>`;
+                    } else if (generalChecksCache[item].status === 'Good') {
+                        generalHtml += `<li><strong>All Screens Checked, All Good</strong></li>`;
+                    }
+                } else if (generalChecksCache[item].status === 'Issue') {
+                    hasGeneralIssues = true;
+                    generalHtml += `<li><strong>${item}:</strong> ${generalChecksCache[item].notes || "Issue logged"}</li>`;
+                } else if (generalChecksCache[item].status === 'Good') {
+                    hasGeneralIssues = true;
+                    generalHtml += `<li><strong>${item}:</strong> Checked all good</li>`;
+                }
             }
-        } 
-        // Standard formatting for everything else
-        else if (generalChecksCache[item].status === 'Issue') {
-            hasGeneralIssues = true;
-            generalHtml += `<li><strong>${item}:</strong> ${generalChecksCache[item].notes || "Issue logged"}</li>`;
-        } else if (generalChecksCache[item].status === 'Good') {
-            hasGeneralIssues = true;
-            generalHtml += `<li><strong>${item}:</strong> Checked all good</li>`;
-        }
-    }
-});
+        });
         generalHtml += `</ul>`;
         if (hasGeneralIssues) html += generalHtml;
 
@@ -726,14 +731,12 @@ generalChecksList.forEach(item => {
         for (let i = 1; i <= totalpacks; i++) {
             if (packDataCache[i]) {
                 const parts = packDataCache[i];
-                
                 gunPartsList.forEach(part => {
                     if (parts[part] && parts[part].status === 'Issue') {
                         hasGunIssues = true;
                         gunIssuesHtml += `<li><strong>Pack ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
                     }
                 });
-                
                 packPartsList.forEach(part => {
                     if (parts[part] && parts[part].status === 'Issue') {
                         hasPackIssues = true;
@@ -893,7 +896,6 @@ generalChecksList.forEach(item => {
         const packContainer = document.getElementById('packPartsContainer');
         const gunContainer = document.getElementById('gunPartsContainer');
         
-        // CSS Transition handles the fade out
         packContainer.style.opacity = '0';
         gunContainer.style.opacity = '0';
 
@@ -920,7 +922,6 @@ generalChecksList.forEach(item => {
             attachInteractionListeners(packContainer);
             attachInteractionListeners(gunContainer);
             
-            // Allow DOM to update before fading in
             requestAnimationFrame(() => {
                 packContainer.style.opacity = '1';
                 gunContainer.style.opacity = '1';
@@ -950,17 +951,16 @@ generalChecksList.forEach(item => {
                     notesArea.classList.add('visible');
                 }
 
-if (type === 'general') {
-    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
-    if (isGoodBtn) {
-        generalChecksCache[part].notes = "";
-    } else if (part === "Screens") {
-        // Intercept the click and open our custom modal
-        openScreensModal();
-    }
-    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-    document.getElementById('generalSaveIndicator').style.color = "#aaa";
-} else {
+                if (type === 'general') {
+                    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
+                    if (isGoodBtn) {
+                        generalChecksCache[part].notes = "";
+                    } else if (part === "Screens") {
+                        openScreensModal();
+                    }
+                    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+                    document.getElementById('generalSaveIndicator').style.color = "#aaa";
+                } else {
                     packDataCache[currentpackIndex][part].status = isGoodBtn ? "Good" : "Issue";
                     if(isGoodBtn) packDataCache[currentpackIndex][part].notes = "";
                     isDirty = true;
@@ -990,76 +990,61 @@ if (type === 'general') {
         });
     }
 
-    <div id="screensIssueModal" class="modal">
-    <div class="modal-content" style="max-width: 600px;">
-        <button class="modal-close-btn" id="closeScreensModalBtn">&times;</button>
-        <h2 style="margin-top: 0;">Select Screen Issues</h2>
-        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">Tap the packs below that required a screen replacement.</p>
-        
-        <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin-bottom: 20px;">
-            </div>
-        
-        <button class="btn-success" id="saveScreensBtn" style="padding: 16px; font-size: 1.1rem; width: 100%; border-radius: var(--radius-md);">Save Replaced Screens</button>
-    </div>
-</div>
-
     // --- CUSTOM SCREENS MODAL LOGIC ---
-const screensModal = document.getElementById('screensIssueModal');
-let selectedScreenPacks = new Set();
+    const screensModal = document.getElementById('screensIssueModal');
+    let selectedScreenPacks = new Set();
 
-function openScreensModal() {
-    screensModal.style.display = "block";
-    const grid = document.getElementById('screensGrid');
-    grid.innerHTML = '';
-    
-    // Check if we already have saved replacements so they stay highlighted if re-opened
-    const existingNotes = generalChecksCache['Screens'].notes || "";
-    selectedScreenPacks.clear();
-    if (existingNotes.includes('Replaced')) {
-        const matches = existingNotes.match(/\d+/g);
-        if (matches) matches.forEach(n => selectedScreenPacks.add(parseInt(n)));
-    }
-
-    // Generate the button grid
-    for (let i = 1; i <= totalpacks; i++) {
-        const btn = document.createElement('button');
-        btn.innerText = i;
-        btn.style.cssText = `padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); background: ${selectedScreenPacks.has(i) ? 'rgba(239, 68, 68, 0.2)' : 'var(--input-bg)'}; color: ${selectedScreenPacks.has(i) ? 'var(--danger)' : 'var(--text-main)'}; font-weight: bold; transition: all 0.1s;`;
+    function openScreensModal() {
+        screensModal.style.display = "block";
+        const grid = document.getElementById('screensGrid');
+        grid.innerHTML = '';
         
-        btn.addEventListener('click', () => {
-            if (selectedScreenPacks.has(i)) {
-                selectedScreenPacks.delete(i);
-                btn.style.background = 'var(--input-bg)';
-                btn.style.color = 'var(--text-main)';
-            } else {
-                selectedScreenPacks.add(i);
-                btn.style.background = 'rgba(239, 68, 68, 0.2)';
-                btn.style.color = 'var(--danger)';
-            }
-        });
-        grid.appendChild(btn);
-    }
-}
+        const existingNotes = generalChecksCache['Screens'].notes || "";
+        selectedScreenPacks.clear();
+        if (existingNotes.includes('Replaced')) {
+            const matches = existingNotes.match(/\d+/g);
+            if (matches) matches.forEach(n => selectedScreenPacks.add(parseInt(n)));
+        }
 
-document.getElementById('closeScreensModalBtn').addEventListener('click', () => screensModal.style.display = "none");
-
-document.getElementById('saveScreensBtn').addEventListener('click', () => {
-    const sortedPacks = Array.from(selectedScreenPacks).sort((a, b) => a - b);
-    const notesArea = document.querySelector('#notes-screens textarea');
-    
-    if (sortedPacks.length > 0) {
-        const noteStr = `Pack ${sortedPacks.join(', ')} Replaced`;
-        generalChecksCache['Screens'].notes = noteStr;
-        if(notesArea) notesArea.value = noteStr;
-    } else {
-        generalChecksCache['Screens'].notes = "";
-        if(notesArea) notesArea.value = "";
+        for (let i = 1; i <= totalpacks; i++) {
+            const btn = document.createElement('button');
+            btn.innerText = i;
+            btn.style.cssText = `padding: 14px; border-radius: 8px; border: 1px solid var(--border-color); background: ${selectedScreenPacks.has(i) ? 'rgba(239, 68, 68, 0.2)' : 'var(--input-bg)'}; color: ${selectedScreenPacks.has(i) ? 'var(--danger)' : 'var(--text-main)'}; font-weight: bold; transition: all 0.1s;`;
+            
+            btn.addEventListener('click', () => {
+                if (selectedScreenPacks.has(i)) {
+                    selectedScreenPacks.delete(i);
+                    btn.style.background = 'var(--input-bg)';
+                    btn.style.color = 'var(--text-main)';
+                } else {
+                    selectedScreenPacks.add(i);
+                    btn.style.background = 'rgba(239, 68, 68, 0.2)';
+                    btn.style.color = 'var(--danger)';
+                }
+            });
+            grid.appendChild(btn);
+        }
     }
-    
-    screensModal.style.display = "none";
-    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
-    document.getElementById('generalSaveIndicator').style.color = "#aaa";
-});
+
+    document.getElementById('closeScreensModalBtn').addEventListener('click', () => screensModal.style.display = "none");
+
+    document.getElementById('saveScreensBtn').addEventListener('click', () => {
+        const sortedPacks = Array.from(selectedScreenPacks).sort((a, b) => a - b);
+        const notesArea = document.querySelector('#notes-screens textarea');
+        
+        if (sortedPacks.length > 0) {
+            const noteStr = `Pack ${sortedPacks.join(', ')} Replaced`;
+            generalChecksCache['Screens'].notes = noteStr;
+            if(notesArea) notesArea.value = noteStr;
+        } else {
+            generalChecksCache['Screens'].notes = "";
+            if(notesArea) notesArea.value = "";
+        }
+        
+        screensModal.style.display = "none";
+        document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+        document.getElementById('generalSaveIndicator').style.color = "#aaa";
+    });
 
 </script>
 </body>
