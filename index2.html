@@ -991,9 +991,584 @@
         document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditSite));
         document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
     }
-    async function handleEditSite(e) {
+
+        async function handleEditSite(e) {
         const docId = e.target.getAttribute('data-id'); const oldName = e.target.getAttribute('data-name'); const oldCount = e.target.getAttribute('data-count');
         const newName = prompt("Edit Site Name:", oldName); if (!newName) return; 
         const newCountStr = prompt("Edit Pack Count:", oldCount); if (!newCountStr) return; 
         const newCount = parseInt(newCountStr); if (!newName.trim() || isNaN(newCount) || newCount <= 0) return alert("Invalid data.");
-        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), packCount: newCount }); await loadSites
+        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), packCount: newCount }); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+    }
+    async function handleDeleteSite(e) {
+        const docId = e.target.getAttribute('data-id'); const siteName = e.target.getAttribute('data-name');
+        if(confirm(`Delete "${siteName}"?`)) { try { e.target.innerText = "..."; await deleteDoc(doc(db, "sites", docId)); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); } }
+    }
+    document.getElementById('saveSiteBtn').addEventListener('click', async () => {
+        const name = document.getElementById('newSiteName').value.trim(); const count = parseInt(document.getElementById('newSiteCount').value);
+        if (!name || isNaN(count) || count <= 0) return alert("Valid name/count required.");
+        const btn = document.getElementById('saveSiteBtn'); btn.innerText = "Saving...";
+        try { await addDoc(collection(db, "sites"), { name: name, packCount: count }); document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = ""; btn.innerText = "Save New Site"; await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+    });
+
+    // --- 3. START / LOAD SERVICE FLOW ---
+    document.getElementById('siteSelect').addEventListener('change', (e) => {
+        currentSiteName = e.target.value;
+        if (currentSiteName) {
+            totalpacks = sitesData[currentSiteName].count;
+            serviceTypeSelection.style.display = 'block';
+            document.getElementById('initialLoadGroup').style.display = 'flex';
+            document.getElementById('dateSelectionUI').style.display = 'none';
+            document.getElementById('loadStatusMsg').innerText = '';
+        } else {
+            serviceTypeSelection.style.display = 'none';
+        }
+    });
+
+    document.getElementById('startNewServiceBtn').addEventListener('click', async () => {
+        currentpackIndex = 1;
+        packDataCache = {}; 
+        generalChecksCache = {};
+        activeServiceDate = new Date().toISOString().split('T')[0]; 
+        
+        await loadSidebarNotes(); 
+        navigateTo('serviceSection'); 
+        renderpackUI();
+    });
+
+    document.getElementById('fetchDatesBtn').addEventListener('click', async () => {
+        const msg = document.getElementById('loadStatusMsg');
+        msg.innerText = "Finding historical dates..."; msg.style.color = "var(--primary)";
+        document.getElementById('initialLoadGroup').style.display = 'none';
+
+        try {
+            const q = query(collection(db, "services"), where("site", "==", currentSiteName));
+            const querySnapshot = await getDocs(q);
+            fetchedServiceDocs = [];
+            const uniqueDates = new Set();
+            querySnapshot.forEach(doc => {
+                const data = doc.data(); fetchedServiceDocs.push({ id: doc.id, ...data });
+                const match = doc.id.match(/\d{4}-\d{2}-\d{2}/); if (match) uniqueDates.add(match[0]);
+            });
+
+            if (uniqueDates.size === 0) {
+                msg.innerText = "No previous services found."; msg.style.color = "var(--danger)";
+                document.getElementById('initialLoadGroup').style.display = 'flex'; return;
+            }
+
+            const select = document.getElementById('serviceDateSelect');
+            select.innerHTML = '<option value="">-- Choose Date --</option>';
+            Array.from(uniqueDates).sort().reverse().forEach(date => select.innerHTML += `<option value="${date}">${date}</option>`);
+            msg.innerText = "";
+            document.getElementById('dateSelectionUI').style.display = 'block';
+
+        } catch (error) { msg.innerText = "Error loading dates."; document.getElementById('initialLoadGroup').style.display = 'flex'; }
+    });
+
+    document.getElementById('cancelLoadBtn').addEventListener('click', () => {
+        document.getElementById('dateSelectionUI').style.display = 'none';
+        document.getElementById('initialLoadGroup').style.display = 'flex';
+        document.getElementById('loadStatusMsg').innerText = "";
+    });
+
+    document.getElementById('confirmLoadBtn').addEventListener('click', async () => {
+        const selectedDate = document.getElementById('serviceDateSelect').value;
+        if (!selectedDate) return alert("Select a date.");
+        activeServiceDate = selectedDate; 
+
+        const serviceMap = {};
+        fetchedServiceDocs.forEach(record => {
+            if (record.id.includes(selectedDate)) {
+                if (!serviceMap[record.packId] || (record.lastUpdated > serviceMap[record.packId].lastUpdated)) serviceMap[record.packId] = record;
+            }
+        });
+        packDataCache = {};
+        for (let i = 1; i <= totalpacks; i++) {
+            if (serviceMap[`pack ${i}`]) packDataCache[i] = serviceMap[`pack ${i}`].serviceDetails;
+        }
+
+        generalChecksCache = {};
+        try {
+            const genDoc = await getDoc(doc(db, "general_checks", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`));
+            if (genDoc.exists()) generalChecksCache = genDoc.data().checks || {};
+        } catch (e) { console.log("No general checks found for this date"); }
+
+        currentpackIndex = 1;
+        await loadSidebarNotes(); 
+        navigateTo('serviceSection'); 
+        renderpackUI();
+    });
+
+    // --- 4. GENERAL CHECKS SECTION ---
+    document.getElementById('sidebarGeneralChecksBtn').addEventListener('click', () => {
+        toggleMenu();
+        navigateTo('generalChecksSection');
+        renderGeneralChecksUI();
+    });
+
+    document.getElementById('backToPacksBtn').addEventListener('click', async () => {
+        await saveGeneralChecks();
+        navigateTo('serviceSection');
+        renderpackUI();
+    });
+
+    function renderGeneralChecksUI() {
+        const container = document.getElementById('generalPartsContainer');
+        container.innerHTML = '';
+        document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
+        document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+
+        generalChecksList.forEach(item => {
+            if (!generalChecksCache[item]) generalChecksCache[item] = { status: null, notes: "" };
+            const data = generalChecksCache[item];
+            const id = item.replace(/\s+/g, '-').toLowerCase();
+            
+            const div = document.createElement('div');
+            div.className = 'part-section';
+            div.innerHTML = `
+                <div class="part-header">${item}</div>
+                <div class="button-group">
+                    <button class="btn-good ${data.status === 'Good' ? 'active' : ''}" data-type="general" data-part="${item}">All Good</button>
+                    <button class="btn-issue ${data.status === 'Issue' ? 'active' : ''}" data-type="general" data-part="${item}">Issue</button>
+                </div>
+                <div class="notes-area ${data.status === 'Issue' ? 'visible' : ''}" id="notes-${id}">
+                    <textarea data-type="general" data-part="${item}" placeholder="Describe issue...">${data.notes}</textarea>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        attachInteractionListeners(container);
+    }
+
+    document.getElementById('generalAllOkBtn').addEventListener('click', async () => {
+        generalChecksList.forEach(item => { if (generalChecksCache[item].status !== 'Issue') generalChecksCache[item].status = 'Good'; });
+        renderGeneralChecksUI();
+        await saveGeneralChecks();
+        navigateTo('serviceSection');
+        renderpackUI();
+    });
+
+    async function saveGeneralChecks() {
+        document.getElementById('generalSaveIndicator').innerText = "Saving...";
+        try {
+            const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+            await setDoc(doc(db, "general_checks", docId), {
+                site: currentSiteName, date: activeServiceDate, checks: generalChecksCache, lastUpdated: serverTimestamp()
+            }, { merge: true });
+            document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
+            document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+        } catch (error) { document.getElementById('generalSaveIndicator').innerText = "Sync Failed"; }
+    }
+
+    // --- 5. BURGER MENU ACCORDIONS & SETTINGS ---
+    document.getElementById('saveRepNameBtn').addEventListener('click', () => {
+        const repName = document.getElementById('sidebarRepNameInput').value.trim();
+        const msg = document.getElementById('sidebarRepMsg');
+        if(repName) { currentRepresentative = repName; localStorage.setItem('inspectorName', repName); msg.innerText = "Name Saved ✓"; msg.style.color = "var(--success)"; } 
+        setTimeout(() => msg.innerText = "", 3000);
+    });
+
+    async function loadSidebarNotes() {
+        const textArea = document.getElementById('sidebarSiteNotes');
+        try {
+            const docSnap = await getDoc(doc(db, "site_notes", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`));
+            textArea.value = docSnap.exists() ? docSnap.data().notes || "" : "";
+        } catch (e) { textArea.value = ""; }
+    }
+
+    document.getElementById('saveSidebarNotesBtn').addEventListener('click', async () => {
+        const notes = document.getElementById('sidebarSiteNotes').value;
+        const msg = document.getElementById('sidebarNotesMsg');
+        try {
+            await setDoc(doc(db, "site_notes", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`), { notes: notes, lastUpdated: serverTimestamp() }, { merge: true });
+            msg.innerText = "Saved ✓"; msg.style.color = "var(--success)";
+        } catch (e) { msg.innerText = "Error"; }
+        setTimeout(() => msg.innerText = "", 3000);
+    });
+
+    document.getElementById('repAccordionToggle').addEventListener('click', () => {
+        const c = document.getElementById('repAccordionContent'); const i = document.getElementById('repAccordionIcon');
+        c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
+    });
+    document.getElementById('notesAccordionToggle').addEventListener('click', () => {
+        const c = document.getElementById('notesAccordionContent'); const i = document.getElementById('accordionIcon');
+        c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
+    });
+
+    // --- 6. PRINT REPORT LOGIC ---
+    document.getElementById('sidebarPrintBtn').addEventListener('click', async () => {
+        toggleMenu();
+        await triggerBackgroundSave();
+        const printArea = document.getElementById('printOnlyArea');
+        const generalNotes = document.getElementById('sidebarSiteNotes').value || "None recorded.";
+        
+        let nextDueDateStr = "N/A";
+        if (activeServiceDate) {
+            const dateParts = activeServiceDate.split('-');
+            if (dateParts.length === 3) {
+                const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 9, parseInt(dateParts[2]));
+                nextDueDateStr = nextDateObj.toISOString().split('T')[0];
+            }
+        }
+
+        let html = `
+            <div class="print-header">
+                <h1>Service Issue Summary: ${currentSiteName}</h1>
+                <p><strong>Service Date:</strong> ${activeServiceDate}</p>
+                <p><strong>Next Service Due:</strong> ${nextDueDateStr}</p>
+                <p><strong>Representative:</strong> ${currentRepresentative || "Not Specified"}</p>
+                <p><strong>General Site Notes:</strong><br> ${generalNotes.replace(/\n/g, '<br>')}</p>
+            </div>
+        `;
+
+        let hasGeneralIssues = false;
+        let generalHtml = `<div class="print-section-title">General Site Checks</div><ul class="print-issue-list">`;
+        generalChecksList.forEach(item => {
+            if (generalChecksCache[item]) {
+                if (item === 'Screens') {
+                    hasGeneralIssues = true; 
+                    if (generalChecksCache[item].status === 'Issue') {
+                        generalHtml += `<li><strong>All Screens Checked:</strong> ${generalChecksCache[item].notes || "Issues logged"}</li>`;
+                    } else if (generalChecksCache[item].status === 'Good') {
+                        generalHtml += `<li><strong>All Screens Checked, All Good</strong></li>`;
+                    }
+                } else if (generalChecksCache[item].status === 'Issue') {
+                    hasGeneralIssues = true;
+                    generalHtml += `<li><strong>${item}:</strong> ${generalChecksCache[item].notes || "Issue logged"}</li>`;
+                } else if (generalChecksCache[item].status === 'Good') {
+                    hasGeneralIssues = true;
+                    generalHtml += `<li><strong>${item}:</strong> Checked all good</li>`;
+                }
+            }
+        });
+        generalHtml += `</ul>`;
+        if (hasGeneralIssues) html += generalHtml;
+
+        let gunIssuesHtml = `<div class="print-section-title">Gun Faults</div><ul class="print-issue-list">`;
+        let packIssuesHtml = `<div class="print-section-title">Pack Faults</div><ul class="print-issue-list">`;
+        let hasGunIssues = false;
+        let hasPackIssues = false;
+
+        for (let i = 1; i <= totalpacks; i++) {
+            if (packDataCache[i]) {
+                const parts = packDataCache[i];
+                gunPartsList.forEach(part => {
+                    if (parts[part] && parts[part].status === 'Issue') {
+                        hasGunIssues = true;
+                        gunIssuesHtml += `<li><strong>Pack ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
+                    }
+                });
+                packPartsList.forEach(part => {
+                    if (parts[part] && parts[part].status === 'Issue') {
+                        hasPackIssues = true;
+                        packIssuesHtml += `<li><strong>Pack ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
+                    }
+                });
+            }
+        }
+        
+        gunIssuesHtml += `</ul>`; packIssuesHtml += `</ul>`;
+        if (hasGunIssues) html += gunIssuesHtml;
+        if (hasPackIssues) html += packIssuesHtml;
+
+        if (!hasGeneralIssues && !hasGunIssues && !hasPackIssues) {
+            html += `<p style="color: green; font-weight: bold; margin-top:20px;">No issues recorded for this site. All Good!</p>`;
+        }
+
+        printArea.innerHTML = html;
+        window.print();
+    });
+
+    // --- 7. GRID OVERLAY LOGIC ---
+    document.getElementById('viewOverlayGridBtn').addEventListener('click', async () => {
+        toggleMenu();
+        gridModal.style.display = "block";
+        const containerElement = document.getElementById('modalTableContainer');
+        containerElement.innerHTML = '<p style="text-align: center; padding: 40px;">Fetching Live Data...</p>';
+        try {
+            const q = query(collection(db, "services"), where("site", "==", currentSiteName));
+            const querySnapshot = await getDocs(q);
+            const serviceMap = {};
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                if (doc.id.includes(activeServiceDate)) {
+                    if (!serviceMap[data.packId] || (data.lastUpdated > serviceMap[data.packId].lastUpdated)) serviceMap[data.packId] = data;
+                }
+            });
+
+            const total = sitesData[currentSiteName].count;
+            let tableHTML = `<table><thead><tr><th>Pack #</th>`;
+            allPackElements.forEach(p => tableHTML += `<th>${p}</th>`);
+            tableHTML += `<th>Notes</th></tr></thead><tbody>`;
+
+            for (let i = 1; i <= total; i++) {
+                let recordData = packDataCache[i] || (serviceMap[`pack ${i}`] ? serviceMap[`pack ${i}`].serviceDetails : null);
+                
+                if (recordData) {
+                    let allNotes = [];
+                    tableHTML += `<tr><td><strong>${i}</strong></td>`;
+                    
+                    allPackElements.forEach(part => {
+                        const status = recordData[part]?.status;
+                        if (status === 'Good') tableHTML += `<td><span class="tick">✔</span></td>`;
+                        else if (status === 'Issue') {
+                            if (recordData[part].notes) allNotes.push(`<strong>${part}:</strong> ${recordData[part].notes}`);
+                            tableHTML += `<td><span class="cross">✘</span></td>`;
+                        } else tableHTML += `<td><span class="pending">-</span></td>`;
+                    });
+                    
+                    tableHTML += `<td class="notes-cell">${allNotes.join('<br>') || '<span style="color: var(--success);">None</span>'}</td></tr>`;
+                } else {
+                    tableHTML += `<tr><td><strong>${i}</strong></td><td colspan="${allPackElements.length + 1}" class="pending">Not Serviced Yet</td></tr>`;
+                }
+            }
+            tableHTML += `</tbody></table>`;
+            containerElement.innerHTML = tableHTML;
+        } catch (error) { containerElement.innerHTML = '<p style="color: var(--danger); text-align:center; padding: 40px;">Error loading data.</p>'; }
+    });
+    document.getElementById('closeModalBtn').addEventListener('click', () => gridModal.style.display = "none");
+
+    // --- 8. CHECKLIST SERVICE SESSION & AUTO-SAVE ---
+    async function triggerBackgroundSave() {
+        if (!isDirty) return; 
+        const packToSave = currentpackIndex; 
+        const dataToSave = packDataCache[packToSave];
+        isDirty = false; 
+        document.getElementById('saveIndicator').innerText = "Saving...";
+
+        try {
+            const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-pack-${packToSave}`;
+            let nextDueDateStr = "";
+            if (activeServiceDate) {
+                const dateParts = activeServiceDate.split('-');
+                if (dateParts.length === 3) {
+                    const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 9, parseInt(dateParts[2]));
+                    nextDueDateStr = nextDateObj.toISOString().split('T')[0];
+                }
+            }
+
+            await setDoc(doc(db, "services", docId), {
+                site: currentSiteName, packId: `pack ${packToSave}`, representative: currentRepresentative || "Not Specified",
+                serviceDate: activeServiceDate, nextServiceDue: nextDueDateStr, serviceDetails: dataToSave, lastUpdated: serverTimestamp()
+            });
+            document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+        } catch (error) {
+            document.getElementById('saveIndicator').innerText = "Sync Failed ✗";
+            document.getElementById('saveIndicator').style.color = "var(--danger)";
+            isDirty = true; 
+        }
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', async () => {
+        await triggerBackgroundSave();
+        if (currentpackIndex > 1) { currentpackIndex--; renderpackUI(); }
+    });
+
+    document.getElementById('nextBtn').addEventListener('click', async () => {
+        await triggerBackgroundSave();
+        if (currentpackIndex < totalpacks) { currentpackIndex++; renderpackUI(); } 
+        else { alert("You have reached the end of the packs for this site."); }
+    });
+
+    document.getElementById('packAllOkBtn').addEventListener('click', async () => {
+        let changed = false;
+        
+        if (!packDataCache[currentpackIndex]) packDataCache[currentpackIndex] = {};
+        allPackElements.forEach(part => {
+            if (!packDataCache[currentpackIndex][part]) packDataCache[currentpackIndex][part] = { status: null, notes: "" };
+        });
+
+        allPackElements.forEach(part => {
+            if (packDataCache[currentpackIndex][part].status !== 'Issue') {
+                packDataCache[currentpackIndex][part].status = 'Good';
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            isDirty = true;
+            document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+        }
+        
+        await triggerBackgroundSave();
+        if (currentpackIndex < totalpacks) { currentpackIndex++; renderpackUI(); } 
+        else { renderpackUI(); alert("All parts marked good. You are on the final pack."); }
+    });
+
+    function generatePartHTML(part, partData, typeStr) {
+        const partId = part.replace(/\s+/g, '-').toLowerCase();
+        return `
+            <div class="part-section">
+                <div class="part-header">${part}</div>
+                <div class="button-group">
+                    <button class="btn-good ${partData.status === 'Good' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}">All Good</button>
+                    <button class="btn-issue ${partData.status === 'Issue' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}">Issue</button>
+                </div>
+                <div class="notes-area ${partData.status === 'Issue' ? 'visible' : ''}" id="notes-${partId}">
+                    <textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${partData.notes}</textarea>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderpackUI() {
+        const packContainer = document.getElementById('packPartsContainer');
+        const gunContainer = document.getElementById('gunPartsContainer');
+        
+        packContainer.style.opacity = '0';
+        gunContainer.style.opacity = '0';
+
+        setTimeout(() => {
+            document.getElementById('packCounterText').innerText = `Pack ${currentpackIndex} of ${totalpacks}`;
+            document.getElementById('prevBtn').disabled = currentpackIndex === 1;
+            document.getElementById('nextBtn').innerText = currentpackIndex === totalpacks ? "Finish" : "Next \u00BB";
+            document.getElementById('progressBarFill').style.width = `${(currentpackIndex / totalpacks) * 100}%`;
+            document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
+            document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+
+            if (!packDataCache[currentpackIndex]) packDataCache[currentpackIndex] = {};
+            allPackElements.forEach(part => {
+                if (!packDataCache[currentpackIndex][part]) packDataCache[currentpackIndex][part] = { status: null, notes: "" };
+            });
+
+            const currentData = packDataCache[currentpackIndex];
+            packContainer.innerHTML = '';
+            gunContainer.innerHTML = '';
+
+            packPartsList.forEach(part => packContainer.innerHTML += generatePartHTML(part, currentData[part], 'pack'));
+            gunPartsList.forEach(part => gunContainer.innerHTML += generatePartHTML(part, currentData[part], 'pack'));
+
+            attachInteractionListeners(packContainer);
+            attachInteractionListeners(gunContainer);
+            
+            requestAnimationFrame(() => {
+                packContainer.style.opacity = '1';
+                gunContainer.style.opacity = '1';
+            });
+        }, 200); 
+    }
+
+    function attachInteractionListeners(container) {
+        const buttons = container.querySelectorAll('button');
+        const textareas = container.querySelectorAll('textarea');
+
+        buttons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.getAttribute('data-type');
+                const part = e.target.getAttribute('data-part');
+                const isGoodBtn = e.target.classList.contains('btn-good');
+                const partId = part.replace(/\s+/g, '-').toLowerCase();
+                const notesArea = container.querySelector(`#notes-${partId}`);
+                
+                const siblings = e.target.parentElement.querySelectorAll('button');
+                siblings.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                if (isGoodBtn) {
+                    notesArea.classList.remove('visible');
+                    notesArea.querySelector('textarea').value = "";
+                } else {
+                    notesArea.classList.add('visible');
+                }
+
+                if (type === 'general') {
+                    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
+                    if (isGoodBtn) {
+                        generalChecksCache[part].notes = "";
+                    } else if (part === "Screens") {
+                        openScreensModal();
+                    }
+                    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+                    document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+                } else {
+                    packDataCache[currentpackIndex][part].status = isGoodBtn ? "Good" : "Issue";
+                    if(isGoodBtn) packDataCache[currentpackIndex][part].notes = "";
+                    isDirty = true;
+                    document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
+                    document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+                }
+            });
+        });
+
+        textareas.forEach(ta => {
+            ta.addEventListener('input', (e) => {
+                const type = e.target.getAttribute('data-type');
+                const part = e.target.getAttribute('data-part');
+                
+                if (type === 'general') {
+                    generalChecksCache[part].notes = e.target.value;
+                    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+                    document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+                } else {
+                    packDataCache[currentpackIndex][part].notes = e.target.value;
+                    isDirty = true;
+                    document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
+                    document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+                }
+            });
+            ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+        });
+    }
+
+    // --- CUSTOM SCREENS MODAL LOGIC ---
+    const screensModal = document.getElementById('screensIssueModal');
+    let selectedScreenPacks = new Set();
+
+    function openScreensModal() {
+        screensModal.style.display = "block";
+        const grid = document.getElementById('screensGrid');
+        grid.innerHTML = '';
+        
+        const existingNotes = generalChecksCache['Screens'].notes || "";
+        selectedScreenPacks.clear();
+        if (existingNotes.includes('Replaced')) {
+            const matches = existingNotes.match(/\d+/g);
+            if (matches) matches.forEach(n => selectedScreenPacks.add(parseInt(n)));
+        }
+
+        for (let i = 1; i <= totalpacks; i++) {
+            const btn = document.createElement('button');
+            btn.innerText = i;
+            const isSelected = selectedScreenPacks.has(i);
+            btn.style.cssText = `padding: 16px 8px; border-radius: var(--radius-md); border: 2px solid ${isSelected ? 'rgba(244,63,94,0.5)' : 'var(--border-color)'}; background: ${isSelected ? 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))' : 'var(--card-bg-elevated)'}; color: ${isSelected ? '#FDA4AF' : 'var(--text-main)'}; font-weight: 700; font-size: 1.05rem; min-height: 56px; transition: all 0.15s;`;
+            
+            btn.addEventListener('click', () => {
+                if (selectedScreenPacks.has(i)) {
+                    selectedScreenPacks.delete(i);
+                    btn.style.background = 'var(--card-bg-elevated)';
+                    btn.style.color = 'var(--text-main)';
+                    btn.style.borderColor = 'var(--border-color)';
+                } else {
+                    selectedScreenPacks.add(i);
+                    btn.style.background = 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))';
+                    btn.style.color = '#FDA4AF';
+                    btn.style.borderColor = 'rgba(244,63,94,0.5)';
+                }
+            });
+            grid.appendChild(btn);
+        }
+    }
+
+    document.getElementById('closeScreensModalBtn').addEventListener('click', () => screensModal.style.display = "none");
+
+    document.getElementById('saveScreensBtn').addEventListener('click', () => {
+        const sortedPacks = Array.from(selectedScreenPacks).sort((a, b) => a - b);
+        const notesArea = document.querySelector('#notes-screens textarea');
+        
+        if (sortedPacks.length > 0) {
+            const noteStr = `Pack ${sortedPacks.join(', ')} Replaced`;
+            generalChecksCache['Screens'].notes = noteStr;
+            if(notesArea) notesArea.value = noteStr;
+        } else {
+            generalChecksCache['Screens'].notes = "";
+            if(notesArea) notesArea.value = "";
+        }
+        
+        screensModal.style.display = "none";
+        document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+        document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+    });
+
+</script>
+</body>
+</html>
