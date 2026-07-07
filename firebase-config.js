@@ -1,7 +1,5 @@
-// firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 // 🔴 REPLACE THIS with your actual Firebase Config
   const firebaseConfig = {
     apiKey: "AIzaSyDvtVFsGd37aAWNoLSgAQWxhVa7-gNc1Y8",
@@ -17,5 +15,7 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Export the database so other files can import it
-export const db = getFirestore(app);
+// Initialize Firestore with offline persistence enabled
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
