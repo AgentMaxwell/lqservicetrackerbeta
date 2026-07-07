@@ -72,8 +72,8 @@
         .app-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
+            justify-content: center;
+            padding: 14px 16px;
             margin-bottom: 18px;
             background: rgba(17, 24, 39, 0.72);
             backdrop-filter: blur(14px);
@@ -88,7 +88,6 @@
         .app-header h1 {
             margin: 0;
             text-align: center;
-            flex: 1;
             font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.02em;
@@ -111,31 +110,6 @@
             text-transform: uppercase;
             -webkit-text-fill-color: #A5B4FC;
         }
-        .header-btn {
-            background: rgba(99, 102, 241, 0.12);
-            color: #C7D2FE;
-            border: 1px solid rgba(99, 102, 241, 0.25);
-            font-weight: 600;
-            cursor: pointer;
-            padding: 10px 18px;
-            font-size: 0.95rem;
-            border-radius: var(--radius-pill);
-            transition: all 0.2s ease;
-            min-height: 44px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .header-btn:hover { background: rgba(99, 102, 241, 0.2); }
-        .header-btn:active { transform: scale(0.96); }
-        .header-btn.secondary {
-            background: rgba(148, 163, 184, 0.08);
-            color: var(--text-main);
-            border-color: var(--border-strong);
-        }
-        .header-btn.secondary:hover { background: rgba(148, 163, 184, 0.14); }
-        .header-edge { flex: 1; display: flex; align-items: center; }
-        .header-edge.right { justify-content: flex-end; gap: 10px; }
 
         /* ---------- Typography ---------- */
         h2, h3 { text-align: center; margin: 0 0 18px 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em; }
@@ -227,7 +201,7 @@
             max-width: 720px;
             margin: 0 auto;
             width: 100%;
-            padding-top: 20px;
+            padding-top: 10px;
         }
         .hero-card {
             background: linear-gradient(180deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02));
@@ -316,22 +290,21 @@
             background: rgba(31, 41, 55, 0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            padding: 14px 18px;
+            padding: 12px 10px;
             border-radius: var(--radius-md);
             margin-bottom: 16px;
-            gap: 16px;
+            gap: 6px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-md);
             position: sticky;
-            top: 78px;
+            top: 12px;
             z-index: 50;
         }
         .nav-controls button {
             flex: 1;
-            max-width: 150px;
             margin: 0;
-            padding: 12px 16px;
-            font-size: 1rem;
+            padding: 12px 8px;
+            font-size: 0.95rem;
             min-height: 48px;
         }
         .nav-status {
@@ -340,7 +313,7 @@
             flex-direction: column;
             justify-content: center;
             text-align: center;
-            padding: 0 8px;
+            padding: 0 4px;
             gap: 6px;
         }
         .pack-counter-text {
@@ -521,6 +494,8 @@
             border-left: 1px solid var(--border-color);
             box-sizing: border-box;
             box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
         }
         .slide-out-menu.open { right: 0; }
         .menu-backdrop {
@@ -572,7 +547,6 @@
             margin-bottom: 12px;
             width: 100%;
         }
-        /* Sidebar action buttons – unified dark styling */
         #sidebarGeneralChecksBtn,
         #viewOverlayGridBtn,
         #sidebarPrintBtn {
@@ -674,7 +648,6 @@
         @media (max-width: 900px) {
             #packPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
             .app-header h1 { font-size: 1.05rem; }
-            .header-btn { padding: 10px 14px; font-size: 0.85rem; }
             .slide-out-menu { width: 88vw; right: -88vw; }
         }
         @media (orientation: portrait) and (max-width: 1100px) {
@@ -699,18 +672,10 @@
 <body>
 
 <div class="container">
-    <div class="app-header">
-        <div class="header-edge left"><button id="navHomeBtn" class="header-btn">🏠 Home</button></div>
-
+    <div class="app-header" id="mainAppHeader">
         <h1>Pack Service Tracker <span class="version-badge">v1.4</span></h1>
-
-        <div class="header-edge right">
-            <button id="burgerMenuBtn" class="header-btn secondary" style="display:none;">☰ Menu</button>
-            <button id="fullscreenBtn" class="header-btn secondary">⛶ Full</button>
-        </div>
     </div>
 
-    <!-- ============ HOME / SETUP ============ -->
     <div id="setupSection" class="app-section active">
         <div class="hero-card">
             <h2>Start a Service</h2>
@@ -747,8 +712,8 @@
         <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
     </div>
 
-    <!-- ============ ADMIN ============ -->
     <div id="adminSection" class="app-section">
+        <button class="btn-outline" id="adminBackBtn" style="margin-bottom: 18px;">&laquo; Back to Home</button>
         <div class="admin-card">
             <h2 style="text-align:left;">Sites Database</h2>
             <div id="adminSiteList"><p style="color: var(--text-muted); text-align:center;">Loading sites...</p></div>
@@ -764,15 +729,14 @@
         </div>
     </div>
 
-    <!-- ============ GENERAL CHECKS ============ -->
     <div id="generalChecksSection" class="app-section">
         <div class="nav-controls">
-            <button class="btn-primary" id="backToPacksBtn">&laquo; Back</button>
+            <button class="btn-primary" id="backToPacksBtn" style="max-width: 80px; padding: 12px 8px;">&laquo; Back</button>
             <div class="nav-status">
                 <div class="pack-counter-text">☑️ General Site Checks</div>
                 <div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div>
             </div>
-            <div style="flex: 1; max-width: 150px;"></div>
+            <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 70px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
         </div>
 
         <div class="grid-header">Facility Equipment</div>
@@ -783,11 +747,10 @@
         </div>
     </div>
 
-    <!-- ============ SERVICE ============ -->
     <div id="serviceSection" class="app-section">
         <div class="service-main">
             <div class="nav-controls">
-                <button class="btn-primary" id="prevBtn" disabled>&laquo; Back</button>
+                <button class="btn-primary" id="prevBtn" disabled style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">&laquo; Back</button>
                 <div class="nav-status">
                     <div class="pack-counter-text" id="packCounterText">Pack 1 of X</div>
                     <div class="progress-container">
@@ -795,7 +758,8 @@
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
-                <button class="btn-primary" id="nextBtn">Next &raquo;</button>
+                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
+                <button class="btn-primary" id="nextBtn" style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">Next &raquo;</button>
             </div>
 
             <div class="grid-header">🎽 Pack Elements</div>
@@ -811,38 +775,43 @@
     </div>
 </div>
 
-<!-- ============ SIDEBAR ============ -->
 <div class="menu-backdrop" id="menuBackdrop"></div>
 <div class="slide-out-menu" id="slideOutMenu">
-    <button class="close-menu-btn" id="closeMenuBtn">&times;</button>
-    <div class="sidebar-title">Service Controls</div>
+    <div style="flex: 1;">
+        <button class="close-menu-btn" id="closeMenuBtn">&times;</button>
+        <div class="sidebar-title">Service Controls</div>
 
-    <button class="btn-outline" id="sidebarGeneralChecksBtn">☑️ General Site Checks</button>
-    <button class="btn-outline" id="viewOverlayGridBtn">📊 View Grid Overlay</button>
-    <button class="btn-outline" id="sidebarPrintBtn">🖨️ Print Active Report</button>
+        <button class="btn-outline" id="sidebarGeneralChecksBtn">☑️ General Site Checks</button>
+        <button class="btn-outline" id="viewOverlayGridBtn">📊 View Grid Overlay</button>
+        <button class="btn-outline" id="sidebarPrintBtn">🖨️ Print Active Report</button>
 
-    <div class="accordion-toggle" id="repAccordionToggle">
-        <span>👤 Representative</span>
-        <span id="repAccordionIcon">▼</span>
-    </div>
-    <div class="accordion-content" id="repAccordionContent">
-        <input type="text" id="sidebarRepNameInput" placeholder="Enter your name..." style="margin-bottom: 10px;">
-        <button class="btn-primary" id="saveRepNameBtn">Save Name</button>
-        <div id="sidebarRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
-    </div>
+        <div class="accordion-toggle" id="repAccordionToggle">
+            <span>👤 Representative</span>
+            <span id="repAccordionIcon">▼</span>
+        </div>
+        <div class="accordion-content" id="repAccordionContent">
+            <input type="text" id="sidebarRepNameInput" placeholder="Enter your name..." style="margin-bottom: 10px;">
+            <button class="btn-primary" id="saveRepNameBtn">Save Name</button>
+            <div id="sidebarRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+        </div>
 
-    <div class="accordion-toggle" id="notesAccordionToggle">
-        <span>📝 General Site Notes</span>
-        <span id="accordionIcon">▼</span>
+        <div class="accordion-toggle" id="notesAccordionToggle">
+            <span>📝 General Site Notes</span>
+            <span id="accordionIcon">▼</span>
+        </div>
+        <div class="accordion-content" id="notesAccordionContent">
+            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility issues, missing packs, etc..."></textarea>
+            <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
+            <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+        </div>
     </div>
-    <div class="accordion-content" id="notesAccordionContent">
-        <textarea id="sidebarSiteNotes" placeholder="Enter broad facility issues, missing packs, etc..."></textarea>
-        <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
-        <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+    
+    <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+        <button class="btn-outline" id="navHomeBtnMenu" style="width: 100%; margin-bottom: 12px; background: rgba(148, 163, 184, 0.08);">🏠 Go to Home</button>
+        <button class="btn-outline" id="fullscreenBtnMenu" style="width: 100%; background: rgba(148, 163, 184, 0.08);">⛶ Toggle Fullscreen</button>
     </div>
 </div>
 
-<!-- ============ MODALS ============ -->
 <div id="gridOverlayModal" class="modal">
     <div class="modal-content">
         <button class="modal-close-btn" id="closeModalBtn">&times;</button>
@@ -896,7 +865,7 @@
     const gridModal = document.getElementById('gridOverlayModal');
     
     // Burger Menu Elements
-    const burgerBtn = document.getElementById('burgerMenuBtn');
+    const burgerBtns = document.querySelectorAll('.burger-menu-btn');
     const slideOutMenu = document.getElementById('slideOutMenu');
     const menuBackdrop = document.getElementById('menuBackdrop');
     const closeMenuBtn = document.getElementById('closeMenuBtn');
@@ -912,7 +881,7 @@
             menuBackdrop.classList.add('show');
         }
     }
-    burgerBtn.addEventListener('click', toggleMenu);
+    burgerBtns.forEach(btn => btn.addEventListener('click', toggleMenu));
     closeMenuBtn.addEventListener('click', toggleMenu);
     menuBackdrop.addEventListener('click', toggleMenu);
 
@@ -923,35 +892,59 @@
         sections.forEach(sec => sec.classList.remove('active'));
         document.getElementById(sectionId).classList.add('active');
         
+        // Show App Header ONLY on Setup/Home 
+        if (sectionId === 'setupSection') {
+            document.getElementById('mainAppHeader').style.display = 'flex';
+        } else {
+            document.getElementById('mainAppHeader').style.display = 'none';
+        }
+
         document.getElementById('siteSelect').value = "";
         serviceTypeSelection.style.display = 'none';
         document.getElementById('initialLoadGroup').style.display = 'flex';
         document.getElementById('dateSelectionUI').style.display = 'none';
         
-        if (sectionId === 'serviceSection' || sectionId === 'generalChecksSection') {
-            burgerBtn.style.display = 'inline-flex';
-        } else {
-            burgerBtn.style.display = 'none';
-            slideOutMenu.classList.remove('open');
-            menuBackdrop.classList.remove('show');
-        }
+        slideOutMenu.classList.remove('open');
+        menuBackdrop.classList.remove('show');
 
         if(sectionId === 'adminSection') renderAdminList();
     }
 
-    document.getElementById('navHomeBtn').addEventListener('click', () => navigateTo('setupSection'));
+    // New Nav Bindings
+    document.getElementById('navHomeBtnMenu').addEventListener('click', () => { toggleMenu(); navigateTo('setupSection'); });
+    document.getElementById('adminBackBtn').addEventListener('click', () => navigateTo('setupSection'));
     document.getElementById('toggleAdminBtn').addEventListener('click', () => navigateTo('adminSection'));
 
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-    fullscreenBtn.addEventListener('click', () => {
+    // Menu Fullscreen Bindings
+    const fsBtnMenu = document.getElementById('fullscreenBtnMenu');
+    fsBtnMenu.addEventListener('click', () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch((err) => console.log(err));
-            fullscreenBtn.innerHTML = '🗗 Exit Full';
         } else {
             document.exitFullscreen();
-            fullscreenBtn.innerHTML = '⛶ Full';
         }
     });
+
+    document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+            fsBtnMenu.innerHTML = '🗗 Exit Fullscreen';
+        } else {
+            fsBtnMenu.innerHTML = '⛶ Toggle Fullscreen';
+        }
+    });
+
+    // --- Auto-Fullscreen on First Interaction ---
+    // Browsers block automatic fullscreen without a user gesture. This script triggers
+    // it automatically the instant the user taps or clicks anywhere on the app for the first time.
+    function enableFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => console.log("Fullscreen auto-play prevented by browser constraints."));
+        }
+        document.removeEventListener('click', enableFullscreen);
+        document.removeEventListener('touchstart', enableFullscreen);
+    }
+    document.addEventListener('click', enableFullscreen);
+    document.addEventListener('touchstart', enableFullscreen);
 
     // --- 1. INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', () => {
@@ -995,7 +988,7 @@
         document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
     }
 
-        async function handleEditSite(e) {
+    async function handleEditSite(e) {
         const docId = e.target.getAttribute('data-id'); const oldName = e.target.getAttribute('data-name'); const oldCount = e.target.getAttribute('data-count');
         const newName = prompt("Edit Site Name:", oldName); if (!newName) return; 
         const newCountStr = prompt("Edit Pack Count:", oldCount); if (!newCountStr) return; 
