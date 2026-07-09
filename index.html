@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v1.4 — Tablet Facelift
+           Poncho SERVICE TRACKER v1.5.1 — Tablet Facelift
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -683,7 +683,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v1.5.1
+        <h1>Poncho Service Tracker <span class="version-badge">v1.5.2
     </span></h1>
     </div>
 
@@ -766,6 +766,10 @@
             <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 70px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
         </div>
 
+        <div style="padding: 0 10px 10px;">
+            <label for="siteFirmwareInput">Site Firmware Version</label>
+            <input type="text" id="siteFirmwareInput" placeholder="e.g., v2.4.1" style="margin-bottom: 0;">
+        </div>
         <div class="grid-header">Facility Equipment</div>
         <div id="generalPartsContainer"></div>
 
@@ -876,6 +880,7 @@
     let currentPonchoIndex = 1;
     let fetchedServiceDocs = []; 
     let isDirty = false;    
+    let currentFirmware = ""; // <-- Added firmware state
 
     // --- Arrays ---
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer" ];
@@ -1089,6 +1094,11 @@
         currentPonchoIndex = 1;
         PonchoDataCache = {}; 
         generalChecksCache = {};
+        
+        // Reset Firmware UI and state
+        currentFirmware = "";
+        document.getElementById('siteFirmwareInput').value = "";
+        
         activeServiceDate = new Date().toISOString().split('T')[0]; 
         
         await loadSidebarNotes(); 
@@ -1148,9 +1158,13 @@
         }
 
         generalChecksCache = {};
+        currentFirmware = "";
         try {
             const genDoc = await getDoc(doc(db, "general_checks", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`));
-            if (genDoc.exists()) generalChecksCache = genDoc.data().checks || {};
+            if (genDoc.exists()) {
+                generalChecksCache = genDoc.data().checks || {};
+                currentFirmware = genDoc.data().firmware || "";
+            }
         } catch (e) { console.log("No general checks found for this date"); }
 
         currentPonchoIndex = 1;
@@ -1173,6 +1187,15 @@
     });
 
     function renderGeneralChecksUI() {
+        // --- NEW FIRMWARE LOGIC ---
+        const firmwareInput = document.getElementById('siteFirmwareInput');
+        firmwareInput.value = currentFirmware;
+        firmwareInput.oninput = (e) => {
+            currentFirmware = e.target.value;
+            document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+            document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+        };
+
         const container = document.getElementById('generalPartsContainer');
         container.innerHTML = '';
         document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
@@ -1213,7 +1236,11 @@
         try {
             const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
             await setDoc(doc(db, "general_checks", docId), {
-                site: currentSiteName, date: activeServiceDate, checks: generalChecksCache, lastUpdated: serverTimestamp()
+                site: currentSiteName, 
+                date: activeServiceDate, 
+                checks: generalChecksCache, 
+                firmware: currentFirmware,
+                lastUpdated: serverTimestamp()
             }, { merge: true });
             document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
             document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
@@ -1271,6 +1298,7 @@
                 <p><strong>Next Service Due:</strong> ${nextDueDateStr}</p>
                 <p><strong>Representative:</strong> ${currentRepresentative || "Not Specified"}</p>
                 <p><strong>General Site Notes:</strong><br> ${generalNotes.replace(/\n/g, '<br>')}</p>
+                <p><strong>Site Firmware:</strong> ${currentFirmware || "Not Specified"}</p>
             </div>
         `;
 
