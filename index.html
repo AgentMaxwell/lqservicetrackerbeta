@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>poncho Service Tracker</title>
+    <title>Poncho Service Tracker</title>
 
     <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           poncho SERVICE TRACKER v1.4 — Tablet Facelift
+           Poncho SERVICE TRACKER v1.4 — Tablet Facelift
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -319,7 +319,7 @@
             padding: 0 4px;
             gap: 6px;
         }
-        .poncho-counter-text {
+        .Poncho-counter-text {
             color: var(--text-main);
             font-weight: 700;
             font-size: 1.05rem;
@@ -349,7 +349,7 @@
         }
 
         /* ---------- Grids ---------- */
-        #ponchoPartsContainer, #gunPartsContainer, #generalPartsContainer { 
+        #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { 
             display: grid; 
             grid-template-columns: repeat(5, 1fr); 
             gap: 8px; 
@@ -653,15 +653,15 @@
 
         /* ---------- Tablet responsive ---------- */
         @media (max-width: 900px) {
-            #ponchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(3, 1fr); }
+            #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(3, 1fr); }
             .app-header h1 { font-size: 1.05rem; }
             .slide-out-menu { width: 88vw; right: -88vw; }
         }
         @media (max-width: 600px) {
-            #ponchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
+            #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
         }
         @media (orientation: portrait) and (max-width: 1100px) {
-            #ponchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(3, 1fr); }
+            #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(3, 1fr); }
         }
 
         /* ---------- Print (unchanged behavior) ---------- */
@@ -683,7 +683,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>poncho Service Tracker <span class="version-badge">v1.5.1
+        <h1>Poncho Service Tracker <span class="version-badge">v1.5.1
     </span></h1>
     </div>
 
@@ -750,7 +750,7 @@
             <h3 style="text-align:left; margin-bottom: 18px;">➕ Add New Site</h3>
             <label>Site Name</label>
             <input type="text" id="newSiteName" placeholder="e.g. Site Delta">
-            <label>Number of ponchos</label>
+            <label>Number of Ponchos</label>
             <input type="number" id="newSiteCount" placeholder="e.g. 12">
             <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
         </div>
@@ -758,9 +758,9 @@
 
     <div id="generalChecksSection" class="app-section">
         <div class="nav-controls">
-            <button class="btn-primary" id="backToponchosBtn" style="max-width: 80px; padding: 12px 8px;">&laquo; Back</button>
+            <button class="btn-primary" id="backToPonchosBtn" style="max-width: 80px; padding: 12px 8px;">&laquo; Back</button>
             <div class="nav-status">
-                <div class="poncho-counter-text">☑️ General Site Checks</div>
+                <div class="Poncho-counter-text">☑️ General Site Checks</div>
                 <div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div>
             </div>
             <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 70px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
@@ -780,7 +780,7 @@
                 <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>       
                 <button class="btn-primary" id="prevBtn" disabled style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">&laquo; Back</button>
                 <div class="nav-status">
-                    <div class="poncho-counter-text" id="ponchoCounterText">poncho 1 of X</div>
+                    <div class="Poncho-counter-text" id="PonchoCounterText">Poncho 1 of X</div>
                     <div class="progress-container">
                         <div class="progress-fill" id="progressBarFill"></div>
                     </div>
@@ -789,15 +789,15 @@
                 <button class="btn-primary" id="nextBtn" style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">Next &raquo;</button>
             </div>
 
-            <div class="grid-header">🎽 poncho Elements</div>
-            <div id="ponchoPartsContainer"></div>
+            <div class="grid-header">🎽 Poncho Elements</div>
+            <div id="PonchoPartsContainer"></div>
 
             <div class="grid-header">🔫 Gun Elements</div>
             <div id="gunPartsContainer"></div>
         </div>
 
         <div class="sticky-action-bar">
-            <button class="btn-success" id="ponchoAllOkBtn">✔ Mark Remaining Parts as "All Good"</button>
+            <button class="btn-success" id="PonchoAllOkBtn">✔ Mark Remaining Parts as "All Good"</button>
         </div>
     </div>
 </div>
@@ -827,7 +827,7 @@
             <span id="accordionIcon">▼</span>
         </div>
         <div class="accordion-content" id="notesAccordionContent">
-            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility issues, missing ponchos, etc..."></textarea>
+            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility notes, missing Ponchos, etc..."></textarea>
             <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
             <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
         </div>
@@ -853,7 +853,7 @@
     <div class="modal-content" style="max-width: 640px;">
         <button class="modal-close-btn" id="closeScreensModalBtn">&times;</button>
         <h2 style="margin-top: 0; text-align: left;">🖥️ Select Screen Issues</h2>
-        <p style="text-align: center; color: var(--text-muted); margin: 0 0 22px 0;">Tap the ponchos below that required a screen replacement.</p>
+        <p style="text-align: center; color: var(--text-muted); margin: 0 0 22px 0;">Tap the Ponchos below that required a screen replacement.</p>
 
         <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-bottom: 24px;"></div>
 
@@ -872,19 +872,19 @@
     let currentSiteName = "";
     let currentRepresentative = ""; 
     let activeServiceDate = ""; 
-    let totalponchos = 0;
-    let currentponchoIndex = 1;
+    let totalPonchos = 0;
+    let currentPonchoIndex = 1;
     let fetchedServiceDocs = []; 
     let isDirty = false;    
 
     // --- Arrays ---
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer" ];
-    const ponchoPartsList = ["Fabric" , "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards", "Sensors"];
+    const PonchoPartsList = ["Fabric" , "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards", "Sensors"];
     const gunPartsList = ["Trigger", "Speaker", "GButton Reader", "Laser", "IR", "Outer Casing", "Nozzle", "GScrews", "Numbered Sticker", "Screen Protector", "Plastic Front of Gun", "GLEDs", "GSensors", "GBoards"];
-    const allponchoElements = [...ponchoPartsList, ...gunPartsList]; 
+    const allPonchoElements = [...PonchoPartsList, ...gunPartsList]; 
 
     let generalChecksCache = {}; 
-    let ponchoDataCache = {}; 
+    let PonchoDataCache = {}; 
 
     // DOM Elements
     const sections = document.querySelectorAll('.app-section');
@@ -1029,9 +1029,9 @@
             sitesData = {};
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                const count = data.ponchoCount || data.gearCount || 0; 
+                const count = data.PonchoCount || data.gearCount || 0; 
                 sitesData[data.name] = { id: doc.id, count: count };
-                select.innerHTML += `<option value="${data.name}">${data.name} (${count} ponchos)</option>`;
+                select.innerHTML += `<option value="${data.name}">${data.name} (${count} Ponchos)</option>`;
             });
         } catch (error) { console.error(error); }
     }
@@ -1045,7 +1045,7 @@
             const siteInfo = sitesData[siteName];
             const itemDiv = document.createElement('div');
             itemDiv.className = 'site-manager-item';
-            itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} ponchos</span></div>
+            itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Ponchos</span></div>
                 <div class="admin-controls"><button class="admin-btn btn-edit" data-id="${siteInfo.id}" data-name="${siteName}" data-count="${siteInfo.count}">Edit</button><button class="admin-btn btn-del" data-id="${siteInfo.id}" data-name="${siteName}">Delete</button></div>`;
             listDiv.appendChild(itemDiv);
         });
@@ -1056,9 +1056,9 @@
     async function handleEditSite(e) {
         const docId = e.target.getAttribute('data-id'); const oldName = e.target.getAttribute('data-name'); const oldCount = e.target.getAttribute('data-count');
         const newName = prompt("Edit Site Name:", oldName); if (!newName) return; 
-        const newCountStr = prompt("Edit poncho Count:", oldCount); if (!newCountStr) return; 
+        const newCountStr = prompt("Edit Poncho Count:", oldCount); if (!newCountStr) return; 
         const newCount = parseInt(newCountStr); if (!newName.trim() || isNaN(newCount) || newCount <= 0) return alert("Invalid data.");
-        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), ponchoCount: newCount }); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), PonchoCount: newCount }); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
     }
     async function handleDeleteSite(e) {
         const docId = e.target.getAttribute('data-id'); const siteName = e.target.getAttribute('data-name');
@@ -1068,14 +1068,14 @@
         const name = document.getElementById('newSiteName').value.trim(); const count = parseInt(document.getElementById('newSiteCount').value);
         if (!name || isNaN(count) || count <= 0) return alert("Valid name/count required.");
         const btn = document.getElementById('saveSiteBtn'); btn.innerText = "Saving...";
-        try { await addDoc(collection(db, "sites"), { name: name, ponchoCount: count }); document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = ""; btn.innerText = "Save New Site"; await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+        try { await addDoc(collection(db, "sites"), { name: name, PonchoCount: count }); document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = ""; btn.innerText = "Save New Site"; await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
     });
 
     // --- 3. START / LOAD SERVICE FLOW ---
     document.getElementById('siteSelect').addEventListener('change', (e) => {
         currentSiteName = e.target.value;
         if (currentSiteName) {
-            totalponchos = sitesData[currentSiteName].count;
+            totalPonchos = sitesData[currentSiteName].count;
             serviceTypeSelection.style.display = 'block';
             document.getElementById('initialLoadGroup').style.display = 'flex';
             document.getElementById('dateSelectionUI').style.display = 'none';
@@ -1086,14 +1086,14 @@
     });
 
     document.getElementById('startNewServiceBtn').addEventListener('click', async () => {
-        currentponchoIndex = 1;
-        ponchoDataCache = {}; 
+        currentPonchoIndex = 1;
+        PonchoDataCache = {}; 
         generalChecksCache = {};
         activeServiceDate = new Date().toISOString().split('T')[0]; 
         
         await loadSidebarNotes(); 
         navigateTo('serviceSection'); 
-        renderponchoUI();
+        renderPonchoUI();
     });
 
     document.getElementById('fetchDatesBtn').addEventListener('click', async () => {
@@ -1139,12 +1139,12 @@
         const serviceMap = {};
         fetchedServiceDocs.forEach(record => {
             if (record.id.includes(selectedDate)) {
-                if (!serviceMap[record.ponchoId] || (record.lastUpdated > serviceMap[record.ponchoId].lastUpdated)) serviceMap[record.ponchoId] = record;
+                if (!serviceMap[record.PonchoId] || (record.lastUpdated > serviceMap[record.PonchoId].lastUpdated)) serviceMap[record.PonchoId] = record;
             }
         });
-        ponchoDataCache = {};
-        for (let i = 1; i <= totalponchos; i++) {
-            if (serviceMap[`poncho ${i}`]) ponchoDataCache[i] = serviceMap[`poncho ${i}`].serviceDetails;
+        PonchoDataCache = {};
+        for (let i = 1; i <= totalPonchos; i++) {
+            if (serviceMap[`Poncho ${i}`]) PonchoDataCache[i] = serviceMap[`Poncho ${i}`].serviceDetails;
         }
 
         generalChecksCache = {};
@@ -1153,10 +1153,10 @@
             if (genDoc.exists()) generalChecksCache = genDoc.data().checks || {};
         } catch (e) { console.log("No general checks found for this date"); }
 
-        currentponchoIndex = 1;
+        currentPonchoIndex = 1;
         await loadSidebarNotes(); 
         navigateTo('serviceSection'); 
-        renderponchoUI();
+        renderPonchoUI();
     });
 
     // --- 4. GENERAL CHECKS SECTION ---
@@ -1166,10 +1166,10 @@
         renderGeneralChecksUI();
     });
 
-    document.getElementById('backToponchosBtn').addEventListener('click', async () => {
+    document.getElementById('backToPonchosBtn').addEventListener('click', async () => {
         await saveGeneralChecks();
         navigateTo('serviceSection');
-        renderponchoUI();
+        renderPonchoUI();
     });
 
     function renderGeneralChecksUI() {
@@ -1205,7 +1205,7 @@
         renderGeneralChecksUI();
         await saveGeneralChecks();
         navigateTo('serviceSection');
-        renderponchoUI();
+        renderPonchoUI();
     });
 
     async function saveGeneralChecks() {
@@ -1259,14 +1259,14 @@
         if (activeServiceDate) {
             const dateParts = activeServiceDate.split('-');
             if (dateParts.length === 3) {
-                const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 9, parseInt(dateParts[2]));
+                const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 12, parseInt(dateParts[2]));
                 nextDueDateStr = nextDateObj.toISOString().split('T')[0];
             }
         }
 
         let html = `
             <div class="print-header">
-                <h1>Service Issue Summary: ${currentSiteName}</h1>
+                <h1>Service Summary: ${currentSiteName}</h1>
                 <p><strong>Service Date:</strong> ${activeServiceDate}</p>
                 <p><strong>Next Service Due:</strong> ${nextDueDateStr}</p>
                 <p><strong>Representative:</strong> ${currentRepresentative || "Not Specified"}</p>
@@ -1297,34 +1297,34 @@
         generalHtml += `</ul>`;
         if (hasGeneralIssues) html += generalHtml;
 
-        let gunIssuesHtml = `<div class="print-section-title">Gun Faults</div><ul class="print-issue-list">`;
-        let ponchoIssuesHtml = `<div class="print-section-title">poncho Faults</div><ul class="print-issue-list">`;
+        let gunIssuesHtml = `<div class="print-section-title">Gun Notes</div><ul class="print-issue-list">`;
+        let PonchoIssuesHtml = `<div class="print-section-title">Poncho Notes</div><ul class="print-issue-list">`;
         let hasGunIssues = false;
-        let hasponchoIssues = false;
+        let hasPonchoIssues = false;
 
-        for (let i = 1; i <= totalponchos; i++) {
-            if (ponchoDataCache[i]) {
-                const parts = ponchoDataCache[i];
+        for (let i = 1; i <= totalPonchos; i++) {
+            if (PonchoDataCache[i]) {
+                const parts = PonchoDataCache[i];
                 gunPartsList.forEach(part => {
                     if (parts[part] && parts[part].status === 'Issue') {
                         hasGunIssues = true;
-                        gunIssuesHtml += `<li><strong>poncho ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
+                        gunIssuesHtml += `<li><strong>Poncho ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
                     }
                 });
-                ponchoPartsList.forEach(part => {
+                PonchoPartsList.forEach(part => {
                     if (parts[part] && parts[part].status === 'Issue') {
-                        hasponchoIssues = true;
-                        ponchoIssuesHtml += `<li><strong>poncho ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
+                        hasPonchoIssues = true;
+                        PonchoIssuesHtml += `<li><strong>Poncho ${i} (${part}):</strong> ${parts[part].notes || "Issue logged"}</li>`;
                     }
                 });
             }
         }
         
-        gunIssuesHtml += `</ul>`; ponchoIssuesHtml += `</ul>`;
+        gunIssuesHtml += `</ul>`; PonchoIssuesHtml += `</ul>`;
         if (hasGunIssues) html += gunIssuesHtml;
-        if (hasponchoIssues) html += ponchoIssuesHtml;
+        if (hasPonchoIssues) html += PonchoIssuesHtml;
 
-        if (!hasGeneralIssues && !hasGunIssues && !hasponchoIssues) {
+        if (!hasGeneralIssues && !hasGunIssues && !hasPonchoIssues) {
             html += `<p style="color: green; font-weight: bold; margin-top:20px;">No issues recorded for this site. All Good!</p>`;
         }
 
@@ -1345,23 +1345,23 @@
             querySnapshot.forEach(doc => {
                 const data = doc.data();
                 if (doc.id.includes(activeServiceDate)) {
-                    if (!serviceMap[data.ponchoId] || (data.lastUpdated > serviceMap[data.ponchoId].lastUpdated)) serviceMap[data.ponchoId] = data;
+                    if (!serviceMap[data.PonchoId] || (data.lastUpdated > serviceMap[data.PonchoId].lastUpdated)) serviceMap[data.PonchoId] = data;
                 }
             });
 
             const total = sitesData[currentSiteName].count;
-            let tableHTML = `<table><thead><tr><th>poncho #</th>`;
-            allponchoElements.forEach(p => tableHTML += `<th>${p}</th>`);
+            let tableHTML = `<table><thead><tr><th>Poncho #</th>`;
+            allPonchoElements.forEach(p => tableHTML += `<th>${p}</th>`);
             tableHTML += `<th>Notes</th></tr></thead><tbody>`;
 
             for (let i = 1; i <= total; i++) {
-                let recordData = ponchoDataCache[i] || (serviceMap[`poncho ${i}`] ? serviceMap[`poncho ${i}`].serviceDetails : null);
+                let recordData = PonchoDataCache[i] || (serviceMap[`Poncho ${i}`] ? serviceMap[`Poncho ${i}`].serviceDetails : null);
                 
                 if (recordData) {
                     let allNotes = [];
                     tableHTML += `<tr><td><strong>${i}</strong></td>`;
                     
-                    allponchoElements.forEach(part => {
+                    allPonchoElements.forEach(part => {
                         const status = recordData[part]?.status;
                         if (status === 'Good') tableHTML += `<td><span class="tick">✔</span></td>`;
                         else if (status === 'Issue') {
@@ -1372,7 +1372,7 @@
                     
                     tableHTML += `<td class="notes-cell">${allNotes.join('<br>') || '<span style="color: var(--success);">None</span>'}</td></tr>`;
                 } else {
-                    tableHTML += `<tr><td><strong>${i}</strong></td><td colspan="${allponchoElements.length + 1}" class="pending">Not Serviced Yet</td></tr>`;
+                    tableHTML += `<tr><td><strong>${i}</strong></td><td colspan="${allPonchoElements.length + 1}" class="pending">Not Serviced Yet</td></tr>`;
                 }
             }
             tableHTML += `</tbody></table>`;
@@ -1384,13 +1384,13 @@
     // --- 8. CHECKLIST SERVICE SESSION & AUTO-SAVE ---
     async function triggerBackgroundSave() {
         if (!isDirty) return; 
-        const ponchoToSave = currentponchoIndex; 
-        const dataToSave = ponchoDataCache[ponchoToSave];
+        const PonchoToSave = currentPonchoIndex; 
+        const dataToSave = PonchoDataCache[PonchoToSave];
         isDirty = false; 
         document.getElementById('saveIndicator').innerText = "Saving...";
 
         try {
-            const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-poncho-${ponchoToSave}`;
+            const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-Poncho-${PonchoToSave}`;
             let nextDueDateStr = "";
             if (activeServiceDate) {
                 const dateParts = activeServiceDate.split('-');
@@ -1401,7 +1401,7 @@
             }
 
             await setDoc(doc(db, "services", docId), {
-                site: currentSiteName, ponchoId: `poncho ${ponchoToSave}`, representative: currentRepresentative || "Not Specified",
+                site: currentSiteName, PonchoId: `Poncho ${PonchoToSave}`, representative: currentRepresentative || "Not Specified",
                 serviceDate: activeServiceDate, nextServiceDue: nextDueDateStr, serviceDetails: dataToSave, lastUpdated: serverTimestamp()
             });
             document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
@@ -1415,26 +1415,26 @@
 
     document.getElementById('prevBtn').addEventListener('click', async () => {
         await triggerBackgroundSave();
-        if (currentponchoIndex > 1) { currentponchoIndex--; renderponchoUI(); }
+        if (currentPonchoIndex > 1) { currentPonchoIndex--; renderPonchoUI(); }
     });
 
     document.getElementById('nextBtn').addEventListener('click', async () => {
         await triggerBackgroundSave();
-        if (currentponchoIndex < totalponchos) { currentponchoIndex++; renderponchoUI(); } 
-        else { alert("You have reached the end of the ponchos for this site."); }
+        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); } 
+        else { alert("You have reached the end of the Ponchos for this site."); }
     });
 
-    document.getElementById('ponchoAllOkBtn').addEventListener('click', async () => {
+    document.getElementById('PonchoAllOkBtn').addEventListener('click', async () => {
         let changed = false;
         
-        if (!ponchoDataCache[currentponchoIndex]) ponchoDataCache[currentponchoIndex] = {};
-        allponchoElements.forEach(part => {
-            if (!ponchoDataCache[currentponchoIndex][part]) ponchoDataCache[currentponchoIndex][part] = { status: null, notes: "" };
+        if (!PonchoDataCache[currentPonchoIndex]) PonchoDataCache[currentPonchoIndex] = {};
+        allPonchoElements.forEach(part => {
+            if (!PonchoDataCache[currentPonchoIndex][part]) PonchoDataCache[currentPonchoIndex][part] = { status: null, notes: "" };
         });
 
-        allponchoElements.forEach(part => {
-            if (ponchoDataCache[currentponchoIndex][part].status !== 'Issue') {
-                ponchoDataCache[currentponchoIndex][part].status = 'Good';
+        allPonchoElements.forEach(part => {
+            if (PonchoDataCache[currentPonchoIndex][part].status !== 'Issue') {
+                PonchoDataCache[currentPonchoIndex][part].status = 'Good';
                 changed = true;
             }
         });
@@ -1446,8 +1446,8 @@
         }
         
         await triggerBackgroundSave();
-        if (currentponchoIndex < totalponchos) { currentponchoIndex++; renderponchoUI(); } 
-        else { renderponchoUI(); alert("All parts marked good. You are on the final poncho."); }
+        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); } 
+        else { renderPonchoUI(); alert("All parts marked good. You are on the final Poncho."); }
     });
 
     function generatePartHTML(part, partData, typeStr) {
@@ -1466,38 +1466,38 @@
         `;
     }
 
-    function renderponchoUI() {
-        const ponchoContainer = document.getElementById('ponchoPartsContainer');
+    function renderPonchoUI() {
+        const PonchoContainer = document.getElementById('PonchoPartsContainer');
         const gunContainer = document.getElementById('gunPartsContainer');
         
-        ponchoContainer.style.opacity = '0';
+        PonchoContainer.style.opacity = '0';
         gunContainer.style.opacity = '0';
 
         setTimeout(() => {
-            document.getElementById('ponchoCounterText').innerText = `poncho ${currentponchoIndex} of ${totalponchos}`;
-            document.getElementById('prevBtn').disabled = currentponchoIndex === 1;
-            document.getElementById('nextBtn').innerText = currentponchoIndex === totalponchos ? "Finish" : "Next \u00BB";
-            document.getElementById('progressBarFill').style.width = `${(currentponchoIndex / totalponchos) * 100}%`;
+            document.getElementById('PonchoCounterText').innerText = `Poncho ${currentPonchoIndex} of ${totalPonchos}`;
+            document.getElementById('prevBtn').disabled = currentPonchoIndex === 1;
+            document.getElementById('nextBtn').innerText = currentPonchoIndex === totalPonchos ? "Finish" : "Next \u00BB";
+            document.getElementById('progressBarFill').style.width = `${(currentPonchoIndex / totalPonchos) * 100}%`;
             document.getElementById('saveIndicator').innerText = "Cloud Synced ✓";
             document.getElementById('saveIndicator').style.color = "var(--text-muted)";
 
-            if (!ponchoDataCache[currentponchoIndex]) ponchoDataCache[currentponchoIndex] = {};
-            allponchoElements.forEach(part => {
-                if (!ponchoDataCache[currentponchoIndex][part]) ponchoDataCache[currentponchoIndex][part] = { status: null, notes: "" };
+            if (!PonchoDataCache[currentPonchoIndex]) PonchoDataCache[currentPonchoIndex] = {};
+            allPonchoElements.forEach(part => {
+                if (!PonchoDataCache[currentPonchoIndex][part]) PonchoDataCache[currentPonchoIndex][part] = { status: null, notes: "" };
             });
 
-            const currentData = ponchoDataCache[currentponchoIndex];
-            ponchoContainer.innerHTML = '';
+            const currentData = PonchoDataCache[currentPonchoIndex];
+            PonchoContainer.innerHTML = '';
             gunContainer.innerHTML = '';
 
-            ponchoPartsList.forEach(part => ponchoContainer.innerHTML += generatePartHTML(part, currentData[part], 'poncho'));
-            gunPartsList.forEach(part => gunContainer.innerHTML += generatePartHTML(part, currentData[part], 'poncho'));
+            PonchoPartsList.forEach(part => PonchoContainer.innerHTML += generatePartHTML(part, currentData[part], 'Poncho'));
+            gunPartsList.forEach(part => gunContainer.innerHTML += generatePartHTML(part, currentData[part], 'Poncho'));
 
-            attachInteractionListeners(ponchoContainer);
+            attachInteractionListeners(PonchoContainer);
             attachInteractionListeners(gunContainer);
             
             requestAnimationFrame(() => {
-                ponchoContainer.style.opacity = '1';
+                PonchoContainer.style.opacity = '1';
                 gunContainer.style.opacity = '1';
             });
         }, 200); 
@@ -1535,8 +1535,8 @@
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
                     document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
                 } else {
-                    ponchoDataCache[currentponchoIndex][part].status = isGoodBtn ? "Good" : "Issue";
-                    if(isGoodBtn) ponchoDataCache[currentponchoIndex][part].notes = "";
+                    PonchoDataCache[currentPonchoIndex][part].status = isGoodBtn ? "Good" : "Issue";
+                    if(isGoodBtn) PonchoDataCache[currentPonchoIndex][part].notes = "";
                     isDirty = true;
                     document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
                     document.getElementById('saveIndicator').style.color = "var(--text-muted)";
@@ -1554,7 +1554,7 @@
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
                     document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
                 } else {
-                    ponchoDataCache[currentponchoIndex][part].notes = e.target.value;
+                    PonchoDataCache[currentPonchoIndex][part].notes = e.target.value;
                     isDirty = true;
                     document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
                     document.getElementById('saveIndicator').style.color = "var(--text-muted)";
@@ -1566,7 +1566,7 @@
 
     // --- CUSTOM SCREENS MODAL LOGIC ---
     const screensModal = document.getElementById('screensIssueModal');
-    let selectedScreenponchos = new Set();
+    let selectedScreenPonchos = new Set();
 
     function openScreensModal() {
         screensModal.style.display = "block";
@@ -1574,26 +1574,26 @@
         grid.innerHTML = '';
         
         const existingNotes = generalChecksCache['Screens'].notes || "";
-        selectedScreenponchos.clear();
+        selectedScreenPonchos.clear();
         if (existingNotes.includes('Replaced')) {
             const matches = existingNotes.match(/\d+/g);
-            if (matches) matches.forEach(n => selectedScreenponchos.add(parseInt(n)));
+            if (matches) matches.forEach(n => selectedScreenPonchos.add(parseInt(n)));
         }
 
-        for (let i = 1; i <= totalponchos; i++) {
+        for (let i = 1; i <= totalPonchos; i++) {
             const btn = document.createElement('button');
             btn.innerText = i;
-            const isSelected = selectedScreenponchos.has(i);
+            const isSelected = selectedScreenPonchos.has(i);
             btn.style.cssText = `padding: 16px 8px; border-radius: var(--radius-md); border: 2px solid ${isSelected ? 'rgba(244,63,94,0.5)' : 'var(--border-color)'}; background: ${isSelected ? 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))' : 'var(--card-bg-elevated)'}; color: ${isSelected ? '#FDA4AF' : 'var(--text-main)'}; font-weight: 700; font-size: 1.05rem; min-height: 56px; transition: all 0.15s;`;
             
             btn.addEventListener('click', () => {
-                if (selectedScreenponchos.has(i)) {
-                    selectedScreenponchos.delete(i);
+                if (selectedScreenPonchos.has(i)) {
+                    selectedScreenPonchos.delete(i);
                     btn.style.background = 'var(--card-bg-elevated)';
                     btn.style.color = 'var(--text-main)';
                     btn.style.borderColor = 'var(--border-color)';
                 } else {
-                    selectedScreenponchos.add(i);
+                    selectedScreenPonchos.add(i);
                     btn.style.background = 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))';
                     btn.style.color = '#FDA4AF';
                     btn.style.borderColor = 'rgba(244,63,94,0.5)';
@@ -1606,11 +1606,11 @@
     document.getElementById('closeScreensModalBtn').addEventListener('click', () => screensModal.style.display = "none");
 
     document.getElementById('saveScreensBtn').addEventListener('click', () => {
-        const sortedponchos = Array.from(selectedScreenponchos).sort((a, b) => a - b);
+        const sortedPonchos = Array.from(selectedScreenPonchos).sort((a, b) => a - b);
         const notesArea = document.querySelector('#notes-screens textarea');
         
-        if (sortedponchos.length > 0) {
-            const noteStr = `poncho ${sortedponchos.join(', ')} Replaced`;
+        if (sortedPonchos.length > 0) {
+            const noteStr = `Poncho ${sortedPonchos.join(', ')} Replaced`;
             generalChecksCache['Screens'].notes = noteStr;
             if(notesArea) notesArea.value = noteStr;
         } else {
