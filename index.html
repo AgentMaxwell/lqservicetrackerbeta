@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v1.5.2 — Tablet Facelift
+           Poncho SERVICE TRACKER v1.5.1 — Tablet Facelift
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -376,36 +376,6 @@
             background: linear-gradient(90deg, var(--border-strong), transparent);
         }
 
-        /* ---------- Cyclic Status Buttons ---------- */
-        .btn-status {
-            width: 100%;
-            min-height: 44px;
-            background: rgba(0,0,0,0.35);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-pill);
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 600;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            margin: 0 0 4px 0;
-            padding: 0;
-        }
-        .btn-status:hover { background: rgba(255,255,255,0.05); }
-        
-        .btn-status.state-good {
-            background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.15));
-            color: #6EE7B7;
-            border-color: rgba(16,185,129,0.3);
-            box-shadow: 0 2px 8px rgba(16,185,129,0.2), inset 0 0 0 1px rgba(16,185,129,0.3);
-        }
-        
-        .btn-status.state-issue {
-            background: linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.15));
-            color: #FDA4AF;
-            border-color: rgba(244,63,94,0.3);
-            box-shadow: 0 2px 8px rgba(244,63,94,0.2), inset 0 0 0 1px rgba(244,63,94,0.3);
-        }
-
         /* ---------- Part Cards ---------- */
         .part-section {
             border: 1px solid var(--border-color);
@@ -417,15 +387,13 @@
             transition: all 0.2s ease;
         }
         .part-section:hover { border-color: var(--border-strong); }
-        
-        .part-section:has(.btn-status.state-issue) {
+        .part-section:has(.btn-issue.active) {
             border-color: rgba(244, 63, 94, 0.35);
             background: linear-gradient(180deg, rgba(244,63,94,0.05), rgba(244,63,94,0.01));
         }
-        .part-section:has(.btn-status.state-good) {
+        .part-section:has(.btn-good.active) {
             border-color: rgba(16, 185, 129, 0.3);
         }
-
         .part-header {
             font-size: 0.85rem;
             font-weight: 600;
@@ -435,6 +403,43 @@
             overflow: hidden;
             text-overflow: ellipsis;
             color: var(--text-main);
+        }
+
+        /* ---------- Segmented Toggles ---------- */
+        .button-group {
+            display: flex;
+            background: rgba(0,0,0,0.35);
+            border-radius: var(--radius-pill);
+            padding: 4px;
+            border: 1px solid var(--border-color);
+            gap: 2px;
+        }
+        .btn-good, .btn-issue {
+            flex: 1;
+            min-height: 38px;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 0;
+            padding: 0 4px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-good:hover { color: #6EE7B7; }
+        .btn-issue:hover { color: #FDA4AF; }
+        .btn-good.active {
+            background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.15)) !important;
+            color: #6EE7B7 !important;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(16,185,129,0.2), inset 0 0 0 1px rgba(16,185,129,0.3);
+        }
+        .btn-issue.active {
+            background: linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.15)) !important;
+            color: #FDA4AF !important;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(244,63,94,0.2), inset 0 0 0 1px rgba(244,63,94,0.3);
         }
 
         /* ---------- Notes ---------- */
@@ -678,7 +683,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.5.3
+        <h1>Poncho Service Tracker <span class="version-badge">v0.5.2.1
     </span></h1>
     </div>
 
@@ -885,19 +890,6 @@
 
     let generalChecksCache = {}; 
     let PonchoDataCache = {}; 
-    
-    // --- State UI Helpers ---
-    function getStatusText(status) {
-        if (status === 'Good') return '✔ All Good';
-        if (status === 'Issue') return '✘ Issue';
-        return '− Unchecked';
-    }
-
-    function getStatusClass(status) {
-        if (status === 'Good') return 'state-good';
-        if (status === 'Issue') return 'state-issue';
-        return '';
-    }
 
     // DOM Elements
     const sections = document.querySelectorAll('.app-section');
@@ -1042,19 +1034,11 @@
             sitesData = {};
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                // Case-insensitive fallback ladder to catch any schema variations
-                const count = data.PonchoCount ?? 
-                              data.ponchoCount ?? 
-                              data.gearCount ?? 
-                              data.gearcount ?? 
-                              data.ponchos ?? 
-                              data.count ?? 
-                              0; 
-                              
-                sitesData[data.name] = { id: doc.id, count: parseInt(count) };
+                const count = data.PonchoCount || data.gearCount || 0; 
+                sitesData[data.name] = { id: doc.id, count: count };
                 select.innerHTML += `<option value="${data.name}">${data.name} (${count} Ponchos)</option>`;
             });
-        } catch (error) { console.error("Error loading sites from Firestore:", error); }
+        } catch (error) { console.error(error); }
     }
 
     // --- 2. ADMIN CRUD ---
@@ -1226,9 +1210,10 @@
             div.className = 'part-section';
             div.innerHTML = `
                 <div class="part-header">${item}</div>
-                <button class="btn-status ${getStatusClass(data.status)}" data-type="general" data-part="${item}">
-                    ${getStatusText(data.status)}
-                </button>
+                <div class="button-group">
+                    <button class="btn-good ${data.status === 'Good' ? 'active' : ''}" data-type="general" data-part="${item}">All Good</button>
+                    <button class="btn-issue ${data.status === 'Issue' ? 'active' : ''}" data-type="general" data-part="${item}">Issue</button>
+                </div>
                 <div class="notes-area ${data.status === 'Issue' ? 'visible' : ''}" id="notes-${id}">
                     <textarea data-type="general" data-part="${item}" placeholder="Describe issue...">${data.notes}</textarea>
                 </div>
@@ -1498,9 +1483,10 @@
         return `
             <div class="part-section">
                 <div class="part-header">${part}</div>
-                <button class="btn-status ${getStatusClass(partData.status)}" data-type="${typeStr}" data-part="${part}">
-                    ${getStatusText(partData.status)}
-                </button>
+                <div class="button-group">
+                    <button class="btn-good ${partData.status === 'Good' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}">All Good</button>
+                    <button class="btn-issue ${partData.status === 'Issue' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}">Issue</button>
+                </div>
                 <div class="notes-area ${partData.status === 'Issue' ? 'visible' : ''}" id="notes-${partId}">
                     <textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${partData.notes}</textarea>
                 </div>
@@ -1546,50 +1532,39 @@
     }
 
     function attachInteractionListeners(container) {
-        const statusBtns = container.querySelectorAll('.btn-status');
+        const buttons = container.querySelectorAll('button');
         const textareas = container.querySelectorAll('textarea');
 
-        statusBtns.forEach(btn => {
+        buttons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const type = e.target.getAttribute('data-type');
                 const part = e.target.getAttribute('data-part');
+                const isGoodBtn = e.target.classList.contains('btn-good');
                 const partId = part.replace(/\s+/g, '-').toLowerCase();
                 const notesArea = container.querySelector(`#notes-${partId}`);
                 
-                // 1. Fetch current status
-                let currentStatus = type === 'general' 
-                    ? generalChecksCache[part].status 
-                    : PonchoDataCache[currentPonchoIndex][part].status;
-
-                // 2. Cycle logic: null -> 'Good' -> 'Issue' -> null
-                let nextStatus = null;
-                if (currentStatus === null) nextStatus = 'Good';
-                else if (currentStatus === 'Good') nextStatus = 'Issue';
-                else if (currentStatus === 'Issue') nextStatus = null;
-
-                // 3. Update UI visually
-                e.target.className = `btn-status ${getStatusClass(nextStatus)}`;
-                e.target.innerText = getStatusText(nextStatus);
-
-                if (nextStatus === 'Issue') {
-                    notesArea.classList.add('visible');
-                } else {
+                const siblings = e.target.parentElement.querySelectorAll('button');
+                siblings.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                if (isGoodBtn) {
                     notesArea.classList.remove('visible');
-                    notesArea.querySelector('textarea').value = ""; // Clear notes if no longer an issue
+                    notesArea.querySelector('textarea').value = "";
+                } else {
+                    notesArea.classList.add('visible');
                 }
 
-                // 4. Save state
                 if (type === 'general') {
-                    generalChecksCache[part].status = nextStatus;
-                    if (nextStatus !== 'Issue') generalChecksCache[part].notes = "";
-                    if (nextStatus === 'Issue' && part === 'Screens') openScreensModal();
-                    
+                    generalChecksCache[part].status = isGoodBtn ? "Good" : "Issue";
+                    if (isGoodBtn) {
+                        generalChecksCache[part].notes = "";
+                    } else if (part === "Screens") {
+                        openScreensModal();
+                    }
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
                     document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
                 } else {
-                    PonchoDataCache[currentPonchoIndex][part].status = nextStatus;
-                    if(nextStatus !== 'Issue') PonchoDataCache[currentPonchoIndex][part].notes = "";
-                    
+                    PonchoDataCache[currentPonchoIndex][part].status = isGoodBtn ? "Good" : "Issue";
+                    if(isGoodBtn) PonchoDataCache[currentPonchoIndex][part].notes = "";
                     isDirty = true;
                     document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
                     document.getElementById('saveIndicator').style.color = "var(--text-muted)";
