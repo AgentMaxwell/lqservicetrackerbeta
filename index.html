@@ -57,6 +57,9 @@
             min-height: 100vh;
             font-size: 16px;
             letter-spacing: -0.005em;
+            
+            /* CRITICAL: Disables the browser pull-to-refresh swipe gesture on mobile/tablet */
+            overscroll-behavior-y: contain;
         }
 
         /* ---------- Layout ---------- */
@@ -239,7 +242,7 @@
         }
         .action-group { display: flex; gap: 12px; margin-top: 12px; }
         .action-group button { flex: 1; }
-        #toggleAdminBtn { width: 100%; }
+        #toggleAdminBtn { width: 100%; margin-top: 14px; }
 
         /* ---------- Admin ---------- */
         #adminSection { max-width: 780px; margin: 0 auto; width: 100%; padding-top: 12px; }
@@ -673,7 +676,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Pack Service Tracker <span class="version-badge">v1.4.1</span></h1>
+        <h1>Pack Service Tracker <span class="version-badge">v1.4</span></h1>
     </div>
 
     <div id="setupSection" class="app-section active">
@@ -706,6 +709,22 @@
                 </div>
 
                 <div id="loadStatusMsg" style="text-align: center; font-weight: 600; margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <div class="hero-card" style="margin-top: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));">
+            <h3 style="text-align: left; font-size: 1.1rem; margin-bottom: 14px; color: var(--accent);">🛠️ App Options & Configuration</h3>
+            
+            <label style="margin-bottom: 6px;">Active Representative Name</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                <input type="text" id="homeRepNameInput" placeholder="Enter name..." style="margin-bottom: 0; flex: 1;">
+                <button class="btn-primary" id="saveHomeRepBtn" style="min-height: 52px; padding: 0 20px; font-size: 0.95rem;">Save</button>
+            </div>
+            <div id="homeRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: -10px; margin-bottom: 12px;"></div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn-outline" id="fullscreenToggleHomeBtn" style="font-size: 0.95rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">⛶ Fullscreen Mode</button>
+                <button class="btn-outline" id="forceUpdateAppBtn" style="font-size: 0.95rem; background: rgba(244, 63, 94, 0.08); border-color: rgba(244, 63, 94, 0.25); color: #FDA4AF;">🔄 Force Update App</button>
             </div>
         </div>
 
@@ -750,7 +769,6 @@
     <div id="serviceSection" class="app-section">
         <div class="service-main">
             <div class="nav-controls">
-                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
                 <button class="btn-primary" id="prevBtn" disabled style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">&laquo; Back</button>
                 <div class="nav-status">
                     <div class="pack-counter-text" id="packCounterText">Pack 1 of X</div>
@@ -759,6 +777,7 @@
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
+                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
                 <button class="btn-primary" id="nextBtn" style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">Next &raquo;</button>
             </div>
 
@@ -910,35 +929,72 @@
         if(sectionId === 'adminSection') renderAdminList();
     }
 
-    // New Nav Bindings
+    // Nav Bindings
     document.getElementById('navHomeBtnMenu').addEventListener('click', () => { toggleMenu(); navigateTo('setupSection'); });
     document.getElementById('adminBackBtn').addEventListener('click', () => navigateTo('setupSection'));
     document.getElementById('toggleAdminBtn').addEventListener('click', () => navigateTo('adminSection'));
 
-    // Menu Fullscreen Bindings
-    const fsBtnMenu = document.getElementById('fullscreenBtnMenu');
-    fsBtnMenu.addEventListener('click', () => {
+    // Synchronize Name Inputs between Home Panel and Sidebar
+    function syncRepName(nameValue) {
+        currentRepresentative = nameValue;
+        localStorage.setItem('inspectorName', nameValue);
+        document.getElementById('homeRepNameInput').value = nameValue;
+        document.getElementById('sidebarRepNameInput').value = nameValue;
+    }
+
+    document.getElementById('saveHomeRepBtn').addEventListener('click', () => {
+        const name = document.getElementById('homeRepNameInput').value.trim();
+        const msg = document.getElementById('homeRepMsg');
+        if(name) { syncRepName(name); msg.innerText = "Representative Name Saved ✓"; msg.style.color = "var(--success)"; }
+        setTimeout(() => msg.innerText = "", 3000);
+    });
+
+    document.getElementById('saveRepNameBtn').addEventListener('click', () => {
+        const name = document.getElementById('sidebarRepNameInput').value.trim();
+        const msg = document.getElementById('sidebarRepMsg');
+        if(name) { syncRepName(name); msg.innerText = "Name Saved ✓"; msg.style.color = "var(--success)"; } 
+        setTimeout(() => msg.innerText = "", 3000);
+    });
+
+    // Unified Fullscreen Trigger
+    function toggleFullscreenAction() {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().catch((err) => console.log(err));
         } else {
             document.exitFullscreen();
         }
-    });
+    }
+    document.getElementById('fullscreenToggleHomeBtn').addEventListener('click', toggleFullscreenAction);
+    document.getElementById('fullscreenBtnMenu').addEventListener('click', toggleFullscreenAction);
 
     document.addEventListener('fullscreenchange', () => {
-        if (document.fullscreenElement) {
-            fsBtnMenu.innerHTML = '🗗 Exit Fullscreen';
+        const label = document.fullscreenElement ? '🗗 Exit Fullscreen' : '⛶ Fullscreen Mode';
+        document.getElementById('fullscreenToggleHomeBtn').innerText = label;
+        document.getElementById('fullscreenBtnMenu').innerText = label;
+    });
+
+    // PWA Force Update Action
+    document.getElementById('forceUpdateAppBtn').addEventListener('click', () => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+                caches.keys().then(function(names) {
+                    for (let name of names) caches.delete(name);
+                });
+                alert("App cache completely flushed. Reloading to pull fresh update bundle...");
+                window.location.reload(true);
+            });
         } else {
-            fsBtnMenu.innerHTML = '⛶ Toggle Fullscreen';
+            window.location.reload(true);
         }
     });
 
     // --- Auto-Fullscreen on First Interaction ---
-    // Browsers block automatic fullscreen without a user gesture. This script triggers
-    // it automatically the instant the user taps or clicks anywhere on the app for the first time.
     function enableFullscreen() {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => console.log("Fullscreen auto-play prevented by browser constraints."));
+            document.documentElement.requestFullscreen().catch(err => console.log("Fullscreen auto-play blocked."));
         }
         document.removeEventListener('click', enableFullscreen);
         document.removeEventListener('touchstart', enableFullscreen);
@@ -952,6 +1008,7 @@
         if(savedName) {
             currentRepresentative = savedName;
             document.getElementById('sidebarRepNameInput').value = savedName;
+            document.getElementById('homeRepNameInput').value = savedName;
         }
         loadSites();
     });
@@ -1156,13 +1213,6 @@
     }
 
     // --- 5. BURGER MENU ACCORDIONS & SETTINGS ---
-    document.getElementById('saveRepNameBtn').addEventListener('click', () => {
-        const repName = document.getElementById('sidebarRepNameInput').value.trim();
-        const msg = document.getElementById('sidebarRepMsg');
-        if(repName) { currentRepresentative = repName; localStorage.setItem('inspectorName', repName); msg.innerText = "Name Saved ✓"; msg.style.color = "var(--success)"; } 
-        setTimeout(() => msg.innerText = "", 3000);
-    });
-
     async function loadSidebarNotes() {
         const textArea = document.getElementById('sidebarSiteNotes');
         try {
