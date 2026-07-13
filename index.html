@@ -975,7 +975,7 @@
                     <button class="btn-outline" id="navSiteNotesBtn" style="flex: 0 0 96px; padding: 10px 8px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="nav-status" style="flex: 0 0 auto; flex-direction: row; padding: 6px 12px; gap: 8px;">
+                    <div class="nav-status" style="flex: 0 0 auto; flex-direction: row; align-items: center; padding: 6px 12px; gap: 8px;">
                         <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.82rem; white-space: nowrap;">Pack 1 of X</div>
                         <div class="progress-container" style="width: 64px; height: 4px;">
                             <div class="progress-fill" id="progressBarFill"></div>
@@ -1084,6 +1084,18 @@
             <button class="btn-outline" id="cancelCompleteServiceBtn" style="flex: 1;">Cancel</button>
             <button class="btn-success" id="confirmCompleteServiceBtn" style="flex: 1;">Yes, Complete Service</button>
         </div>
+    </div>
+</div>
+
+<div id="incompleteChecklistModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+        <button class="modal-close-btn" id="closeIncompleteChecklistModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">⚠️ Checklist Incomplete</h2>
+        <p style="color: var(--text-muted); line-height: 1.5;">
+            These items haven't been marked "All Good" or "Issue" yet. Go back and check them before completing the service:
+        </p>
+        <div id="incompleteChecklistList" style="max-height: 280px; overflow-y: auto; margin: 12px 0; padding: 10px 12px; text-align: left; font-size: 0.88rem; line-height: 1.6; color: var(--text-main); background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: var(--radius-sm);"></div>
+        <button class="btn-outline" id="closeIncompleteChecklistBtn" style="width: 100%;">Go Back &amp; Finish Checking</button>
     </div>
 </div>
 
@@ -2342,10 +2354,27 @@
             });
 
             const total = sitesData[currentSiteName].count;
+
+            // General Site Checks first — these are per-site, not per-pack, so each one gets its
+            // own row rather than being folded into the pack table below.
+            let tableHTML = `<h3 style="margin: 4px 0 10px; font-size: 0.95rem; text-align: left; color: var(--text-muted); padding: 0 2px;">General Site Checks</h3>`;
+            tableHTML += `<table style="margin-bottom: 22px;"><thead><tr><th>Check</th><th>Status</th><th>Notes</th></tr></thead><tbody>`;
+            generalChecksList.forEach(item => {
+                const data = generalChecksCache[item];
+                let statusHtml;
+                if (!data || !data.status) statusHtml = `<span class="pending">Not Checked</span>`;
+                else if (data.status === 'Issue') statusHtml = `<span class="cross">✘ Issue</span>`;
+                else statusHtml = `<span class="tick">✔ Good</span>`;
+                const notes = (data && data.status === 'Issue') ? (data.notes || 'Issue logged') : '';
+                tableHTML += `<tr><td style="text-align:left;">${item}</td><td>${statusHtml}</td><td class="notes-cell">${notes || '<span style="color: var(--success);">—</span>'}</td></tr>`;
+            });
+            tableHTML += `</tbody></table>`;
+
             // One row per pack, showing whether it's done and — if anything needs attention —
             // exactly what. A column per part (20+ of them) got unreadable as the checklist grew;
             // this stays scannable no matter how many parts get added later.
-            let tableHTML = `<table><thead><tr><th>Pack #</th><th>Status</th><th>Issues</th></tr></thead><tbody>`;
+            tableHTML += `<h3 style="margin: 4px 0 10px; font-size: 0.95rem; text-align: left; color: var(--text-muted); padding: 0 2px;">Individual Packs</h3>`;
+            tableHTML += `<table><thead><tr><th>Pack #</th><th>Status</th><th>Issues</th></tr></thead><tbody>`;
 
             for (let i = 1; i <= total; i++) {
                 let recordData = PonchoDataCache[i] || (serviceMap[`Poncho ${i}`] ? serviceMap[`Poncho ${i}`].serviceDetails : null);
@@ -2798,10 +2827,46 @@
     // --- 9. COMPLETE SERVICE ---
     const completeServiceModal = document.getElementById('completeServiceModal');
 
+    // Finds every checklist point (General Checks + every part on every pack) that hasn't been
+    // marked "Good" or "Issue" yet, grouped so the incomplete-checklist modal reads cleanly
+    // instead of dumping a flat list of 300+ individual parts.
+    function findIncompleteChecklist() {
+        const missingGeneral = generalChecksList.filter(item => !generalChecksCache[item] || !generalChecksCache[item].status);
+        const missingByPack = {};
+        for (let i = 1; i <= totalPonchos; i++) {
+            const data = PonchoDataCache[i] || {};
+            const missingParts = allPonchoElements.filter(part => !data[part] || !data[part].status);
+            if (missingParts.length > 0) missingByPack[i] = missingParts;
+        }
+        return { missingGeneral, missingByPack };
+    }
+
+    const incompleteChecklistModal = document.getElementById('incompleteChecklistModal');
+    function openIncompleteChecklistModal({ missingGeneral, missingByPack }) {
+        const list = document.getElementById('incompleteChecklistList');
+        let html = '';
+        if (missingGeneral.length > 0) {
+            html += `<div style="margin-bottom: 10px;"><strong>General Checks:</strong> ${missingGeneral.join(', ')}</div>`;
+        }
+        Object.keys(missingByPack).forEach(i => {
+            html += `<div style="margin-bottom: 6px;"><strong>Pack ${i}:</strong> ${missingByPack[i].join(', ')}</div>`;
+        });
+        list.innerHTML = html;
+        incompleteChecklistModal.style.display = "block";
+    }
+    document.getElementById('closeIncompleteChecklistModalBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
+    document.getElementById('closeIncompleteChecklistBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
+
     document.getElementById('completeServiceBtn').addEventListener('click', () => {
         if (!currentSiteName || !activeServiceDate) {
             toggleMenu();
             alert("Start or load a service before completing it.");
+            return;
+        }
+        const incomplete = findIncompleteChecklist();
+        if (incomplete.missingGeneral.length > 0 || Object.keys(incomplete.missingByPack).length > 0) {
+            toggleMenu();
+            openIncompleteChecklistModal(incomplete);
             return;
         }
         toggleMenu();
