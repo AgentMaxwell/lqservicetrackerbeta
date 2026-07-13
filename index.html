@@ -735,7 +735,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.5.3
+        <h1>Poncho Service Tracker <span class="version-badge">v0.5.3.1
     </span></h1>
     </div>
 
@@ -793,6 +793,13 @@
 
     <div id="adminSection" class="app-section">
         <button class="btn-outline" id="adminBackBtn" style="margin-bottom: 18px;">&laquo; Back to Home</button>
+
+        <div class="admin-card">
+            <h3 style="text-align:left; margin-bottom: 6px;">🔗 Google Sheet Sync</h3>
+            <p id="sheetSyncStatusMsg" style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 16px;">Not yet checked this session.</p>
+            <button class="btn-outline" id="retrySheetSyncBtn" style="width: 100%; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">🔄 Retry Sheet Sync Now</button>
+        </div>
+
         <div class="admin-card">
             <h2 style="text-align:left;">Sites Database</h2>
             <div id="adminSiteList"><p style="color: var(--text-muted); text-align:center;">Loading sites...</p></div>
@@ -961,16 +968,12 @@
 
 <script type="module">
     import { db } from './firebase-config.js';
+    import { SHEET_SYNC_URL, SHEET_SYNC_SECRET } from './sheet-sync-config.js';
     import { collection, addDoc, setDoc, getDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // --- GOOGLE SHEETS SYNC CONFIG ---
-    // Paste the Apps Script Web App URL here after deploying (Deploy > New deployment > Web app,
-    // Execute as "Me", Who has access "Anyone"). See AppsScript-Code.gs for the server-side half.
-    const SHEET_SYNC_URL = "https://script.google.com/macros/s/AKfycbz9ZLusFq2gAUpoLE9Ai7NNKN5CUinGD8PrGvr-_OWQ2hUfAcsuEmK3oT1vwqFiscsCVA/exec";
-    // Must exactly match CONFIG.SECRET in AppsScript-Code.gs. Not real security (anyone with the
-    // URL + secret can call it) but keeps casual/accidental hits out, consistent with this app
-    // having no other auth layer.
-    const SHEET_SYNC_SECRET = "TERCES";
+    // Actual values live in sheet-sync-config.js (kept separate so future app updates
+    // never overwrite them — see AppsScript-Code.gs for the server-side half).
     const sheetSyncConfigured = () => SHEET_SYNC_URL && !SHEET_SYNC_URL.startsWith("PASTE_YOUR");
 
     // --- Expanded App State ---
@@ -1254,15 +1257,38 @@
     }
 
     // --- GOOGLE SHEETS SYNC (via Apps Script Web App — see AppsScript-Code.gs) ---
-    async function syncSitesFromSheet() {
-        if (!sheetSyncConfigured()) return; // Not deployed yet; app keeps working from Firestore alone
-        try {
-            const url = `${SHEET_SYNC_URL}?action=listSites&secret=${encodeURIComponent(SHEET_SYNC_SECRET)}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
-            const payload = await res.json();
-            if (!payload.ok || !Array.isArray(payload.sites)) throw new Error(payload.error || "Malformed sheet response");
+    let lastSheetSyncStatus = { ok: null, message: "Not yet checked this session." };
 
+    function renderSheetSyncStatus() {
+        const el = document.getElementById('sheetSyncStatusMsg');
+        if (!el) return;
+        if (!sheetSyncConfigured()) {
+            el.innerText = "Not configured yet — set SHEET_SYNC_URL and SHEET_SYNC_SECRET in sheet-sync-config.js.";
+            el.style.color = "var(--text-muted)";
+            return;
+        }
+        el.innerText = lastSheetSyncStatus.message;
+        el.style.color = lastSheetSyncStatus.ok === true ? "var(--success)" : (lastSheetSyncStatus.ok === false ? "var(--danger)" : "var(--text-muted)");
+    }
+
+    async function syncSitesFromSheet() {
+        if (!sheetSyncConfigured()) { renderSheetSyncStatus(); return; } // Not deployed yet; app keeps working from Firestore alone
+        try {
+            // Cache-bust deliberately: sw.js only excludes firestore.googleapis.com from its
+            // cache-first strategy, so a same-URL GET to Apps Script can otherwise get served
+            // stale from the service worker's cache indefinitely. _ts makes every request unique,
+            // and cache:'no-store' also skips the browser's own HTTP cache.
+            const url = `${SHEET_SYNC_URL}?action=listSites&secret=${encodeURIComponent(SHEET_SYNC_SECRET)}&_ts=${Date.now()}`;
+            const res = await fetch(url, { cache: 'no-store' });
+            const rawText = await res.text(); // read as text first so a non-JSON error page doesn't throw an opaque parse error
+            if (!res.ok) throw new Error(`HTTP ${res.status} — ${rawText.slice(0, 200)}`);
+            let payload;
+            try { payload = JSON.parse(rawText); }
+            catch { throw new Error(`Response wasn't JSON (likely a login/permissions page): ${rawText.slice(0, 200)}`); }
+            if (!payload.ok) throw new Error(payload.error || "Sheet script returned ok:false");
+            if (!Array.isArray(payload.sites)) throw new Error("Malformed sheet response — 'sites' was not an array");
+
+            const touchedDocIds = new Set();
             for (const row of payload.sites) {
                 if (!row.siteName) continue;
                 const existing = sitesData[row.siteName];
@@ -1278,11 +1304,36 @@
                 };
                 await setDoc(doc(db, "sites", docId), mergedData, { merge: true });
                 sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue };
+                touchedDocIds.add(docId);
             }
+
+            // Any record previously pulled FROM the sheet (docId prefixed "sheet-") that this pass
+            // no longer touched has been renamed, removed, or unrented in the sheet — hide it here
+            // too, otherwise a rename leaves a stale duplicate under the old spelling forever.
+            for (const name of Object.keys(sitesData)) {
+                const info = sitesData[name];
+                if (info.id.startsWith('sheet-') && !touchedDocIds.has(info.id) && info.rented) {
+                    info.rented = false;
+                    await setDoc(doc(db, "sites", info.id), { rented: false }, { merge: true });
+                }
+            }
+
+            lastSheetSyncStatus = { ok: true, message: `✓ Synced ${payload.sites.length} site(s) from the Sheet at ${new Date().toLocaleTimeString()}.` };
         } catch (error) {
             console.warn("Could not refresh sites from Google Sheet (using cached Firestore data instead):", error);
+            lastSheetSyncStatus = { ok: false, message: `✗ Sheet sync failed: ${error.message}` };
         }
+        renderSheetSyncStatus();
     }
+
+    document.getElementById('retrySheetSyncBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('retrySheetSyncBtn');
+        btn.disabled = true; btn.innerText = "Syncing...";
+        await syncSitesFromSheet();
+        renderSiteDropdown();
+        renderAdminList();
+        btn.disabled = false; btn.innerText = "🔄 Retry Sheet Sync Now";
+    });
 
     // Best-effort push, fires and forgets — never blocks or breaks the Firestore save if offline/unreachable.
     async function pushSiteUpdateToSheet(siteName, updates) {
@@ -1313,19 +1364,23 @@
 
     // --- 2. ADMIN CRUD ---
     function renderAdminList() {
+        renderSheetSyncStatus();
         const listDiv = document.getElementById('adminSiteList');
         listDiv.innerHTML = '';
-        if (Object.keys(sitesData).length === 0) { listDiv.innerHTML = '<p style="color: var(--text-muted); text-align:center;">No sites found.</p>'; return; }
-        Object.keys(sitesData).forEach(siteName => {
-            const siteInfo = sitesData[siteName];
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'site-manager-item';
-            itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Ponchos</span></div>
-                <div class="admin-controls"><button class="admin-btn btn-edit" data-id="${siteInfo.id}" data-name="${siteName}" data-count="${siteInfo.count}">Edit</button><button class="admin-btn btn-del" data-id="${siteInfo.id}" data-name="${siteName}">Delete</button></div>`;
-            listDiv.appendChild(itemDiv);
-        });
-        document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditSite));
-        document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
+        if (Object.keys(sitesData).length === 0) {
+            listDiv.innerHTML = '<p style="color: var(--text-muted); text-align:center;">No sites found.</p>';
+        } else {
+            Object.keys(sitesData).forEach(siteName => {
+                const siteInfo = sitesData[siteName];
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'site-manager-item';
+                itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Ponchos</span></div>
+                    <div class="admin-controls"><button class="admin-btn btn-edit" data-id="${siteInfo.id}" data-name="${siteName}" data-count="${siteInfo.count}">Edit</button><button class="admin-btn btn-del" data-id="${siteInfo.id}" data-name="${siteName}">Delete</button></div>`;
+                listDiv.appendChild(itemDiv);
+            });
+            document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditSite));
+            document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
+        }
         initIssuePartSelector();
     }
 

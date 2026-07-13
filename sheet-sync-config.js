@@ -1,0 +1,1 @@
+export const SHEET_SYNC_URL = "https://script.google.com/macros/s/AKfycbz9ZLusFq2gAUpoLE9Ai7NNKN5CUinGD8PrGvr-_OWQ2hUfAcsuEmK3oT1vwqFiscsCVA/exec";
