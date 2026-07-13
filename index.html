@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v0.6.1 — Sensors/Notes/Colour Update
+           Poncho SERVICE TRACKER v0.6.2 — Consistent Modals / Tablet UX Pass
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -827,6 +827,7 @@
             <label>Number of Ponchos</label>
             <input type="number" id="newSiteCount" placeholder="e.g. 12">
             <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
+            <div id="newSiteMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; min-height: 20px; margin-top: 8px;"></div>
         </div>
 
         <div class="admin-card">
@@ -1121,6 +1122,34 @@
     </div>
 </div>
 
+<div id="genericConfirmModal" class="modal">
+    <div class="modal-content" style="max-width: 440px;">
+        <button class="modal-close-btn" id="closeGenericConfirmModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;" id="genericConfirmTitle">Confirm</h2>
+        <p style="color: var(--text-muted); line-height: 1.5;" id="genericConfirmMessage"></p>
+        <div class="action-group" style="margin-top: 18px;">
+            <button class="btn-outline" id="genericConfirmCancelBtn" style="flex: 1;">Cancel</button>
+            <button class="btn-danger" id="genericConfirmOkBtn" style="flex: 1;">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="editSiteModal" class="modal">
+    <div class="modal-content" style="max-width: 440px;">
+        <button class="modal-close-btn" id="closeEditSiteModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">✏️ Edit Site</h2>
+        <label for="editSiteNameInput">Site Name</label>
+        <input type="text" id="editSiteNameInput">
+        <label for="editSiteCountInput">Number of Ponchos</label>
+        <input type="number" id="editSiteCountInput" min="1">
+        <div id="editSiteErrorMsg" style="color: var(--danger); font-size: 0.85rem; min-height: 18px; margin-bottom: 4px;"></div>
+        <div class="action-group" style="margin-top: 12px;">
+            <button class="btn-outline" id="cancelEditSiteBtn" style="flex: 1;">Cancel</button>
+            <button class="btn-primary" id="confirmEditSiteBtn" style="flex: 1;">Save Changes</button>
+        </div>
+    </div>
+</div>
+
 <div id="printOnlyArea"></div>
 
 <script type="module">
@@ -1181,6 +1210,26 @@
     burgerBtns.forEach(btn => btn.addEventListener('click', toggleMenu));
     closeMenuBtn.addEventListener('click', toggleMenu);
     menuBackdrop.addEventListener('click', toggleMenu);
+
+    // --- Reusable confirmation modal — replaces native confirm() everywhere so every
+    // destructive/blocking prompt in the app looks and behaves the same on a tablet
+    // (native browser dialogs are cramped, inconsistently styled, and easy to mis-tap).
+    const genericConfirmModal = document.getElementById('genericConfirmModal');
+    let genericConfirmResolver = null;
+    function showConfirmModal(message, { title = "Please Confirm", confirmLabel = "Confirm" } = {}) {
+        document.getElementById('genericConfirmTitle').innerText = title;
+        document.getElementById('genericConfirmMessage').innerText = message;
+        document.getElementById('genericConfirmOkBtn').innerText = confirmLabel;
+        genericConfirmModal.style.display = "block";
+        return new Promise(resolve => { genericConfirmResolver = resolve; });
+    }
+    function closeGenericConfirmModal(result) {
+        genericConfirmModal.style.display = "none";
+        if (genericConfirmResolver) { genericConfirmResolver(result); genericConfirmResolver = null; }
+    }
+    document.getElementById('closeGenericConfirmModalBtn').addEventListener('click', () => closeGenericConfirmModal(false));
+    document.getElementById('genericConfirmCancelBtn').addEventListener('click', () => closeGenericConfirmModal(false));
+    document.getElementById('genericConfirmOkBtn').addEventListener('click', () => closeGenericConfirmModal(true));
 
     async function navigateTo(sectionId) {
         if (document.getElementById('generalChecksSection').classList.contains('active')) await saveGeneralChecks();
@@ -1354,7 +1403,8 @@
 
     async function handleRemoveCommonIssue(e) {
         const issue = e.target.getAttribute('data-issue');
-        if (!confirm(`Remove "${issue}" from "${selectedIssuePart}"'s issue list?`)) return;
+        const ok = await showConfirmModal(`Remove "${issue}" from "${selectedIssuePart}"'s issue list?`, { title: "Remove Issue?", confirmLabel: "Remove" });
+        if (!ok) return;
         commonIssuesByPart[selectedIssuePart] = (commonIssuesByPart[selectedIssuePart] || []).filter(i => i !== issue);
         renderCommonIssuesAdminList();
         await saveCommonIssues();
@@ -1557,22 +1607,56 @@
         initIssuePartSelector();
     }
 
-    async function handleEditSite(e) {
-        const docId = e.target.getAttribute('data-id'); const oldName = e.target.getAttribute('data-name'); const oldCount = e.target.getAttribute('data-count');
-        const newName = prompt("Edit Site Name:", oldName); if (!newName) return; 
-        const newCountStr = prompt("Edit Poncho Count:", oldCount); if (!newCountStr) return; 
-        const newCount = parseInt(newCountStr); if (!newName.trim() || isNaN(newCount) || newCount <= 0) return alert("Invalid data.");
-        try { e.target.innerText = "..."; await updateDoc(doc(db, "sites", docId), { name: newName.trim(), PonchoCount: newCount }); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+    // --- EDIT SITE MODAL (replaces the old double prompt() flow — clumsy to use on a tablet) ---
+    let editSiteDocId = null;
+    function handleEditSite(e) {
+        editSiteDocId = e.target.getAttribute('data-id');
+        document.getElementById('editSiteNameInput').value = e.target.getAttribute('data-name');
+        document.getElementById('editSiteCountInput').value = e.target.getAttribute('data-count');
+        document.getElementById('editSiteErrorMsg').innerText = "";
+        document.getElementById('editSiteModal').style.display = "block";
     }
+    document.getElementById('closeEditSiteModalBtn').addEventListener('click', () => document.getElementById('editSiteModal').style.display = "none");
+    document.getElementById('cancelEditSiteBtn').addEventListener('click', () => document.getElementById('editSiteModal').style.display = "none");
+    document.getElementById('confirmEditSiteBtn').addEventListener('click', async () => {
+        const errorMsg = document.getElementById('editSiteErrorMsg');
+        const newName = document.getElementById('editSiteNameInput').value.trim();
+        const newCount = parseInt(document.getElementById('editSiteCountInput').value, 10);
+        if (!newName || isNaN(newCount) || newCount <= 0) { errorMsg.innerText = "Enter a site name and a Poncho count greater than 0."; return; }
+        const btn = document.getElementById('confirmEditSiteBtn');
+        btn.disabled = true; btn.innerText = "Saving...";
+        try {
+            await updateDoc(doc(db, "sites", editSiteDocId), { name: newName, PonchoCount: newCount });
+            document.getElementById('editSiteModal').style.display = "none";
+            await loadSites(); renderAdminList();
+        } catch (error) {
+            errorMsg.innerText = "Could not save changes. Check your connection and try again.";
+        }
+        btn.disabled = false; btn.innerText = "Save Changes";
+    });
+
     async function handleDeleteSite(e) {
         const docId = e.target.getAttribute('data-id'); const siteName = e.target.getAttribute('data-name');
-        if(confirm(`Delete "${siteName}"?`)) { try { e.target.innerText = "..."; await deleteDoc(doc(db, "sites", docId)); await loadSites(); renderAdminList(); } catch (error) { alert("Error."); } }
+        const ok = await showConfirmModal(`Delete "${siteName}"? This cannot be undone.`, { title: "Delete Site?", confirmLabel: "Delete" });
+        if (!ok) return;
+        try { e.target.innerText = "..."; await deleteDoc(doc(db, "sites", docId)); await loadSites(); renderAdminList(); }
+        catch (error) { alert("Could not delete the site. Check your connection and try again."); }
     }
     document.getElementById('saveSiteBtn').addEventListener('click', async () => {
         const name = document.getElementById('newSiteName').value.trim(); const count = parseInt(document.getElementById('newSiteCount').value);
-        if (!name || isNaN(count) || count <= 0) return alert("Valid name/count required.");
-        const btn = document.getElementById('saveSiteBtn'); btn.innerText = "Saving...";
-        try { await addDoc(collection(db, "sites"), { name: name, PonchoCount: count }); document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = ""; btn.innerText = "Save New Site"; await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
+        const msg = document.getElementById('newSiteMsg');
+        if (!name || isNaN(count) || count <= 0) { msg.innerText = "Enter a valid name and a count greater than 0."; msg.style.color = "var(--danger)"; return; }
+        const btn = document.getElementById('saveSiteBtn'); btn.innerText = "Saving..."; msg.innerText = "";
+        try {
+            await addDoc(collection(db, "sites"), { name: name, PonchoCount: count });
+            document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = "";
+            btn.innerText = "Save New Site"; await loadSites(); renderAdminList();
+            msg.innerText = "Site added ✓"; msg.style.color = "var(--success)";
+            setTimeout(() => msg.innerText = "", 3000);
+        } catch (error) {
+            btn.innerText = "Save New Site";
+            msg.innerText = "Could not save the site. Check your connection and try again."; msg.style.color = "var(--danger)";
+        }
     });
 
     // --- 2b. SCHEDULING ---
@@ -1628,7 +1712,8 @@
 
     async function handleClearSchedule(e) {
         const name = e.target.getAttribute('data-name');
-        if (!confirm(`Clear the scheduled service for "${name}"?`)) return;
+        const ok = await showConfirmModal(`Clear the scheduled service for "${name}"?`, { title: "Clear Schedule?", confirmLabel: "Clear" });
+        if (!ok) return;
         await saveScheduleForSite(name, "", "", "");
         renderScheduledServicesList();
         renderSiteDropdown();
@@ -1821,7 +1906,11 @@
 
     document.getElementById('confirmLoadBtn').addEventListener('click', async () => {
         const selectedDate = document.getElementById('serviceDateSelect').value;
-        if (!selectedDate) return alert("Select a date.");
+        if (!selectedDate) {
+            const msg = document.getElementById('loadStatusMsg');
+            msg.innerText = "Select a date first."; msg.style.color = "var(--danger)";
+            return;
+        }
         activeServiceDate = selectedDate; 
 
         const serviceMap = {};
@@ -2190,8 +2279,9 @@
         renderPonchoUI();
     });
 
-    document.getElementById('regenerateCustDraftBtn').addEventListener('click', () => {
-        if (!confirm("This replaces the auto-generated sections (System & Facility Checks, Guns, Ponchos, Faults Resolved) with a fresh draft from current data. Additional Notes is left untouched. Continue?")) return;
+    document.getElementById('regenerateCustDraftBtn').addEventListener('click', async () => {
+        const ok = await showConfirmModal("This replaces the auto-generated sections (System & Facility Checks, Guns, Ponchos, Faults Resolved) with a fresh draft from current data. Additional Notes is left untouched. Continue?", { title: "Regenerate Draft?", confirmLabel: "Regenerate" });
+        if (!ok) return;
         const notesBackup = document.getElementById('custDraftNotes').value;
         generateCustomerDraft();
         document.getElementById('custDraftNotes').value = notesBackup;
