@@ -735,7 +735,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.5.3.1.b
+        <h1>Poncho Service Tracker <span class="version-badge">v0.5.4
     </span></h1>
     </div>
 
@@ -802,7 +802,13 @@
 
         <div class="admin-card">
             <h2 style="text-align:left;">Sites Database</h2>
-            <div id="adminSiteList"><p style="color: var(--text-muted); text-align:center;">Loading sites...</p></div>
+            <div class="accordion-toggle" id="siteListAccordionToggle">
+                <span>👁️ View / Manage Raw Sites List</span>
+                <span id="siteListAccordionIcon">▼</span>
+            </div>
+            <div class="accordion-content" id="siteListAccordionContent">
+                <div id="adminSiteList"><p style="color: var(--text-muted); text-align:center;">Loading sites...</p></div>
+            </div>
         </div>
 
         <div class="admin-card">
@@ -960,6 +966,24 @@
         <div class="action-group" style="margin-top: 18px;">
             <button class="btn-outline" id="cancelCompleteServiceBtn" style="flex: 1;">Cancel</button>
             <button class="btn-success" id="confirmCompleteServiceBtn" style="flex: 1;">Yes, Complete Service</button>
+        </div>
+    </div>
+</div>
+
+<div id="setPacksModal" class="modal">
+    <div class="modal-content" style="max-width: 420px;">
+        <button class="modal-close-btn" id="closeSetPacksModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">📦 Set Pack Count</h2>
+        <p style="color: var(--text-muted); line-height: 1.5;">
+            <strong id="setPacksSiteName" style="color: var(--text-main);"></strong> has no pack count on record yet.
+            Enter how many Poncho packs are at this site to begin the service:
+        </p>
+        <label for="setPacksInput">Number of Poncho Packs</label>
+        <input type="number" id="setPacksInput" min="1" placeholder="e.g., 12">
+        <div id="setPacksErrorMsg" style="color: var(--danger); font-size: 0.85rem; min-height: 18px; margin-bottom: 4px;"></div>
+        <div class="action-group" style="margin-top: 12px;">
+            <button class="btn-outline" id="cancelSetPacksBtn" style="flex: 1;">Cancel</button>
+            <button class="btn-primary" id="confirmSetPacksBtn" style="flex: 1;">Save &amp; Start Service</button>
         </div>
     </div>
 </div>
@@ -1417,6 +1441,15 @@
     });
 
     document.getElementById('startNewServiceBtn').addEventListener('click', async () => {
+        const packCount = sitesData[currentSiteName]?.count || 0;
+        if (packCount === 0) {
+            openSetPacksModal();
+            return;
+        }
+        await proceedWithNewService();
+    });
+
+    async function proceedWithNewService() {
         currentPonchoIndex = 1;
         PonchoDataCache = {}; 
         generalChecksCache = {};
@@ -1431,6 +1464,43 @@
         await loadSidebarNotes(); 
         navigateTo('serviceSection'); 
         renderPonchoUI();
+    }
+
+    // --- ZERO-PACK PROMPT ---
+    function openSetPacksModal() {
+        document.getElementById('setPacksSiteName').innerText = currentSiteName;
+        document.getElementById('setPacksInput').value = "";
+        document.getElementById('setPacksErrorMsg').innerText = "";
+        document.getElementById('setPacksModal').style.display = "block";
+        setTimeout(() => document.getElementById('setPacksInput').focus(), 100);
+    }
+
+    document.getElementById('closeSetPacksModalBtn').addEventListener('click', () => document.getElementById('setPacksModal').style.display = "none");
+    document.getElementById('cancelSetPacksBtn').addEventListener('click', () => document.getElementById('setPacksModal').style.display = "none");
+
+    document.getElementById('confirmSetPacksBtn').addEventListener('click', async () => {
+        const input = document.getElementById('setPacksInput');
+        const errorMsg = document.getElementById('setPacksErrorMsg');
+        const val = parseInt(input.value, 10);
+        if (isNaN(val) || val <= 0) {
+            errorMsg.innerText = "Enter a number greater than 0.";
+            return;
+        }
+        const confirmBtn = document.getElementById('confirmSetPacksBtn');
+        confirmBtn.disabled = true; confirmBtn.innerText = "Saving...";
+
+        totalPonchos = val;
+        const siteInfo = sitesData[currentSiteName];
+        if (siteInfo) {
+            siteInfo.count = val;
+            try { await setDoc(doc(db, "sites", siteInfo.id), { PonchoCount: val }, { merge: true }); }
+            catch (e) { console.warn("Could not save pack count to Firestore, continuing anyway:", e); }
+            pushSiteUpdateToSheet(currentSiteName, { packs: val }); // best-effort, mirrors into the Sheet too
+        }
+
+        document.getElementById('setPacksModal').style.display = "none";
+        confirmBtn.disabled = false; confirmBtn.innerText = "Save & Start Service";
+        await proceedWithNewService();
     });
 
     document.getElementById('fetchDatesBtn').addEventListener('click', async () => {
@@ -1611,6 +1681,10 @@
     });
     document.getElementById('notesAccordionToggle').addEventListener('click', () => {
         const c = document.getElementById('notesAccordionContent'); const i = document.getElementById('accordionIcon');
+        c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
+    });
+    document.getElementById('siteListAccordionToggle').addEventListener('click', () => {
+        const c = document.getElementById('siteListAccordionContent'); const i = document.getElementById('siteListAccordionIcon');
         c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
     });
 
