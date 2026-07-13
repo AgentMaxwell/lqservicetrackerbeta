@@ -33,9 +33,29 @@
  *                          the weekly email shows it, and CONFIG.SCHEDULE_NOTIFY_EMAILS below gets
  *                          an immediate email the moment a new service is scheduled). If the column
  *                          doesn't exist yet, it's just silently ignored.
+ *  - "Notes"                OPTIONAL, free text, manually maintained directly in the Sheet (this
+ *                          script never writes to it). Only surfaced in the weekly digest's
+ *                          "Scheduled" section, and only for rows that currently have a Scheduled
+ *                          Date — left out of the overdue/due-soon rows and out of the immediate
+ *                          "service scheduled" email entirely. If the column doesn't exist yet,
+ *                          it's just silently ignored.
  *
  * If your actual column headers differ, just edit the strings in CONFIG.COLUMNS
  * below to match — everything else in this file references them by name.
+ *
+ * OPTIONAL "Team" TAB — recipient lists without ever touching this script again.
+ * Add a second tab named exactly "Team" (per CONFIG.TEAM_SHEET_NAME) with two columns,
+ * one email address per row, columns independent of each other (different lengths are fine):
+ *
+ *   Weekly Digest Emails | Schedule Notification Emails
+ *   alice@example.com    | alice@example.com
+ *   bob@example.com      | carol@example.com
+ *
+ * "Weekly Digest Emails" receives the weekly overdue/due-soon/scheduled digest;
+ * "Schedule Notification Emails" receives the immediate email fired when a service is newly
+ * scheduled. If the "Team" tab (or a given column on it) doesn't exist yet, this script falls
+ * back to CONFIG.NOTIFY_EMAILS / CONFIG.SCHEDULE_NOTIFY_EMAILS below — so nothing breaks before
+ * you've set the tab up.
  */
 
 const CONFIG = {
@@ -50,21 +70,55 @@ const CONFIG = {
     PACK_COLOUR: "Pack Colour",             // R/G or R/B/P
     LAST_SERVICE_DATE: "Last Service Date",
     COMPLETED_BY: "Completed By",           // Optional — who completed the service, from the app's Representative field
+    NOTES: "Notes",                         // Optional — free text, only surfaced in the weekly digest's Scheduled section
     NEXT_SERVICE_DUE: "Next Service Due",   // Read-only here — driven by your existing formula
     SCHEDULED_DATE: "Scheduled Date",       // Optional — see note above
     SCHEDULED_TIME: "Scheduled Time",       // Optional — set alongside Scheduled Date
     SCHEDULED_REP: "Scheduled Rep"          // Optional — who's assigned to the scheduled visit
   },
 
+  // --- TEAM TAB (recipient lists live here once you set it up — see below) ---
+  TEAM_SHEET_NAME: "Team",
+  TEAM_COLUMNS: {
+    WEEKLY_DIGEST: "Weekly Digest Emails",
+    SCHEDULE_NOTIFY: "Schedule Notification Emails"
+  },
+
   // --- WEEKLY NOTIFICATION EMAIL ---
-  NOTIFY_EMAILS: ["team@example.com"], // Replace with your real recipient(s), comma-separate for multiple
+  // Used only as a fallback if the "Team" tab (or its "Weekly Digest Emails" column) doesn't
+  // exist yet — once that's set up, addresses there take over automatically.
+  NOTIFY_EMAILS: ["team@example.com"],
   DUE_WINDOW_DAYS: 30, // "Within one month" — sites due within this many days get included
 
   // --- IMMEDIATE "SERVICE SCHEDULED" EMAIL ---
-  // Separate recipient list — fires the moment someone schedules a service in the app (not just
-  // in the weekly digest). Leave as an empty array to disable this email entirely.
+  // Fires the moment someone schedules a service in the app (not just in the weekly digest).
+  // Same fallback rule as above — the "Schedule Notification Emails" column on the Team tab
+  // takes over once it exists. Leave this array empty to disable the email entirely (as a
+  // fallback) if you haven't set up the Team tab and don't want it firing yet.
   SCHEDULE_NOTIFY_EMAILS: ["team@example.com"]
 };
+
+// Reads a recipient list from the "Team" tab (one email per row, under the given column
+// header), falling back to a hardcoded CONFIG list if the tab or column doesn't exist yet —
+// so nothing breaks before you've set the tab up, and you never have to touch this script
+// again to add/remove someone from a distribution list afterwards.
+function getTeamEmails(columnHeader, fallbackEmails) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.TEAM_SHEET_NAME);
+    if (!sheet) return fallbackEmails; // "Team" tab not created yet
+    const headerMap = getHeaderMap(sheet);
+    const colIdx = headerMap[columnHeader];
+    if (!colIdx) return fallbackEmails; // column not found on the Team tab
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return fallbackEmails;
+    const values = sheet.getRange(2, colIdx, lastRow - 1, 1).getValues();
+    const emails = values.map(r => String(r[0] || "").trim()).filter(v => v.length > 0);
+    return emails.length > 0 ? emails : fallbackEmails;
+  } catch (err) {
+    console.error(`Failed to read Team tab emails for "${columnHeader}", using fallback:`, err);
+    return fallbackEmails;
+  }
+}
 
 // --- ENTRY POINTS ---
 
@@ -159,6 +213,7 @@ function readAllSites() {
   const scheduledCol = colIndex(headerMap, "SCHEDULED_DATE", false); // optional
   const scheduledTimeCol = colIndex(headerMap, "SCHEDULED_TIME", false); // optional
   const scheduledRepCol = colIndex(headerMap, "SCHEDULED_REP", false); // optional
+  const notesCol = colIndex(headerMap, "NOTES", false); // optional
 
   return data
     .filter(row => row[nameCol])
@@ -173,7 +228,8 @@ function readAllSites() {
       nextServiceDue: formatDateCell(row[nextServiceCol]),
       scheduledDate: scheduledCol !== null ? formatDateCell(row[scheduledCol]) : "",
       scheduledTime: scheduledTimeCol !== null ? formatTimeCell(row[scheduledTimeCol]) : "",
-      scheduledRep: scheduledRepCol !== null ? String(row[scheduledRepCol] || "").trim() : ""
+      scheduledRep: scheduledRepCol !== null ? String(row[scheduledRepCol] || "").trim() : "",
+      notes: notesCol !== null ? String(row[notesCol] || "").trim() : ""
     }));
 }
 
@@ -222,7 +278,16 @@ function updateSiteRow(siteName, updates) {
   }
   if (updates.scheduledTime !== undefined && updates.scheduledTime !== null) {
     const scheduledTimeColLetter = headerMap[CONFIG.COLUMNS.SCHEDULED_TIME];
-    if (scheduledTimeColLetter) sheet.getRange(targetRow, scheduledTimeColLetter).setValue(updates.scheduledTime);
+    if (scheduledTimeColLetter) {
+      const cell = sheet.getRange(targetRow, scheduledTimeColLetter);
+      // Force plain text BEFORE writing — otherwise Sheets auto-detects "20:00"-shaped strings
+      // and silently converts them into a real Time value, which then displays shifted by
+      // whatever gap exists between the spreadsheet's timezone and this script's project
+      // timezone (that's the "20:00 in the email vs 12:00 on the Sheet" bug). Plain text means
+      // exactly what was typed in the app is exactly what shows on the Sheet, no reinterpretation.
+      cell.setNumberFormat('@');
+      cell.setValue(updates.scheduledTime);
+    }
   }
   if (updates.scheduledRep !== undefined && updates.scheduledRep !== null) {
     const scheduledRepColLetter = headerMap[CONFIG.COLUMNS.SCHEDULED_REP];
@@ -286,6 +351,24 @@ function sendServiceDueEmailNow() {
   sendWeeklyServiceDueEmail();
 }
 
+// Manual diagnostic for the Team tab — run this from the Apps Script editor's function
+// dropdown (select "debugTeamEmails" > Run), then check View > Logs (or View > Execution log).
+// Shows exactly what tab/columns were found and which recipient list each email will actually
+// use, so a silent fallback (wrong tab name, wrong column header, empty column, etc.) is
+// visible instead of just "it's using the old addresses."
+function debugTeamEmails() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.TEAM_SHEET_NAME);
+  if (!sheet) {
+    console.log(`No tab named exactly "${CONFIG.TEAM_SHEET_NAME}" found (case-sensitive). Tabs in this spreadsheet: ${ss.getSheets().map(s => s.getName()).join(', ')}`);
+    return;
+  }
+  console.log(`Found "${CONFIG.TEAM_SHEET_NAME}" tab. Headers detected on row 1: ${JSON.stringify(getHeaderMap(sheet))}`);
+  console.log(`CONFIG.TEAM_COLUMNS.WEEKLY_DIGEST = "${CONFIG.TEAM_COLUMNS.WEEKLY_DIGEST}" -> resolved emails: ${JSON.stringify(getTeamEmails(CONFIG.TEAM_COLUMNS.WEEKLY_DIGEST, CONFIG.NOTIFY_EMAILS))}`);
+  console.log(`CONFIG.TEAM_COLUMNS.SCHEDULE_NOTIFY = "${CONFIG.TEAM_COLUMNS.SCHEDULE_NOTIFY}" -> resolved emails: ${JSON.stringify(getTeamEmails(CONFIG.TEAM_COLUMNS.SCHEDULE_NOTIFY, CONFIG.SCHEDULE_NOTIFY_EMAILS))}`);
+  console.log("If the resolved list above matches CONFIG.NOTIFY_EMAILS/SCHEDULE_NOTIFY_EMAILS exactly, the column header text doesn't match CONFIG.TEAM_COLUMNS (check for typos/extra spaces/case) or the column is empty.");
+}
+
 // Adds a "Service Tracker" menu to the spreadsheet itself (Extensions bar, next to Help),
 // so the email can be sent — or the weekly trigger installed — without opening the Apps
 // Script editor at all. Runs automatically whenever the sheet is opened.
@@ -328,9 +411,11 @@ function sendWeeklyServiceDueEmail() {
     : `Pack Service Tracker — nothing due within ${CONFIG.DUE_WINDOW_DAYS} days`;
 
   const html = buildEmailHtml(overdue, dueSoon, scheduled);
+  const recipients = getTeamEmails(CONFIG.TEAM_COLUMNS.WEEKLY_DIGEST, CONFIG.NOTIFY_EMAILS);
+  if (recipients.length === 0) return; // nobody to send to
 
   MailApp.sendEmail({
-    to: CONFIG.NOTIFY_EMAILS.join(','),
+    to: recipients.join(','),
     subject: subject,
     htmlBody: html
   });
@@ -365,6 +450,7 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${escapeHtml(s.scheduledDate)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledTime ? escapeHtml(s.scheduledTime) : '—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledRep ? escapeHtml(s.scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.notes ? escapeHtml(s.notes) : '—'}</td>
       </tr>`).join('');
     return `
       <h3 style="font-family:Arial,sans-serif;color:#2e7d32;margin-bottom:8px;">🟢 Scheduled</h3>
@@ -374,6 +460,7 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
           <th style="padding:6px 10px;">Date</th>
           <th style="padding:6px 10px;">Time</th>
           <th style="padding:6px 10px;">Representative</th>
+          <th style="padding:6px 10px;">Notes</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>`;
@@ -407,7 +494,8 @@ function stripTime(date) {
 // =====================================================================
 
 function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, scheduledRep) {
-  if (!CONFIG.SCHEDULE_NOTIFY_EMAILS || CONFIG.SCHEDULE_NOTIFY_EMAILS.length === 0) return;
+  const recipients = getTeamEmails(CONFIG.TEAM_COLUMNS.SCHEDULE_NOTIFY, CONFIG.SCHEDULE_NOTIFY_EMAILS);
+  if (!recipients || recipients.length === 0) return;
   try {
     const subject = `Pack Service Scheduled — ${siteName} on ${scheduledDate}`;
     const html = `
@@ -421,7 +509,7 @@ function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, s
         </table>
         <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;margin-top:16px;">Automated notification from Pack Service Tracker.</p>
       </div>`;
-    MailApp.sendEmail({ to: CONFIG.SCHEDULE_NOTIFY_EMAILS.join(','), subject: subject, htmlBody: html });
+    MailApp.sendEmail({ to: recipients.join(','), subject: subject, htmlBody: html });
   } catch (err) {
     console.error('Failed to send schedule notification email:', err);
   }

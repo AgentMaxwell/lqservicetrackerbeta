@@ -606,23 +606,6 @@
             margin-bottom: 12px;
             width: 100%;
         }
-        #sidebarGeneralChecksBtn,
-        #viewOverlayGridBtn,
-        #sidebarPrintBtn {
-            background: var(--card-bg-elevated) !important;
-            color: var(--text-main) !important;
-            border: 1px solid var(--border-color) !important;
-            justify-content: flex-start;
-            text-align: left;
-        }
-        #sidebarGeneralChecksBtn:hover,
-        #viewOverlayGridBtn:hover,
-        #sidebarPrintBtn:hover {
-            background: rgba(148, 163, 184, 0.1) !important;
-            border-color: var(--border-strong) !important;
-        }
-        #sidebarGeneralChecksBtn { color: #6EE7B7 !important; border-color: rgba(16,185,129,0.3) !important; }
-
         .accordion-toggle {
             display: flex;
             justify-content: space-between;
@@ -747,7 +730,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Pack Service Tracker <span class="version-badge">v0.6.3.1
+        <h1>Pack Service Tracker <span class="version-badge">v0.6.4
     </span></h1>
     </div>
 
@@ -795,7 +778,7 @@
             <h3 style="text-align: left; font-size: 1.1rem; margin-bottom: 14px; color: var(--accent);">🛠️ App Options & Configuration</h3>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn-outline" id="fullscreenToggleHomeBtn" style="font-size: 0.95rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">⛶ Fullscreen Mode</button>
+                <button class="btn-outline" id="fullscreenToggleHomeBtn" style="font-size: 0.95rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">🔲 Fullscreen Mode</button>
                 <button class="btn-outline" id="forceUpdateAppBtn" style="font-size: 0.95rem; background: rgba(244, 63, 94, 0.08); border-color: rgba(244, 63, 94, 0.25); color: #FDA4AF;">🔄 Force Update App</button>
             </div>
         </div>
@@ -1030,8 +1013,8 @@
     </div>
     
     <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 24px;">
-        <button class="btn-outline" id="navHomeBtnMenu" style="width: 100%; margin-bottom: 12px; background: rgba(148, 163, 184, 0.08);">🏠 Go to Home</button>
-        <button class="btn-outline" id="fullscreenBtnMenu" style="width: 100%; background: rgba(148, 163, 184, 0.08);">⛶ Toggle Fullscreen</button>
+        <button class="btn-outline" id="navHomeBtnMenu" style="width: 100%; margin-bottom: 12px;">🏠 Go to Home</button>
+        <button class="btn-outline" id="fullscreenBtnMenu" style="width: 100%;">🔲 Toggle Fullscreen</button>
     </div>
 </div>
 
@@ -1291,7 +1274,7 @@
     document.getElementById('fullscreenBtnMenu').addEventListener('click', toggleFullscreenAction);
 
     document.addEventListener('fullscreenchange', () => {
-        const label = document.fullscreenElement ? '🗗 Exit Fullscreen' : '⛶ Fullscreen Mode';
+        const label = document.fullscreenElement ? '🔳 Exit Fullscreen' : '🔲 Fullscreen Mode';
         document.getElementById('fullscreenToggleHomeBtn').innerText = label;
         document.getElementById('fullscreenBtnMenu').innerText = label;
     });
@@ -1444,9 +1427,20 @@
         const select = document.getElementById('siteSelect');
         const previousValue = select.value;
         select.innerHTML = '<option value="">-- Choose Site --</option>';
-        Object.keys(sitesData).sort().forEach(name => {
+        const names = Object.keys(sitesData).filter(name => sitesData[name].rented);
+        // Scheduled sites float to the top (soonest scheduled first), everything else follows alphabetically.
+        names.sort((a, b) => {
+            const sa = sitesData[a], sb = sitesData[b];
+            if (!!sa.scheduledDate !== !!sb.scheduledDate) return sa.scheduledDate ? -1 : 1;
+            if (sa.scheduledDate && sb.scheduledDate) {
+                const aKey = `${sa.scheduledDate}T${sa.scheduledTime || '00:00'}`;
+                const bKey = `${sb.scheduledDate}T${sb.scheduledTime || '00:00'}`;
+                if (aKey !== bKey) return aKey.localeCompare(bKey);
+            }
+            return a.localeCompare(b);
+        });
+        names.forEach(name => {
             const s = sitesData[name];
-            if (!s.rented) return; // Only rented-equipment sites are shown, per the Sheet's "Rented" column
             select.innerHTML += `<option value="${name}">${name} (${s.count} Packs${s.hardware ? ' · ' + s.hardware : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
         });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
@@ -2456,14 +2450,20 @@
             notesInnerHTML = `<textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${notes}</textarea>`;
         } else {
             const partIssues = commonIssuesByPart[part] || [];
-            const dropdownValue = notes === "" ? "" : (partIssues.includes(notes) ? notes : "__other__");
-            const showTextarea = dropdownValue === "__other__";
-            notesInnerHTML = `
-                <select class="issue-dropdown" data-type="${typeStr}" data-part="${part}">
-                    ${buildIssueOptionsHTML(part, dropdownValue)}
-                </select>
-                <textarea class="issue-other-textarea ${showTextarea ? 'visible' : ''}" data-type="${typeStr}" data-part="${part}" placeholder="Describe the issue & what was fixed...">${showTextarea ? notes : ''}</textarea>
-            `;
+            if (partIssues.length === 0) {
+                // No common issues configured for this part yet — a dropdown would just be an
+                // empty "Select Issue / Other" shell, so skip straight to a plain textbox.
+                notesInnerHTML = `<textarea data-type="${typeStr}" data-part="${part}" placeholder="Describe the issue & what was fixed...">${notes}</textarea>`;
+            } else {
+                const dropdownValue = notes === "" ? "" : (partIssues.includes(notes) ? notes : "__other__");
+                const showTextarea = dropdownValue === "__other__";
+                notesInnerHTML = `
+                    <select class="issue-dropdown" data-type="${typeStr}" data-part="${part}">
+                        ${buildIssueOptionsHTML(part, dropdownValue)}
+                    </select>
+                    <textarea class="issue-other-textarea ${showTextarea ? 'visible' : ''}" data-type="${typeStr}" data-part="${part}" placeholder="Describe the issue & what was fixed...">${showTextarea ? notes : ''}</textarea>
+                `;
+            }
         }
 
         return `
