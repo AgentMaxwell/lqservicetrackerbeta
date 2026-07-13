@@ -459,6 +459,56 @@
             margin-bottom: 0;
             min-height: 60px;
         }
+        .notes-area select.issue-dropdown {
+            width: 100%;
+            padding: 10px 30px 10px 12px;
+            font-size: 0.82rem;
+            min-height: 44px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--input-border);
+            background-color: rgba(0,0,0,0.35);
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            color: var(--text-main);
+            margin-bottom: 0;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .notes-area .issue-other-textarea { display: none; margin-top: 8px; }
+        .notes-area .issue-other-textarea.visible { display: block; }
+
+        /* ---------- Common Issues Admin ---------- */
+        .issue-chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .issue-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-pill);
+            padding: 8px 8px 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-height: 44px;
+        }
+        .issue-chip .chip-del-btn {
+            background: rgba(244, 63, 94, 0.15);
+            color: #FDA4AF;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            min-height: unset;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        .issue-chip .chip-del-btn:hover { background: rgba(244, 63, 94, 0.3); }
 
         /* ---------- Sticky Bottom Action Bar ---------- */
         .sticky-action-bar {
@@ -754,6 +804,17 @@
             <input type="number" id="newSiteCount" placeholder="e.g. 12">
             <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
         </div>
+
+        <div class="admin-card">
+            <h3 style="text-align:left; margin-bottom: 6px;">⚠️ Common Issues List</h3>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0; margin-bottom: 18px;">Each part has its own issue list, shown in its dropdown when "Issue" is selected. Choose a part below to manage its list.</p>
+            <label>Part</label>
+            <select id="issuePartSelect"></select>
+            <div id="commonIssuesChipList" class="issue-chip-list"><p style="color: var(--text-muted); text-align:center;">Loading...</p></div>
+            <label>Add New Issue</label>
+            <input type="text" id="newIssueInput" placeholder="e.g. Cracked Screen">
+            <button class="btn-primary" id="addIssueBtn" style="width: 100%;">Add Issue</button>
+        </div>
     </div>
 
     <div id="generalChecksSection" class="app-section">
@@ -881,12 +942,14 @@
     let fetchedServiceDocs = []; 
     let isDirty = false;    
     let currentFirmware = ""; // <-- Added firmware state
+    let commonIssuesByPart = {}; // <-- Configurable "Issue" dropdown options, PER PART, synced with Firestore
 
     // --- Arrays ---
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer" ];
     const PonchoPartsList = ["Fabric" , "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards", "Sensors"];
     const gunPartsList = ["Trigger", "Speaker", "GButton Reader", "Laser", "IR", "Outer Casing", "Nozzle", "GScrews", "Numbered Sticker", "Screen Protector", "Plastic Front of Gun", "GLEDs", "GSensors", "GBoards"];
     const allPonchoElements = [...PonchoPartsList, ...gunPartsList]; 
+    const allManagedParts = [...generalChecksList, ...PonchoPartsList, ...gunPartsList]; // Every part that can have a configurable issues list
 
     let generalChecksCache = {}; 
     let PonchoDataCache = {}; 
@@ -1024,6 +1087,93 @@
             document.getElementById('homeRepNameInput').value = savedName;
         }
         loadSites();
+        loadCommonIssues();
+    });
+
+    // --- COMMON ISSUES (Configurable "Issue" dropdown options, PER PART) ---
+    let selectedIssuePart = allManagedParts[0];
+
+    function seedDummyIssuesByPart() {
+        const seeded = {};
+        allManagedParts.forEach(part => { seeded[part] = ["Issue 1", "Issue 2", "Issue X"]; });
+        return seeded;
+    }
+
+    async function loadCommonIssues() {
+        try {
+            const snap = await getDoc(doc(db, "settings", "commonIssues"));
+            if (snap.exists() && snap.data().issuesByPart && typeof snap.data().issuesByPart === 'object') {
+                commonIssuesByPart = snap.data().issuesByPart;
+                // Backfill any part that doesn't have an entry yet (e.g. newly added to the app's part lists)
+                let changed = false;
+                allManagedParts.forEach(part => {
+                    if (!Array.isArray(commonIssuesByPart[part])) { commonIssuesByPart[part] = []; changed = true; }
+                });
+                if (changed) await saveCommonIssues();
+            } else {
+                // First run: seed dummy placeholders per part so the structure exists, then persist it.
+                commonIssuesByPart = seedDummyIssuesByPart();
+                await saveCommonIssues();
+            }
+        } catch (error) {
+            console.error("Failed to load common issues", error);
+            commonIssuesByPart = {};
+        }
+        initIssuePartSelector();
+    }
+
+    async function saveCommonIssues() {
+        try {
+            await setDoc(doc(db, "settings", "commonIssues"), { issuesByPart: commonIssuesByPart, lastUpdated: serverTimestamp() }, { merge: true });
+        } catch (error) {
+            alert("Could not save the common issues list. Check your connection and try again.");
+        }
+    }
+
+    function initIssuePartSelector() {
+        const select = document.getElementById('issuePartSelect');
+        if (!select) return;
+        select.innerHTML = '';
+        allManagedParts.forEach(part => {
+            select.innerHTML += `<option value="${part}" ${part === selectedIssuePart ? 'selected' : ''}>${part}</option>`;
+        });
+        select.onchange = (e) => { selectedIssuePart = e.target.value; renderCommonIssuesAdminList(); };
+        renderCommonIssuesAdminList();
+    }
+
+    function renderCommonIssuesAdminList() {
+        const listDiv = document.getElementById('commonIssuesChipList');
+        if (!listDiv) return;
+        listDiv.innerHTML = '';
+        const issues = commonIssuesByPart[selectedIssuePart] || [];
+        if (issues.length === 0) { listDiv.innerHTML = `<p style="color: var(--text-muted); text-align:center;">No common issues yet for "${selectedIssuePart}". Add one below.</p>`; return; }
+        issues.forEach(issue => {
+            const chip = document.createElement('div');
+            chip.className = 'issue-chip';
+            chip.innerHTML = `<span>${issue}</span><button class="chip-del-btn" data-issue="${issue}" type="button">&times;</button>`;
+            listDiv.appendChild(chip);
+        });
+        listDiv.querySelectorAll('.chip-del-btn').forEach(btn => btn.addEventListener('click', handleRemoveCommonIssue));
+    }
+
+    async function handleRemoveCommonIssue(e) {
+        const issue = e.target.getAttribute('data-issue');
+        if (!confirm(`Remove "${issue}" from "${selectedIssuePart}"'s issue list?`)) return;
+        commonIssuesByPart[selectedIssuePart] = (commonIssuesByPart[selectedIssuePart] || []).filter(i => i !== issue);
+        renderCommonIssuesAdminList();
+        await saveCommonIssues();
+    }
+
+    document.getElementById('addIssueBtn').addEventListener('click', async () => {
+        const input = document.getElementById('newIssueInput');
+        const val = input.value.trim();
+        if (!val) return;
+        if (!commonIssuesByPart[selectedIssuePart]) commonIssuesByPart[selectedIssuePart] = [];
+        if (commonIssuesByPart[selectedIssuePart].some(i => i.toLowerCase() === val.toLowerCase())) { alert(`That issue is already in the list for "${selectedIssuePart}".`); return; }
+        commonIssuesByPart[selectedIssuePart].push(val);
+        input.value = "";
+        renderCommonIssuesAdminList();
+        await saveCommonIssues();
     });
 
     async function loadSites() {
@@ -1056,6 +1206,7 @@
         });
         document.querySelectorAll('.btn-edit').forEach(btn => btn.addEventListener('click', handleEditSite));
         document.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleDeleteSite));
+        initIssuePartSelector();
     }
 
     async function handleEditSite(e) {
@@ -1203,22 +1354,7 @@
 
         generalChecksList.forEach(item => {
             if (!generalChecksCache[item]) generalChecksCache[item] = { status: null, notes: "" };
-            const data = generalChecksCache[item];
-            const id = item.replace(/\s+/g, '-').toLowerCase();
-            
-            const div = document.createElement('div');
-            div.className = 'part-section';
-            div.innerHTML = `
-                <div class="part-header">${item}</div>
-                <div class="button-group">
-                    <button class="btn-good ${data.status === 'Good' ? 'active' : ''}" data-type="general" data-part="${item}">All Good</button>
-                    <button class="btn-issue ${data.status === 'Issue' ? 'active' : ''}" data-type="general" data-part="${item}">Issue</button>
-                </div>
-                <div class="notes-area ${data.status === 'Issue' ? 'visible' : ''}" id="notes-${id}">
-                    <textarea data-type="general" data-part="${item}" placeholder="Describe issue...">${data.notes}</textarea>
-                </div>
-            `;
-            container.appendChild(div);
+            container.innerHTML += generatePartHTML(item, generalChecksCache[item], 'general');
         });
         attachInteractionListeners(container);
     }
@@ -1478,8 +1614,38 @@
         else { renderPonchoUI(); alert("All parts marked good. You are on the final Poncho."); }
     });
 
+    function buildIssueOptionsHTML(part, selectedValue) {
+        const issues = commonIssuesByPart[part] || [];
+        let opts = `<option value="">-- Select Issue --</option>`;
+        issues.forEach(issue => {
+            opts += `<option value="${issue}" ${selectedValue === issue ? 'selected' : ''}>${issue}</option>`;
+        });
+        opts += `<option value="__other__" ${selectedValue === '__other__' ? 'selected' : ''}>Other (type below)...</option>`;
+        return opts;
+    }
+
     function generatePartHTML(part, partData, typeStr) {
         const partId = part.replace(/\s+/g, '-').toLowerCase();
+        const notes = partData.notes || "";
+
+        // "Screens" keeps its dedicated Poncho-number picker modal (see openScreensModal) rather than the generic dropdown.
+        const isScreens = (typeStr === 'general' && part === 'Screens');
+
+        let notesInnerHTML;
+        if (isScreens) {
+            notesInnerHTML = `<textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${notes}</textarea>`;
+        } else {
+            const partIssues = commonIssuesByPart[part] || [];
+            const dropdownValue = notes === "" ? "" : (partIssues.includes(notes) ? notes : "__other__");
+            const showTextarea = dropdownValue === "__other__";
+            notesInnerHTML = `
+                <select class="issue-dropdown" data-type="${typeStr}" data-part="${part}">
+                    ${buildIssueOptionsHTML(part, dropdownValue)}
+                </select>
+                <textarea class="issue-other-textarea ${showTextarea ? 'visible' : ''}" data-type="${typeStr}" data-part="${part}" placeholder="Describe the issue & what was fixed...">${showTextarea ? notes : ''}</textarea>
+            `;
+        }
+
         return `
             <div class="part-section">
                 <div class="part-header">${part}</div>
@@ -1488,7 +1654,7 @@
                     <button class="btn-issue ${partData.status === 'Issue' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}">Issue</button>
                 </div>
                 <div class="notes-area ${partData.status === 'Issue' ? 'visible' : ''}" id="notes-${partId}">
-                    <textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${partData.notes}</textarea>
+                    ${notesInnerHTML}
                 </div>
             </div>
         `;
@@ -1534,6 +1700,7 @@
     function attachInteractionListeners(container) {
         const buttons = container.querySelectorAll('button');
         const textareas = container.querySelectorAll('textarea');
+        const dropdowns = container.querySelectorAll('.issue-dropdown');
 
         buttons.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1549,6 +1716,10 @@
                 if (isGoodBtn) {
                     notesArea.classList.remove('visible');
                     notesArea.querySelector('textarea').value = "";
+                    const dropdown = notesArea.querySelector('.issue-dropdown');
+                    if (dropdown) dropdown.value = "";
+                    const otherTextarea = notesArea.querySelector('.issue-other-textarea');
+                    if (otherTextarea) otherTextarea.classList.remove('visible');
                 } else {
                     notesArea.classList.add('visible');
                 }
@@ -1589,6 +1760,40 @@
                 }
             });
             ta.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
+        });
+
+        dropdowns.forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                const type = e.target.getAttribute('data-type');
+                const part = e.target.getAttribute('data-part');
+                const partId = part.replace(/\s+/g, '-').toLowerCase();
+                const notesArea = container.querySelector(`#notes-${partId}`);
+                const otherTextarea = notesArea.querySelector('.issue-other-textarea');
+                const value = e.target.value;
+
+                let newNotes;
+                if (value === '__other__') {
+                    otherTextarea.classList.add('visible');
+                    otherTextarea.value = "";
+                    otherTextarea.focus();
+                    newNotes = "";
+                } else {
+                    otherTextarea.classList.remove('visible');
+                    otherTextarea.value = "";
+                    newNotes = value; // either a picked common issue, or "" if reset to placeholder
+                }
+
+                if (type === 'general') {
+                    generalChecksCache[part].notes = newNotes;
+                    document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+                    document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+                } else {
+                    PonchoDataCache[currentPonchoIndex][part].notes = newNotes;
+                    isDirty = true;
+                    document.getElementById('saveIndicator').innerText = "Unsaved Changes...";
+                    document.getElementById('saveIndicator').style.color = "var(--text-muted)";
+                }
+            });
         });
     }
 
