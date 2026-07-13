@@ -315,8 +315,11 @@
             flex-direction: column;
             justify-content: center;
             text-align: center;
-            padding: 0 4px;
+            padding: 8px 12px;
             gap: 6px;
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
         }
         .Poncho-counter-text {
             color: var(--text-main);
@@ -961,15 +964,17 @@
                 <button class="btn-outline burger-menu-btn" style="flex: 0 0 52px; padding: 10px 2px; font-size: 0.95rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>
                 <button class="btn-outline" id="navSiteChecksBtn" style="flex: 0 0 128px; padding: 10px 8px; font-size: 0.88rem; white-space: nowrap; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site Checks</button>
                 <button class="btn-outline" id="navSiteNotesBtn" style="flex: 0 0 128px; padding: 10px 8px; font-size: 0.88rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
-                <button class="btn-primary" id="prevBtn" disabled style="flex: 0 0 96px; padding: 12px 6px; font-size: 0.92rem;">&laquo; Back</button>
-                <div class="nav-status" style="flex: 0 0 130px; padding: 0 2px;">
+                <div class="nav-status" style="flex: 0 0 130px; padding: 6px 10px;">
                     <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.85rem;">Pack 1 of X</div>
                     <div class="progress-container" style="height: 4px;">
                         <div class="progress-fill" id="progressBarFill"></div>
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
-                <button class="btn-primary" id="nextBtn" style="flex: 0 0 96px; padding: 12px 6px; font-size: 0.92rem;">Next &raquo;</button>
+                <div style="display: flex; gap: 4px; flex: 0 0 auto;">
+                    <button class="btn-outline" id="prevBtn" disabled style="flex: 0 0 96px; padding: 12px 6px; font-size: 0.92rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">&laquo; Back</button>
+                    <button class="btn-primary" id="nextBtn" style="flex: 0 0 96px; padding: 12px 6px; font-size: 0.92rem;">Next &raquo;</button>
+                </div>
             </div>
 
             <div class="grid-header">🎽 Poncho Elements</div>
