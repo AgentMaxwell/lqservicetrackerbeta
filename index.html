@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.6.3.1 — Completed-By Logging / Schedule Email
+           PACK SERVICE TRACKER v0.6.4.1 — Nav Sizing / Compact Service Grid
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -676,7 +676,7 @@
 
         /* ---------- Table ---------- */
         .table-responsive { overflow-x: auto; border-radius: var(--radius-md); background: var(--bg-color); border: 1px solid var(--border-color); }
-        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; min-width: 480px; }
         th, td { border-bottom: 1px solid var(--border-color); padding: 12px 10px; text-align: center; font-size: 0.9rem; }
         th { background: var(--card-bg-elevated); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); position: sticky; top: 0; }
         tr:nth-child(even) { background: rgba(255,255,255,0.015); }
@@ -730,7 +730,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Pack Service Tracker <span class="version-badge">v0.6.4
+        <h1>Pack Service Tracker <span class="version-badge">v0.6.4.1
     </span></h1>
     </div>
 
@@ -958,18 +958,18 @@
     <div id="serviceSection" class="app-section">
         <div class="service-main">
      <div class="nav-controls">
-                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 50px; padding: 10px 2px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>       
-                <button class="btn-outline" id="navSiteChecksBtn" style="flex: 1.3; max-width: 104px; padding: 10px 4px; font-size: 0.82rem; line-height: 1.15; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site<br>Checks</button>
-                <button class="btn-outline" id="navSiteNotesBtn" style="flex: 1.3; max-width: 104px; padding: 10px 4px; font-size: 0.82rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
-                <button class="btn-primary" id="prevBtn" disabled style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem;">&laquo; Back</button>
-                <div class="nav-status" style="flex: 0.8; padding: 0 2px;">
-                    <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.85rem;">Poncho 1 of X</div>
+                <button class="btn-outline burger-menu-btn" style="flex: 0 0 46px; padding: 10px 2px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>
+                <button class="btn-outline" id="navSiteChecksBtn" style="flex: 0 0 92px; padding: 10px 4px; font-size: 0.82rem; line-height: 1.15; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site<br>Checks</button>
+                <button class="btn-outline" id="navSiteNotesBtn" style="flex: 0 0 92px; padding: 10px 4px; font-size: 0.82rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
+                <button class="btn-primary" id="prevBtn" disabled style="flex: 0 0 76px; padding: 12px 4px; font-size: 0.85rem;">&laquo; Back</button>
+                <div class="nav-status" style="flex: 1 1 auto; min-width: 0; padding: 0 2px;">
+                    <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.85rem;">Pack 1 of X</div>
                     <div class="progress-container" style="height: 4px;">
                         <div class="progress-fill" id="progressBarFill"></div>
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
-                <button class="btn-primary" id="nextBtn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem;">Next &raquo;</button>
+                <button class="btn-primary" id="nextBtn" style="flex: 0 0 76px; padding: 12px 4px; font-size: 0.85rem;">Next &raquo;</button>
             </div>
 
             <div class="grid-header">🎽 Poncho Elements</div>
@@ -1019,7 +1019,7 @@
 </div>
 
 <div id="gridOverlayModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 640px;">
         <button class="modal-close-btn" id="closeModalBtn">&times;</button>
         <h2 style="margin-top: 0; text-align: left;">📊 Live Service Grid</h2>
         <div id="modalTableContainer" class="table-responsive">
@@ -2326,29 +2326,34 @@
             });
 
             const total = sitesData[currentSiteName].count;
-            let tableHTML = `<table><thead><tr><th>Poncho #</th>`;
-            allPonchoElements.forEach(p => tableHTML += `<th>${p}</th>`);
-            tableHTML += `<th>Notes</th></tr></thead><tbody>`;
+            // One row per pack, showing whether it's done and — if anything needs attention —
+            // exactly what. A column per part (20+ of them) got unreadable as the checklist grew;
+            // this stays scannable no matter how many parts get added later.
+            let tableHTML = `<table><thead><tr><th>Pack #</th><th>Status</th><th>Issues</th></tr></thead><tbody>`;
 
             for (let i = 1; i <= total; i++) {
                 let recordData = PonchoDataCache[i] || (serviceMap[`Poncho ${i}`] ? serviceMap[`Poncho ${i}`].serviceDetails : null);
-                
+
                 if (recordData) {
                     let allNotes = [];
-                    tableHTML += `<tr><td><strong>${i}</strong></td>`;
-                    
+                    let checkedCount = 0;
                     allPonchoElements.forEach(part => {
                         const status = recordData[part]?.status;
-                        if (status === 'Good') tableHTML += `<td><span class="tick">✔</span></td>`;
+                        if (status === 'Good') checkedCount++;
                         else if (status === 'Issue') {
-                            if (recordData[part].notes) allNotes.push(`<strong>${part}:</strong> ${recordData[part].notes}`);
-                            tableHTML += `<td><span class="cross">✘</span></td>`;
-                        } else tableHTML += `<td><span class="pending">-</span></td>`;
+                            checkedCount++;
+                            allNotes.push(`<strong>${part}:</strong> ${recordData[part].notes || 'Issue logged'}`);
+                        }
                     });
-                    
-                    tableHTML += `<td class="notes-cell">${allNotes.join('<br>') || '<span style="color: var(--success);">None</span>'}</td></tr>`;
+
+                    let statusHtml;
+                    if (checkedCount === 0) statusHtml = `<span class="pending">Not Started</span>`;
+                    else if (allNotes.length > 0) statusHtml = `<span class="cross">✘ ${allNotes.length} Issue${allNotes.length > 1 ? 's' : ''}</span>`;
+                    else statusHtml = `<span class="tick">✔ All Good</span>`;
+
+                    tableHTML += `<tr><td><strong>${i}</strong></td><td>${statusHtml}</td><td class="notes-cell">${allNotes.join('<br>') || '<span style="color: var(--success);">None</span>'}</td></tr>`;
                 } else {
-                    tableHTML += `<tr><td><strong>${i}</strong></td><td colspan="${allPonchoElements.length + 1}" class="pending">Not Serviced Yet</td></tr>`;
+                    tableHTML += `<tr><td><strong>${i}</strong></td><td colspan="2" class="pending">Not Serviced Yet</td></tr>`;
                 }
             }
             tableHTML += `</tbody></table>`;
@@ -2491,7 +2496,7 @@
         gunContainer.style.opacity = '0';
 
         setTimeout(() => {
-            document.getElementById('PonchoCounterText').innerText = `Poncho ${currentPonchoIndex} of ${totalPonchos}`;
+            document.getElementById('PonchoCounterText').innerText = `Pack ${currentPonchoIndex} of ${totalPonchos}`;
             document.getElementById('prevBtn').disabled = currentPonchoIndex === 1;
             document.getElementById('nextBtn').innerText = currentPonchoIndex === totalPonchos ? "Finish" : "Next \u00BB";
             document.getElementById('progressBarFill').style.width = `${(currentPonchoIndex / totalPonchos) * 100}%`;
