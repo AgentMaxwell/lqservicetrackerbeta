@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v0.6.2 — Consistent Modals / Tablet UX Pass
+           Poncho SERVICE TRACKER v0.6.3 — Completed-By Logging / Schedule Email
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -242,7 +242,6 @@
         }
         .action-group { display: flex; gap: 12px; margin-top: 12px; }
         .action-group button { flex: 1; }
-        #toggleAdminBtn { width: 100%; margin-top: 14px; }
 
         /* ---------- Admin ---------- */
         #adminSection { max-width: 780px; margin: 0 auto; width: 100%; padding-top: 12px; }
@@ -748,7 +747,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.6.2
+        <h1>Poncho Service Tracker <span class="version-badge">v0.6.3
     </span></h1>
     </div>
 
@@ -1313,17 +1312,6 @@
         }
     });
 
-    // --- Auto-Fullscreen on First Interaction ---
-    function enableFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => console.log("Fullscreen auto-play blocked."));
-        }
-        document.removeEventListener('click', enableFullscreen);
-        document.removeEventListener('touchstart', enableFullscreen);
-    }
-    document.addEventListener('click', enableFullscreen);
-    document.addEventListener('touchstart', enableFullscreen);
-
     // --- 1. INITIALIZATION ---
     window.addEventListener('DOMContentLoaded', () => {
         const savedName = localStorage.getItem('inspectorName');
@@ -1559,13 +1547,13 @@
         }
     }
 
-    async function pushServiceCompletionToSheet(siteName, serviceDate) {
+    async function pushServiceCompletionToSheet(siteName, serviceDate, completedBy) {
         if (!sheetSyncConfigured()) return;
         try {
             await fetch(SHEET_SYNC_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'completeService', secret: SHEET_SYNC_SECRET, siteName, serviceDate })
+                body: JSON.stringify({ action: 'completeService', secret: SHEET_SYNC_SECRET, siteName, serviceDate, completedBy })
             });
         } catch (error) {
             console.warn("Could not push service completion to Google Sheet:", error);
@@ -2829,7 +2817,7 @@
                 // Best-effort push to the Sheet — writes Last Service Date, letting the Sheet's
                 // existing formula recalculate Next Service Due automatically. Not awaited so a
                 // slow/offline Apps Script call never blocks completing the service in-app.
-                pushServiceCompletionToSheet(currentSiteName, activeServiceDate);
+                pushServiceCompletionToSheet(currentSiteName, activeServiceDate, currentRepresentative || "");
             }
 
             statusMsg.innerText = "Service Completed ✓";

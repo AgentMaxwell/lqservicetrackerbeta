@@ -16,7 +16,7 @@
  * EXPECTED SHEET LAYOUT (tab named per CONFIG.SHEET_NAME, row 1 = headers,
  * headers can be in any column order — they're matched by name, not position):
  *
- *   Site Name | Rented | Number of Packs | Hardware | Firmware | Pack Colour | Last Service Date | Next Service Due | Scheduled Date
+ *   Site Name | Rented | Number of Packs | Hardware | Firmware | Pack Colour | Last Service Date | Completed By | Next Service Due | Scheduled Date
  *
  *  - "Rented"            TRUE/FALSE, or Yes/No — only rows marked rented show up in the app.
  *  - "Hardware"           free text, e.g. "HSDU" or "WIFI".
@@ -24,11 +24,15 @@
  *  - "Next Service Due"   left untouched by this script — keep your existing formula there
  *                          (e.g. =EDATE([Last Service Date], 3)); it recalculates automatically
  *                          whenever this script updates "Last Service Date".
- *  - "Scheduled Date"      OPTIONAL, for the upcoming in-app scheduling feature. Add this column
- *                          whenever you're ready for it — everything here already supports it
- *                          (readAllSites returns it, updateSiteRow can write it via the
- *                          "scheduleService" action, and the weekly email shows it). If the
- *                          column doesn't exist yet, it's just silently ignored.
+ *  - "Completed By"        OPTIONAL. Whoever tapped "Complete Service" in the app (the
+ *                          Representative field) gets written here alongside Last Service Date.
+ *                          If the column doesn't exist yet, it's just silently ignored.
+ *  - "Scheduled Date"      OPTIONAL, for the in-app scheduling feature. Add this column whenever
+ *                          you're ready for it — everything here already supports it (readAllSites
+ *                          returns it, updateSiteRow can write it via the "scheduleService" action,
+ *                          the weekly email shows it, and CONFIG.SCHEDULE_NOTIFY_EMAILS below gets
+ *                          an immediate email the moment a new service is scheduled). If the column
+ *                          doesn't exist yet, it's just silently ignored.
  *
  * If your actual column headers differ, just edit the strings in CONFIG.COLUMNS
  * below to match — everything else in this file references them by name.
@@ -45,6 +49,7 @@ const CONFIG = {
     FIRMWARE: "Firmware",
     PACK_COLOUR: "Pack Colour",             // R/G or R/B/P
     LAST_SERVICE_DATE: "Last Service Date",
+    COMPLETED_BY: "Completed By",           // Optional — who completed the service, from the app's Representative field
     NEXT_SERVICE_DUE: "Next Service Due",   // Read-only here — driven by your existing formula
     SCHEDULED_DATE: "Scheduled Date",       // Optional — see note above
     SCHEDULED_TIME: "Scheduled Time",       // Optional — set alongside Scheduled Date
@@ -53,7 +58,12 @@ const CONFIG = {
 
   // --- WEEKLY NOTIFICATION EMAIL ---
   NOTIFY_EMAILS: ["team@example.com"], // Replace with your real recipient(s), comma-separate for multiple
-  DUE_WINDOW_DAYS: 30 // "Within one month" — sites due within this many days get included
+  DUE_WINDOW_DAYS: 30, // "Within one month" — sites due within this many days get included
+
+  // --- IMMEDIATE "SERVICE SCHEDULED" EMAIL ---
+  // Separate recipient list — fires the moment someone schedules a service in the app (not just
+  // in the weekly digest). Leave as an empty array to disable this email entirely.
+  SCHEDULE_NOTIFY_EMAILS: ["team@example.com"]
 };
 
 // --- ENTRY POINTS ---
@@ -82,11 +92,17 @@ function doPost(e) {
       return jsonOutput({ ok: true });
     }
     if (body.action === "completeService") {
-      updateSiteRow(body.siteName, { lastServiceDate: body.serviceDate });
+      updateSiteRow(body.siteName, { lastServiceDate: body.serviceDate, completedBy: body.completedBy });
       return jsonOutput({ ok: true });
     }
     if (body.action === "scheduleService") {
       updateSiteRow(body.siteName, { scheduledDate: body.scheduledDate, scheduledTime: body.scheduledTime, scheduledRep: body.scheduledRep });
+      // Only fire the "newly scheduled" email when a date is actually being set — this same
+      // action is also used to CLEAR a schedule (e.g. after starting it, or an admin clearing it),
+      // and those clears shouldn't trigger a "service scheduled" notification.
+      if (body.scheduledDate) {
+        sendScheduleNotificationEmail(body.siteName, body.scheduledDate, body.scheduledTime, body.scheduledRep);
+      }
       return jsonOutput({ ok: true });
     }
     return jsonOutput({ ok: false, error: "Unknown action" });
@@ -193,6 +209,10 @@ function updateSiteRow(siteName, updates) {
   if (updates.lastServiceDate !== undefined && updates.lastServiceDate !== null) {
     sheet.getRange(targetRow, headerMap[CONFIG.COLUMNS.LAST_SERVICE_DATE]).setValue(updates.lastServiceDate);
     // Next Service Due is intentionally left alone — your existing formula recalculates it.
+  }
+  if (updates.completedBy) {
+    const completedByColLetter = headerMap[CONFIG.COLUMNS.COMPLETED_BY];
+    if (completedByColLetter) sheet.getRange(targetRow, completedByColLetter).setValue(updates.completedBy);
   }
   if (updates.scheduledDate !== undefined && updates.scheduledDate !== null) {
     const scheduledColLetter = headerMap[CONFIG.COLUMNS.SCHEDULED_DATE];
@@ -378,6 +398,33 @@ function parseDate(yyyyMmDd) {
 
 function stripTime(date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+// =====================================================================
+// IMMEDIATE "SERVICE SCHEDULED" EMAIL — fires right away from doPost's
+// scheduleService action, separate from the weekly digest and its own
+// recipient list (CONFIG.SCHEDULE_NOTIFY_EMAILS).
+// =====================================================================
+
+function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, scheduledRep) {
+  if (!CONFIG.SCHEDULE_NOTIFY_EMAILS || CONFIG.SCHEDULE_NOTIFY_EMAILS.length === 0) return;
+  try {
+    const subject = `Poncho Service Scheduled — ${siteName} on ${scheduledDate}`;
+    const html = `
+      <div style="font-family:Arial,sans-serif;">
+        <h3 style="color:#2e7d32;margin-bottom:10px;">🟢 New Service Scheduled</h3>
+        <table style="border-collapse:collapse;font-size:14px;">
+          <tr><td style="padding:4px 10px;color:#666;">Site</td><td style="padding:4px 10px;"><strong>${escapeHtml(siteName)}</strong></td></tr>
+          <tr><td style="padding:4px 10px;color:#666;">Date</td><td style="padding:4px 10px;"><strong>${escapeHtml(scheduledDate)}</strong></td></tr>
+          <tr><td style="padding:4px 10px;color:#666;">Time</td><td style="padding:4px 10px;">${scheduledTime ? escapeHtml(scheduledTime) : '—'}</td></tr>
+          <tr><td style="padding:4px 10px;color:#666;">Representative</td><td style="padding:4px 10px;">${scheduledRep ? escapeHtml(scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td></tr>
+        </table>
+        <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;margin-top:16px;">Automated notification from Poncho Service Tracker.</p>
+      </div>`;
+    MailApp.sendEmail({ to: CONFIG.SCHEDULE_NOTIFY_EMAILS.join(','), subject: subject, htmlBody: html });
+  } catch (err) {
+    console.error('Failed to send schedule notification email:', err);
+  }
 }
 
 function escapeHtml(str) {
