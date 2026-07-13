@@ -539,22 +539,25 @@
         .slide-out-menu {
             position: fixed;
             top: 0;
-            left: -380px;
-            width: 380px;
+            left: 0;
+            width: min(380px, 92vw);
+            max-width: 92vw;
             height: 100%;
+            height: 100dvh;
             background: var(--card-bg);
             background-image: linear-gradient(180deg, rgba(99,102,241,0.06), transparent 30%);
             z-index: 2000;
-            transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             padding: 24px;
             overflow-y: auto;
-            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
             box-sizing: border-box;
             box-shadow: var(--shadow-lg);
             display: flex;
             flex-direction: column;
         }
-        .slide-out-menu.open { left: 0; }
+        .slide-out-menu.open { transform: translateX(0); }
         .menu-backdrop {
             position: fixed;
             top: 0;
@@ -705,7 +708,6 @@
         @media (max-width: 900px) {
             #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(3, 1fr); }
             .app-header h1 { font-size: 1.05rem; }
-            .slide-out-menu { width: 88vw; right: -88vw; }
         }
         @media (max-width: 600px) {
             #PonchoPartsContainer, #gunPartsContainer, #generalPartsContainer { grid-template-columns: repeat(2, 1fr); }
@@ -733,7 +735,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.5.2.21
+        <h1>Poncho Service Tracker <span class="version-badge">v0.5.3
     </span></h1>
     </div>
 
@@ -819,17 +821,26 @@
 
     <div id="generalChecksSection" class="app-section">
         <div class="nav-controls">
+            <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>
             <button class="btn-primary" id="backToPonchosBtn" style="max-width: 80px; padding: 12px 8px;">&laquo; Back</button>
             <div class="nav-status">
                 <div class="Poncho-counter-text">☑️ General Site Checks</div>
                 <div class="save-indicator" id="generalSaveIndicator">Cloud Synced ✓</div>
             </div>
-            <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 70px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰ Menu</button>
         </div>
 
         <div style="padding: 0 10px 10px;">
-            <label for="siteFirmwareInput">Site Firmware Version</label>
-            <input type="text" id="siteFirmwareInput" placeholder="e.g., v2.4.1" style="margin-bottom: 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label for="siteFirmwareInput">Site Firmware Version</label>
+                    <input type="text" id="siteFirmwareInput" placeholder="e.g., v2.4.1" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="sitePackCountInput">Number of Poncho Packs</label>
+                    <input type="number" id="sitePackCountInput" min="0" placeholder="e.g., 12" style="margin-bottom: 0;">
+                </div>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Hardware: <strong id="siteHardwareLabel" style="color: var(--text-main); text-transform: uppercase;">—</strong></div>
         </div>
         <div class="grid-header">Facility Equipment</div>
         <div id="generalPartsContainer"></div>
@@ -896,6 +907,10 @@
             <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
             <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
         </div>
+
+        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+            <button class="btn-success" id="completeServiceBtn" style="width: 100%;">✅ Complete Service</button>
+        </div>
     </div>
     
     <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 24px;">
@@ -926,11 +941,37 @@
     </div>
 </div>
 
+<div id="completeServiceModal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+        <button class="modal-close-btn" id="closeCompleteServiceModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">✅ Complete Service?</h2>
+        <p style="color: var(--text-muted); line-height: 1.5;">
+            This will finish the service for <strong id="completeServiceSiteName" style="color: var(--text-main);"></strong>
+            and update the service date. This cannot be undone from within the app.
+        </p>
+        <div id="completeServiceStatusMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; min-height: 20px; margin-bottom: 4px;"></div>
+        <div class="action-group" style="margin-top: 18px;">
+            <button class="btn-outline" id="cancelCompleteServiceBtn" style="flex: 1;">Cancel</button>
+            <button class="btn-success" id="confirmCompleteServiceBtn" style="flex: 1;">Yes, Complete Service</button>
+        </div>
+    </div>
+</div>
+
 <div id="printOnlyArea"></div>
 
 <script type="module">
     import { db } from './firebase-config.js';
     import { collection, addDoc, setDoc, getDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // --- GOOGLE SHEETS SYNC CONFIG ---
+    // Paste the Apps Script Web App URL here after deploying (Deploy > New deployment > Web app,
+    // Execute as "Me", Who has access "Anyone"). See AppsScript-Code.gs for the server-side half.
+    const SHEET_SYNC_URL = "https://script.google.com/macros/s/AKfycbz9ZLusFq2gAUpoLE9Ai7NNKN5CUinGD8PrGvr-_OWQ2hUfAcsuEmK3oT1vwqFiscsCVA/exec";
+    // Must exactly match CONFIG.SECRET in AppsScript-Code.gs. Not real security (anyone with the
+    // URL + secret can call it) but keeps casual/accidental hits out, consistent with this app
+    // having no other auth layer.
+    const SHEET_SYNC_SECRET = "TERCES";
+    const sheetSyncConfigured = () => SHEET_SYNC_URL && !SHEET_SYNC_URL.startsWith("PASTE_YOUR");
 
     // --- Expanded App State ---
     let sitesData = {}; 
@@ -1177,18 +1218,97 @@
     });
 
     async function loadSites() {
-        const select = document.getElementById('siteSelect');
-        select.innerHTML = '<option value="">-- Choose Site --</option>';
+        sitesData = {};
         try {
             const querySnapshot = await getDocs(collection(db, "sites"));
-            sitesData = {};
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                const count = data.PonchoCount || data.gearCount || 0; 
-                sitesData[data.name] = { id: doc.id, count: count };
-                select.innerHTML += `<option value="${data.name}">${data.name} (${count} Ponchos)</option>`;
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const count = data.PonchoCount ?? data.ponchoCount ?? data.count ?? 0; // legacy schema fallback ladder
+                sitesData[data.name] = {
+                    id: docSnap.id,
+                    count: count,
+                    hardware: data.hardware || "",
+                    firmware: data.firmware || "",
+                    rented: data.rented !== false, // undefined/missing (e.g. manually-added sites) defaults to shown
+                    lastServiceDate: data.lastServiceDate || "",
+                    nextServiceDue: data.nextServiceDue || ""
+                };
             });
-        } catch (error) { console.error(error); }
+        } catch (error) { console.error("Failed to load sites from Firestore", error); }
+
+        renderSiteDropdown(); // Show cached data immediately (offline-first)
+        await syncSitesFromSheet(); // Best-effort refresh from the Sheet, then re-render
+        renderSiteDropdown();
+    }
+
+    function renderSiteDropdown() {
+        const select = document.getElementById('siteSelect');
+        const previousValue = select.value;
+        select.innerHTML = '<option value="">-- Choose Site --</option>';
+        Object.keys(sitesData).sort().forEach(name => {
+            const s = sitesData[name];
+            if (!s.rented) return; // Only rented-equipment sites are shown, per the Sheet's "Rented" column
+            select.innerHTML += `<option value="${name}">${name} (${s.count} Ponchos${s.hardware ? ' · ' + s.hardware : ''})</option>`;
+        });
+        if (previousValue && sitesData[previousValue]) select.value = previousValue;
+    }
+
+    // --- GOOGLE SHEETS SYNC (via Apps Script Web App — see AppsScript-Code.gs) ---
+    async function syncSitesFromSheet() {
+        if (!sheetSyncConfigured()) return; // Not deployed yet; app keeps working from Firestore alone
+        try {
+            const url = `${SHEET_SYNC_URL}?action=listSites&secret=${encodeURIComponent(SHEET_SYNC_SECRET)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
+            const payload = await res.json();
+            if (!payload.ok || !Array.isArray(payload.sites)) throw new Error(payload.error || "Malformed sheet response");
+
+            for (const row of payload.sites) {
+                if (!row.siteName) continue;
+                const existing = sitesData[row.siteName];
+                const docId = existing ? existing.id : `sheet-${row.siteName.replace(/\s+/g, '-').toLowerCase()}`;
+                const mergedData = {
+                    name: row.siteName,
+                    rented: !!row.rented,
+                    PonchoCount: row.packs || 0,
+                    hardware: row.hardware || "",
+                    firmware: row.firmware || "",
+                    lastServiceDate: row.lastServiceDate || "",
+                    nextServiceDue: row.nextServiceDue || ""
+                };
+                await setDoc(doc(db, "sites", docId), mergedData, { merge: true });
+                sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue };
+            }
+        } catch (error) {
+            console.warn("Could not refresh sites from Google Sheet (using cached Firestore data instead):", error);
+        }
+    }
+
+    // Best-effort push, fires and forgets — never blocks or breaks the Firestore save if offline/unreachable.
+    async function pushSiteUpdateToSheet(siteName, updates) {
+        if (!sheetSyncConfigured()) return;
+        try {
+            await fetch(SHEET_SYNC_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight against Apps Script
+                body: JSON.stringify({ action: 'updateSite', secret: SHEET_SYNC_SECRET, siteName, ...updates })
+            });
+        } catch (error) {
+            console.warn("Could not push site update to Google Sheet:", error);
+        }
+    }
+
+    async function pushServiceCompletionToSheet(siteName, serviceDate) {
+        if (!sheetSyncConfigured()) return;
+        try {
+            await fetch(SHEET_SYNC_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'completeService', secret: SHEET_SYNC_SECRET, siteName, serviceDate })
+            });
+        } catch (error) {
+            console.warn("Could not push service completion to Google Sheet:", error);
+        }
     }
 
     // --- 2. ADMIN CRUD ---
@@ -1246,9 +1366,10 @@
         PonchoDataCache = {}; 
         generalChecksCache = {};
         
-        // Reset Firmware UI and state
-        currentFirmware = "";
-        document.getElementById('siteFirmwareInput').value = "";
+        // Pre-fill firmware from the site's last known value (kept up to date via the Sheet sync)
+        // rather than blanking it — the tech only needs to change it if it's actually different.
+        currentFirmware = sitesData[currentSiteName]?.firmware || "";
+        document.getElementById('siteFirmwareInput').value = currentFirmware;
         
         activeServiceDate = new Date().toISOString().split('T')[0]; 
         
@@ -1347,6 +1468,22 @@
             document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
         };
 
+        // --- NUMBER OF PACKS (resizes the current service's Poncho list immediately) ---
+        const packCountInput = document.getElementById('sitePackCountInput');
+        packCountInput.value = totalPonchos || "";
+        packCountInput.oninput = (e) => {
+            const newCount = parseInt(e.target.value, 10);
+            if (!isNaN(newCount) && newCount >= 0) {
+                totalPonchos = newCount;
+                if (sitesData[currentSiteName]) sitesData[currentSiteName].count = newCount;
+            }
+            document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+            document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+        };
+
+        // --- HARDWARE (read-only, sourced from the Sheet) ---
+        document.getElementById('siteHardwareLabel').innerText = sitesData[currentSiteName]?.hardware || "Unknown";
+
         const container = document.getElementById('generalPartsContainer');
         container.innerHTML = '';
         document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
@@ -1378,6 +1515,17 @@
                 firmware: currentFirmware,
                 lastUpdated: serverTimestamp()
             }, { merge: true });
+
+            // Keep the site record (and next dropdown load) in sync with any firmware/pack-count
+            // edits made here, and best-effort mirror those same values back to the Google Sheet.
+            const siteInfo = sitesData[currentSiteName];
+            if (siteInfo) {
+                siteInfo.count = totalPonchos;
+                siteInfo.firmware = currentFirmware;
+                await setDoc(doc(db, "sites", siteInfo.id), { PonchoCount: totalPonchos, firmware: currentFirmware }, { merge: true });
+                pushSiteUpdateToSheet(currentSiteName, { packs: totalPonchos, firmware: currentFirmware }); // not awaited — best effort, won't block the save
+            }
+
             document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
             document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
         } catch (error) { document.getElementById('generalSaveIndicator').innerText = "Sync Failed"; }
@@ -1661,6 +1809,9 @@
     }
 
     function renderPonchoUI() {
+        // If "Number of Poncho Packs" was reduced mid-service, don't leave the index pointing past the new total.
+        if (totalPonchos > 0 && currentPonchoIndex > totalPonchos) currentPonchoIndex = totalPonchos;
+
         const PonchoContainer = document.getElementById('PonchoPartsContainer');
         const gunContainer = document.getElementById('gunPartsContainer');
         
@@ -1854,6 +2005,70 @@
         screensModal.style.display = "none";
         document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
         document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+    });
+
+    // --- 9. COMPLETE SERVICE ---
+    const completeServiceModal = document.getElementById('completeServiceModal');
+
+    document.getElementById('completeServiceBtn').addEventListener('click', () => {
+        if (!currentSiteName || !activeServiceDate) {
+            toggleMenu();
+            alert("Start or load a service before completing it.");
+            return;
+        }
+        toggleMenu();
+        document.getElementById('completeServiceSiteName').innerText = currentSiteName;
+        document.getElementById('completeServiceStatusMsg').innerText = "";
+        const confirmBtn = document.getElementById('confirmCompleteServiceBtn');
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Yes, Complete Service";
+        completeServiceModal.style.display = "block";
+    });
+
+    document.getElementById('closeCompleteServiceModalBtn').addEventListener('click', () => completeServiceModal.style.display = "none");
+    document.getElementById('cancelCompleteServiceBtn').addEventListener('click', () => completeServiceModal.style.display = "none");
+
+    document.getElementById('confirmCompleteServiceBtn').addEventListener('click', async () => {
+        const confirmBtn = document.getElementById('confirmCompleteServiceBtn');
+        const statusMsg = document.getElementById('completeServiceStatusMsg');
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = "Completing...";
+        statusMsg.innerText = "Saving final checklist data...";
+        statusMsg.style.color = "var(--text-muted)";
+
+        try {
+            // Flush any pending Poncho / General Checks edits first, so nothing is lost.
+            await triggerBackgroundSave();
+            await saveGeneralChecks();
+
+            const siteInfo = sitesData[currentSiteName];
+            if (siteInfo) {
+                // Records the completed service date on the site record itself.
+                await setDoc(doc(db, "sites", siteInfo.id), {
+                    lastServiceDate: activeServiceDate,
+                    lastServiceCompletedAt: serverTimestamp()
+                }, { merge: true });
+                siteInfo.lastServiceDate = activeServiceDate;
+                // Best-effort push to the Sheet — writes Last Service Date, letting the Sheet's
+                // existing formula recalculate Next Service Due automatically. Not awaited so a
+                // slow/offline Apps Script call never blocks completing the service in-app.
+                pushServiceCompletionToSheet(currentSiteName, activeServiceDate);
+            }
+
+            statusMsg.innerText = "Service Completed ✓";
+            statusMsg.style.color = "var(--success)";
+
+            setTimeout(() => {
+                completeServiceModal.style.display = "none";
+                navigateTo('setupSection');
+            }, 900);
+        } catch (error) {
+            console.error(error);
+            statusMsg.innerText = "Failed to complete service. Check connection and try again.";
+            statusMsg.style.color = "var(--danger)";
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Yes, Complete Service";
+        }
     });
 
 </script>
