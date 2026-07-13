@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Poncho Service Tracker</title>
+    <title>Pack Service Tracker</title>
 
     <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v0.6.3 — Completed-By Logging / Schedule Email
+           PACK SERVICE TRACKER v0.6.3.1 — Completed-By Logging / Schedule Email
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -747,7 +747,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.6.3
+        <h1>Pack Service Tracker <span class="version-badge">v0.6.3.1
     </span></h1>
     </div>
 
@@ -784,9 +784,11 @@
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-            <button class="btn-outline" id="goToScheduleBtn">📅 Schedule a Service</button>
-            <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+        <div class="hero-card" style="margin-top: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn-outline" id="goToScheduleBtn">📅 Schedule a Service</button>
+                <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+            </div>
         </div>
 
         <div class="hero-card" style="margin-top: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));">
@@ -823,7 +825,7 @@
             <h3 style="text-align:left; margin-bottom: 18px;">➕ Add New Site</h3>
             <label>Site Name</label>
             <input type="text" id="newSiteName" placeholder="e.g. Site Delta">
-            <label>Number of Ponchos</label>
+            <label>Number of Packs</label>
             <input type="number" id="newSiteCount" placeholder="e.g. 12">
             <button class="btn-primary" id="saveSiteBtn" style="width: 100%;">Save New Site</button>
             <div id="newSiteMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; min-height: 20px; margin-top: 8px;"></div>
@@ -874,8 +876,8 @@
         <button class="btn-outline" id="notesBackBtn" style="margin-bottom: 18px;">&laquo; Back</button>
         <div class="hero-card">
             <h2 style="text-align: left;">📝 General Site Notes</h2>
-            <p class="hero-subtitle" style="text-align: left;">Broad facility notes, missing Ponchos, anything that doesn't fit a specific checklist item.</p>
-            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility notes, missing Ponchos, etc..." style="min-height: 320px;"></textarea>
+            <p class="hero-subtitle" style="text-align: left;">Broad facility notes, missing packs, anything that doesn't fit a specific checklist item.</p>
+            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility notes, missing packs, etc..." style="min-height: 320px;"></textarea>
             <button class="btn-primary" id="saveSidebarNotesBtn" style="width: 100%;">Save Notes</button>
             <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
         </div>
@@ -956,7 +958,7 @@
                     </select>
                 </div>
                 <div>
-                    <label for="sitePackCountInput">Number of Poncho Packs</label>
+                    <label for="sitePackCountInput">Number of Packs</label>
                     <input type="number" id="sitePackCountInput" min="0" placeholder="e.g., 12" style="margin-bottom: 0;">
                 </div>
             </div>
@@ -974,12 +976,12 @@
         <div class="service-main">
      <div class="nav-controls">
                 <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 50px; padding: 10px 2px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>       
-                <button class="btn-outline" id="navSiteChecksBtn" style="flex: 1; max-width: 80px; padding: 8px 3px; font-size: 0.68rem; line-height: 1.15; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site<br>Checks</button>
-                <button class="btn-outline" id="navSiteNotesBtn" style="flex: 1; max-width: 80px; padding: 8px 3px; font-size: 0.68rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
+                <button class="btn-outline" id="navSiteChecksBtn" style="flex: 1.3; max-width: 104px; padding: 10px 4px; font-size: 0.82rem; line-height: 1.15; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site<br>Checks</button>
+                <button class="btn-outline" id="navSiteNotesBtn" style="flex: 1.3; max-width: 104px; padding: 10px 4px; font-size: 0.82rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
                 <button class="btn-primary" id="prevBtn" disabled style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem;">&laquo; Back</button>
-                <div class="nav-status" style="flex: 1.3; padding: 0 2px;">
-                    <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.92rem;">Poncho 1 of X</div>
-                    <div class="progress-container">
+                <div class="nav-status" style="flex: 0.8; padding: 0 2px;">
+                    <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.85rem;">Poncho 1 of X</div>
+                    <div class="progress-container" style="height: 4px;">
                         <div class="progress-fill" id="progressBarFill"></div>
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
@@ -1092,9 +1094,9 @@
         <h2 style="margin-top: 0; text-align: left;">📦 Set Pack Count</h2>
         <p style="color: var(--text-muted); line-height: 1.5;">
             <strong id="setPacksSiteName" style="color: var(--text-main);"></strong> has no pack count on record yet.
-            Enter how many Poncho packs are at this site to begin the service:
+            Enter how many packs are at this site to begin the service:
         </p>
-        <label for="setPacksInput">Number of Poncho Packs</label>
+        <label for="setPacksInput">Number of Packs</label>
         <input type="number" id="setPacksInput" min="1" placeholder="e.g., 12">
         <div id="setPacksErrorMsg" style="color: var(--danger); font-size: 0.85rem; min-height: 18px; margin-bottom: 4px;"></div>
         <div class="action-group" style="margin-top: 12px;">
@@ -1139,7 +1141,7 @@
         <h2 style="margin-top: 0; text-align: left;">✏️ Edit Site</h2>
         <label for="editSiteNameInput">Site Name</label>
         <input type="text" id="editSiteNameInput">
-        <label for="editSiteCountInput">Number of Ponchos</label>
+        <label for="editSiteCountInput">Number of Packs</label>
         <input type="number" id="editSiteCountInput" min="1">
         <div id="editSiteErrorMsg" style="color: var(--danger); font-size: 0.85rem; min-height: 18px; margin-bottom: 4px;"></div>
         <div class="action-group" style="margin-top: 12px;">
@@ -1445,7 +1447,7 @@
         Object.keys(sitesData).sort().forEach(name => {
             const s = sitesData[name];
             if (!s.rented) return; // Only rented-equipment sites are shown, per the Sheet's "Rented" column
-            select.innerHTML += `<option value="${name}">${name} (${s.count} Ponchos${s.hardware ? ' · ' + s.hardware : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
+            select.innerHTML += `<option value="${name}">${name} (${s.count} Packs${s.hardware ? ' · ' + s.hardware : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
         });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
     }
@@ -1585,7 +1587,7 @@
                 const siteInfo = sitesData[siteName];
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'site-manager-item';
-                itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Ponchos</span></div>
+                itemDiv.innerHTML = `<div><strong>${siteName}</strong><br><span style="color: var(--text-muted); font-size: 0.85rem;">${siteInfo.count} Packs</span></div>
                     <div class="admin-controls"><button class="admin-btn btn-edit" data-id="${siteInfo.id}" data-name="${siteName}" data-count="${siteInfo.count}">Edit</button><button class="admin-btn btn-del" data-id="${siteInfo.id}" data-name="${siteName}">Delete</button></div>`;
                 listDiv.appendChild(itemDiv);
             });
@@ -1610,7 +1612,7 @@
         const errorMsg = document.getElementById('editSiteErrorMsg');
         const newName = document.getElementById('editSiteNameInput').value.trim();
         const newCount = parseInt(document.getElementById('editSiteCountInput').value, 10);
-        if (!newName || isNaN(newCount) || newCount <= 0) { errorMsg.innerText = "Enter a site name and a Poncho count greater than 0."; return; }
+        if (!newName || isNaN(newCount) || newCount <= 0) { errorMsg.innerText = "Enter a site name and a pack count greater than 0."; return; }
         const btn = document.getElementById('confirmEditSiteBtn');
         btn.disabled = true; btn.innerText = "Saving...";
         try {
@@ -2290,7 +2292,7 @@
             <div class="cust-report">
                 <div class="cust-report-header">
                     <h1>${esc(currentSiteName)} — Service Report</h1>
-                    <p class="cust-report-subtitle">Poncho Service Tracker</p>
+                    <p class="cust-report-subtitle">Pack Service Tracker</p>
                     <div class="cust-report-meta">
                         <span>Date of Service: <strong>${esc(document.getElementById('custReportDateDisplay').value)}</strong></span>
                         <span>Next Service Due: <strong>${esc(document.getElementById('custReportNextDueDisplay').value)}</strong></span>
@@ -2479,7 +2481,7 @@
     }
 
     function renderPonchoUI() {
-        // If "Number of Poncho Packs" was reduced mid-service, don't leave the index pointing past the new total.
+        // If "Number of Packs" was reduced mid-service, don't leave the index pointing past the new total.
         if (totalPonchos > 0 && currentPonchoIndex > totalPonchos) currentPonchoIndex = totalPonchos;
 
         const PonchoContainer = document.getElementById('PonchoPartsContainer');
@@ -2692,7 +2694,7 @@
         // shows what was previously selected instead of starting blank.
         const existingNotes = generalChecksCache['Sensors'].notes || "";
         existingNotes.split(',').forEach(entry => {
-            const match = entry.trim().match(/^Pack\s+(\d+):\s*(.+)$/i);
+            const match = entry.trim().match(/^(?:Poncho|Pack)\s+(\d+):\s*(.+)$/i); // accepts old "Pack N" notes saved before the wording pass, too
             if (match) selectedSensorPonchos.set(parseInt(match[1], 10), match[2].trim());
         });
 
@@ -2732,7 +2734,7 @@
         }
         list.innerHTML = packNumbers.map(num => `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background: var(--card-bg-elevated); border:1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px;">
-                <strong>Pack ${num}</strong>
+                <strong>Poncho ${num}</strong>
                 <select class="sensor-location-select" data-pack="${num}" style="width: auto; min-width: 160px; margin-bottom: 0;">
                     <option value="">-- Location --</option>
                     ${SENSOR_LOCATIONS.map(loc => `<option value="${loc}" ${selectedSensorPonchos.get(num) === loc ? 'selected' : ''}>${loc}</option>`).join('')}
@@ -2759,7 +2761,7 @@
 
         const notesArea = document.querySelector('#notes-sensors textarea');
         if (packNumbers.length > 0) {
-            const noteStr = packNumbers.map(num => `Pack ${num}: ${selectedSensorPonchos.get(num)}`).join(', ');
+            const noteStr = packNumbers.map(num => `Poncho ${num}: ${selectedSensorPonchos.get(num)}`).join(', ');
             generalChecksCache['Sensors'].notes = noteStr;
             if (notesArea) notesArea.value = noteStr;
         } else {

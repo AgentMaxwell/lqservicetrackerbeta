@@ -1,5 +1,5 @@
 /**
- * Poncho Service Tracker <-> Google Sheets bridge
+ * Pack Service Tracker <-> Google Sheets bridge
  * =================================================
  * Paste this whole file into the Apps Script editor for your Sheet
  * (Extensions > Apps Script), replace the CONFIG values below with
@@ -324,8 +324,8 @@ function sendWeeklyServiceDueEmail() {
   dueSoon.sort((a, b) => parseDate(a.nextServiceDue) - parseDate(b.nextServiceDue));
 
   const subject = (overdue.length + dueSoon.length + scheduled.length) > 0
-    ? `Poncho Service Tracker — ${overdue.length} overdue, ${dueSoon.length} due soon, ${scheduled.length} scheduled`
-    : `Poncho Service Tracker — nothing due within ${CONFIG.DUE_WINDOW_DAYS} days`;
+    ? `Pack Service Tracker — ${overdue.length} overdue, ${dueSoon.length} due soon, ${scheduled.length} scheduled`
+    : `Pack Service Tracker — nothing due within ${CONFIG.DUE_WINDOW_DAYS} days`;
 
   const html = buildEmailHtml(overdue, dueSoon, scheduled);
 
@@ -384,7 +384,7 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
       ${dueSection(`🔴 Overdue`, overdue, "No overdue services. ✅", "#c0392b")}
       ${dueSection(`🟡 Due within ${CONFIG.DUE_WINDOW_DAYS} days`, dueSoon, `Nothing due within ${CONFIG.DUE_WINDOW_DAYS} days.`, "#b8860b")}
       ${scheduledSection()}
-      <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;">Automated weekly digest from Poncho Service Tracker.</p>
+      <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;">Automated weekly digest from Pack Service Tracker.</p>
     </div>`;
 }
 
@@ -409,7 +409,7 @@ function stripTime(date) {
 function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, scheduledRep) {
   if (!CONFIG.SCHEDULE_NOTIFY_EMAILS || CONFIG.SCHEDULE_NOTIFY_EMAILS.length === 0) return;
   try {
-    const subject = `Poncho Service Scheduled — ${siteName} on ${scheduledDate}`;
+    const subject = `Pack Service Scheduled — ${siteName} on ${scheduledDate}`;
     const html = `
       <div style="font-family:Arial,sans-serif;">
         <h3 style="color:#2e7d32;margin-bottom:10px;">🟢 New Service Scheduled</h3>
@@ -419,7 +419,7 @@ function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, s
           <tr><td style="padding:4px 10px;color:#666;">Time</td><td style="padding:4px 10px;">${scheduledTime ? escapeHtml(scheduledTime) : '—'}</td></tr>
           <tr><td style="padding:4px 10px;color:#666;">Representative</td><td style="padding:4px 10px;">${scheduledRep ? escapeHtml(scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td></tr>
         </table>
-        <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;margin-top:16px;">Automated notification from Poncho Service Tracker.</p>
+        <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;margin-top:16px;">Automated notification from Pack Service Tracker.</p>
       </div>`;
     MailApp.sendEmail({ to: CONFIG.SCHEDULE_NOTIFY_EMAILS.join(','), subject: subject, htmlBody: html });
   } catch (err) {
