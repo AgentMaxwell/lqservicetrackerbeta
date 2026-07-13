@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           Poncho SERVICE TRACKER v1.5.1 — Tablet Facelift
+           Poncho SERVICE TRACKER v0.6.1 — Sensors/Notes/Colour Update
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -735,7 +735,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.6.0
+        <h1>Poncho Service Tracker <span class="version-badge">v0.6.1
     </span></h1>
     </div>
 
@@ -772,25 +772,18 @@
             </div>
         </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <button class="btn-outline" id="goToScheduleBtn">📅 Schedule a Service</button>
+            <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+        </div>
+
         <div class="hero-card" style="margin-top: 10px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005));">
             <h3 style="text-align: left; font-size: 1.1rem; margin-bottom: 14px; color: var(--accent);">🛠️ App Options & Configuration</h3>
-            
-            <label style="margin-bottom: 6px;">Active Representative Name</label>
-            <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-                <input type="text" id="homeRepNameInput" placeholder="Enter name..." style="margin-bottom: 0; flex: 1;">
-                <button class="btn-primary" id="saveHomeRepBtn" style="min-height: 52px; padding: 0 20px; font-size: 0.95rem;">Save</button>
-            </div>
-            <div id="homeRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: -10px; margin-bottom: 12px;"></div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <button class="btn-outline" id="fullscreenToggleHomeBtn" style="font-size: 0.95rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">⛶ Fullscreen Mode</button>
                 <button class="btn-outline" id="forceUpdateAppBtn" style="font-size: 0.95rem; background: rgba(244, 63, 94, 0.08); border-color: rgba(244, 63, 94, 0.25); color: #FDA4AF;">🔄 Force Update App</button>
             </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button class="btn-outline" id="goToScheduleBtn">📅 Schedule a Service</button>
-            <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
         </div>
     </div>
 
@@ -864,6 +857,17 @@
         </div>
     </div>
 
+    <div id="notesSection" class="app-section">
+        <button class="btn-outline" id="notesBackBtn" style="margin-bottom: 18px;">&laquo; Back</button>
+        <div class="hero-card">
+            <h2 style="text-align: left;">📝 General Site Notes</h2>
+            <p class="hero-subtitle" style="text-align: left;">Broad facility notes, missing Ponchos, anything that doesn't fit a specific checklist item.</p>
+            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility notes, missing Ponchos, etc..." style="min-height: 320px;"></textarea>
+            <button class="btn-primary" id="saveSidebarNotesBtn" style="width: 100%;">Save Notes</button>
+            <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
+        </div>
+    </div>
+
     <div id="generalChecksSection" class="app-section">
         <div class="nav-controls">
             <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>
@@ -875,10 +879,18 @@
         </div>
 
         <div style="padding: 0 10px 10px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                 <div>
                     <label for="siteFirmwareInput">Site Firmware Version</label>
                     <input type="text" id="siteFirmwareInput" placeholder="e.g., v2.4.1" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="sitePackColourInput">Pack Colour</label>
+                    <select id="sitePackColourInput" style="margin-bottom: 0;">
+                        <option value="">-- Select --</option>
+                        <option value="R/G">R/G</option>
+                        <option value="R/B/P">R/B/P</option>
+                    </select>
                 </div>
                 <div>
                     <label for="sitePackCountInput">Number of Poncho Packs</label>
@@ -898,16 +910,18 @@
     <div id="serviceSection" class="app-section">
         <div class="service-main">
      <div class="nav-controls">
-                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>       
-                <button class="btn-primary" id="prevBtn" disabled style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">&laquo; Back</button>
-                <div class="nav-status">
-                    <div class="Poncho-counter-text" id="PonchoCounterText">Poncho 1 of X</div>
+                <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 50px; padding: 10px 2px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>       
+                <button class="btn-outline" id="navSiteChecksBtn" style="flex: 1; max-width: 80px; padding: 8px 3px; font-size: 0.68rem; line-height: 1.15; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Site<br>Checks</button>
+                <button class="btn-outline" id="navSiteNotesBtn" style="flex: 1; max-width: 80px; padding: 8px 3px; font-size: 0.68rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">Notes</button>
+                <button class="btn-primary" id="prevBtn" disabled style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem;">&laquo; Back</button>
+                <div class="nav-status" style="flex: 1.3; padding: 0 2px;">
+                    <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.92rem;">Poncho 1 of X</div>
                     <div class="progress-container">
                         <div class="progress-fill" id="progressBarFill"></div>
                     </div>
                     <div class="save-indicator" id="saveIndicator">Cloud Synced ✓</div>
                 </div>
-                <button class="btn-primary" id="nextBtn" style="max-width: 75px; padding: 12px 6px; font-size: 0.9rem;">Next &raquo;</button>
+                <button class="btn-primary" id="nextBtn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem;">Next &raquo;</button>
             </div>
 
             <div class="grid-header">🎽 Poncho Elements</div>
@@ -930,6 +944,7 @@
         <div class="sidebar-title">Service Controls</div>
 
         <button class="btn-outline" id="sidebarGeneralChecksBtn">☑️ General Site Checks</button>
+        <button class="btn-outline" id="sidebarNotesBtn">📝 General Site Notes</button>
         <button class="btn-outline" id="viewOverlayGridBtn">📊 View Grid Overlay</button>
         <button class="btn-outline" id="sidebarPrintBtn">🖨️ Print Active Report</button>
 
@@ -941,16 +956,6 @@
             <input type="text" id="sidebarRepNameInput" placeholder="Enter your name..." style="margin-bottom: 10px;">
             <button class="btn-primary" id="saveRepNameBtn">Save Name</button>
             <div id="sidebarRepMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
-        </div>
-
-        <div class="accordion-toggle" id="notesAccordionToggle">
-            <span>📝 General Site Notes</span>
-            <span id="accordionIcon">▼</span>
-        </div>
-        <div class="accordion-content" id="notesAccordionContent">
-            <textarea id="sidebarSiteNotes" placeholder="Enter broad facility notes, missing Ponchos, etc..."></textarea>
-            <button class="btn-primary" id="saveSidebarNotesBtn">Save Notes</button>
-            <div id="sidebarNotesMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; margin-top: 8px;"></div>
         </div>
 
         <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
@@ -983,6 +988,21 @@
         <div id="screensGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-bottom: 24px;"></div>
 
         <button class="btn-success" id="saveScreensBtn" style="width: 100%;">Save Replaced Screens</button>
+    </div>
+</div>
+
+<div id="sensorsIssueModal" class="modal">
+    <div class="modal-content" style="max-width: 640px;">
+        <button class="modal-close-btn" id="closeSensorsModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">📡 Select Sensor Issues</h2>
+        <p style="text-align: center; color: var(--text-muted); margin: 0 0 22px 0;">Tap the Ponchos below with a sensor issue, then choose where on each.</p>
+
+        <div id="sensorsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; margin-bottom: 20px;"></div>
+
+        <div id="sensorsLocationList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px;"></div>
+        <div id="sensorsErrorMsg" style="color: var(--danger); font-size: 0.85rem; text-align: center; min-height: 18px; margin-bottom: 8px;"></div>
+
+        <button class="btn-success" id="saveSensorsBtn" style="width: 100%;">Save Sensor Issues</button>
     </div>
 </div>
 
@@ -1059,12 +1079,13 @@
     let fetchedServiceDocs = []; 
     let isDirty = false;    
     let currentFirmware = ""; // <-- Added firmware state
+    let currentPackColour = ""; // <-- R/G or R/B/P
     let commonIssuesByPart = {}; // <-- Configurable "Issue" dropdown options, PER PART, synced with Firestore
 
     // --- Arrays ---
-    const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer" ];
-    const PonchoPartsList = ["Fabric" , "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards", "Sensors"];
-    const gunPartsList = ["Trigger", "Speaker", "GButton Reader", "Laser", "IR", "Outer Casing", "Nozzle", "GScrews", "Numbered Sticker", "Screen Protector", "Plastic Front of Gun", "GLEDs", "GSensors", "GBoards"];
+    const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Sensors", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer" ];
+    const PonchoPartsList = ["Fabric" , "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards"];
+    const gunPartsList = ["Trigger", "Speaker", "GButton Reader", "Laser", "IR", "Outer Casing", "Nozzle", "GScrews", "Numbered Sticker", "Screen Protector", "Plastic Front of Gun", "GLEDs", "GBoards", "Rattle"];
     const allPonchoElements = [...PonchoPartsList, ...gunPartsList]; 
     const allManagedParts = [...generalChecksList, ...PonchoPartsList, ...gunPartsList]; // Every part that can have a configurable issues list
 
@@ -1134,16 +1155,8 @@
     function syncRepName(nameValue) {
         currentRepresentative = nameValue;
         localStorage.setItem('inspectorName', nameValue);
-        document.getElementById('homeRepNameInput').value = nameValue;
         document.getElementById('sidebarRepNameInput').value = nameValue;
     }
-
-    document.getElementById('saveHomeRepBtn').addEventListener('click', () => {
-        const name = document.getElementById('homeRepNameInput').value.trim();
-        const msg = document.getElementById('homeRepMsg');
-        if(name) { syncRepName(name); msg.innerText = "Representative Name Saved ✓"; msg.style.color = "var(--success)"; }
-        setTimeout(() => msg.innerText = "", 3000);
-    });
 
     document.getElementById('saveRepNameBtn').addEventListener('click', () => {
         const name = document.getElementById('sidebarRepNameInput').value.trim();
@@ -1204,7 +1217,6 @@
         if(savedName) {
             currentRepresentative = savedName;
             document.getElementById('sidebarRepNameInput').value = savedName;
-            document.getElementById('homeRepNameInput').value = savedName;
         }
         loadSites();
         loadCommonIssues();
@@ -1308,6 +1320,7 @@
                     count: count,
                     hardware: data.hardware || "",
                     firmware: data.firmware || "",
+                    packColour: data.packColour || "",
                     rented: data.rented !== false, // undefined/missing (e.g. manually-added sites) defaults to shown
                     lastServiceDate: data.lastServiceDate || "",
                     nextServiceDue: data.nextServiceDue || "",
@@ -1378,6 +1391,7 @@
                     PonchoCount: row.packs || 0,
                     hardware: row.hardware || "",
                     firmware: row.firmware || "",
+                    packColour: row.packColour || "",
                     lastServiceDate: row.lastServiceDate || "",
                     nextServiceDue: row.nextServiceDue || "",
                     scheduledDate: row.scheduledDate || "",
@@ -1385,7 +1399,7 @@
                     scheduledRep: row.scheduledRep || ""
                 };
                 await setDoc(doc(db, "sites", docId), mergedData, { merge: true });
-                sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue, scheduledDate: mergedData.scheduledDate, scheduledTime: mergedData.scheduledTime, scheduledRep: mergedData.scheduledRep };
+                sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, packColour: mergedData.packColour, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue, scheduledDate: mergedData.scheduledDate, scheduledTime: mergedData.scheduledTime, scheduledRep: mergedData.scheduledRep };
                 touchedDocIds.add(docId);
             }
 
@@ -1641,7 +1655,6 @@
         if (siteInfo?.scheduledRep) {
             currentRepresentative = siteInfo.scheduledRep;
             document.getElementById('sidebarRepNameInput').value = currentRepresentative;
-            document.getElementById('homeRepNameInput').value = currentRepresentative;
             localStorage.setItem('inspectorName', currentRepresentative);
         }
         // The schedule has now been acted on — clear it so it drops out of the Scheduled
@@ -1656,10 +1669,12 @@
         PonchoDataCache = {}; 
         generalChecksCache = {};
         
-        // Pre-fill firmware from the site's last known value (kept up to date via the Sheet sync)
-        // rather than blanking it — the tech only needs to change it if it's actually different.
+        // Pre-fill firmware/pack colour from the site's last known values (kept up to date via
+        // the Sheet sync) rather than blanking them — the tech only needs to change them if different.
         currentFirmware = sitesData[currentSiteName]?.firmware || "";
         document.getElementById('siteFirmwareInput').value = currentFirmware;
+        currentPackColour = sitesData[currentSiteName]?.packColour || "";
+        document.getElementById('sitePackColourInput').value = currentPackColour;
         
         activeServiceDate = new Date().toISOString().split('T')[0]; 
         
@@ -1758,11 +1773,13 @@
 
         generalChecksCache = {};
         currentFirmware = "";
+        currentPackColour = "";
         try {
             const genDoc = await getDoc(doc(db, "general_checks", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`));
             if (genDoc.exists()) {
                 generalChecksCache = genDoc.data().checks || {};
                 currentFirmware = genDoc.data().firmware || "";
+                currentPackColour = genDoc.data().packColour || "";
             }
         } catch (e) { console.log("No general checks found for this date"); }
 
@@ -1779,6 +1796,22 @@
         renderGeneralChecksUI();
     });
 
+    document.getElementById('sidebarNotesBtn').addEventListener('click', () => {
+        toggleMenu();
+        navigateTo('notesSection');
+    });
+    document.getElementById('notesBackBtn').addEventListener('click', () => {
+        navigateTo('serviceSection');
+        renderPonchoUI();
+    });
+    document.getElementById('navSiteChecksBtn').addEventListener('click', () => {
+        navigateTo('generalChecksSection');
+        renderGeneralChecksUI();
+    });
+    document.getElementById('navSiteNotesBtn').addEventListener('click', () => {
+        navigateTo('notesSection');
+    });
+
     document.getElementById('backToPonchosBtn').addEventListener('click', async () => {
         await saveGeneralChecks();
         navigateTo('serviceSection');
@@ -1791,6 +1824,15 @@
         firmwareInput.value = currentFirmware;
         firmwareInput.oninput = (e) => {
             currentFirmware = e.target.value;
+            document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+            document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+        };
+
+        // --- PACK COLOUR ---
+        const packColourInput = document.getElementById('sitePackColourInput');
+        packColourInput.value = currentPackColour;
+        packColourInput.onchange = (e) => {
+            currentPackColour = e.target.value;
             document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
             document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
         };
@@ -1840,17 +1882,19 @@
                 date: activeServiceDate, 
                 checks: generalChecksCache, 
                 firmware: currentFirmware,
+                packColour: currentPackColour,
                 lastUpdated: serverTimestamp()
             }, { merge: true });
 
-            // Keep the site record (and next dropdown load) in sync with any firmware/pack-count
-            // edits made here, and best-effort mirror those same values back to the Google Sheet.
+            // Keep the site record (and next dropdown load) in sync with any firmware/pack-count/
+            // pack-colour edits made here, and best-effort mirror the same values to the Sheet.
             const siteInfo = sitesData[currentSiteName];
             if (siteInfo) {
                 siteInfo.count = totalPonchos;
                 siteInfo.firmware = currentFirmware;
-                await setDoc(doc(db, "sites", siteInfo.id), { PonchoCount: totalPonchos, firmware: currentFirmware }, { merge: true });
-                pushSiteUpdateToSheet(currentSiteName, { packs: totalPonchos, firmware: currentFirmware }); // not awaited — best effort, won't block the save
+                siteInfo.packColour = currentPackColour;
+                await setDoc(doc(db, "sites", siteInfo.id), { PonchoCount: totalPonchos, firmware: currentFirmware, packColour: currentPackColour }, { merge: true });
+                pushSiteUpdateToSheet(currentSiteName, { packs: totalPonchos, firmware: currentFirmware, packColour: currentPackColour }); // not awaited — best effort, won't block the save
             }
 
             document.getElementById('generalSaveIndicator').innerText = "Cloud Synced ✓";
@@ -1879,10 +1923,6 @@
 
     document.getElementById('repAccordionToggle').addEventListener('click', () => {
         const c = document.getElementById('repAccordionContent'); const i = document.getElementById('repAccordionIcon');
-        c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
-    });
-    document.getElementById('notesAccordionToggle').addEventListener('click', () => {
-        const c = document.getElementById('notesAccordionContent'); const i = document.getElementById('accordionIcon');
         c.classList.toggle('open'); i.innerText = c.classList.contains('open') ? '▲' : '▼';
     });
     document.getElementById('siteListAccordionToggle').addEventListener('click', () => {
@@ -1914,6 +1954,7 @@
                 <p><strong>Representative:</strong> ${currentRepresentative || "Not Specified"}</p>
                 <p><strong>General Site Notes:</strong><br> ${generalNotes.replace(/\n/g, '<br>')}</p>
                 <p><strong>Site Firmware:</strong> ${currentFirmware || "Not Specified"}</p>
+                <p><strong>Pack Colour:</strong> ${currentPackColour || "Not Specified"}</p>
             </div>
         `;
 
@@ -2107,11 +2148,13 @@
         const partId = part.replace(/\s+/g, '-').toLowerCase();
         const notes = partData.notes || "";
 
-        // "Screens" keeps its dedicated Poncho-number picker modal (see openScreensModal) rather than the generic dropdown.
+        // "Screens" and "Sensors" keep their dedicated Poncho-picker modals (see openScreensModal /
+        // openSensorsModal) rather than the generic issue dropdown.
         const isScreens = (typeStr === 'general' && part === 'Screens');
+        const isSensors = (typeStr === 'general' && part === 'Sensors');
 
         let notesInnerHTML;
-        if (isScreens) {
+        if (isScreens || isSensors) {
             notesInnerHTML = `<textarea data-type="${typeStr}" data-part="${part}" placeholder="What is wrong & what was fixed?">${notes}</textarea>`;
         } else {
             const partIssues = commonIssuesByPart[part] || [];
@@ -2212,6 +2255,8 @@
                         generalChecksCache[part].notes = "";
                     } else if (part === "Screens") {
                         openScreensModal();
+                    } else if (part === "Sensors") {
+                        openSensorsModal();
                     }
                     document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
                     document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
@@ -2334,6 +2379,99 @@
         }
         
         screensModal.style.display = "none";
+        document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
+        document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
+    });
+
+    // --- CUSTOM SENSORS MODAL LOGIC ---
+    const sensorsModal = document.getElementById('sensorsIssueModal');
+    const SENSOR_LOCATIONS = ["Front", "Gun", "Back", "Shoulders"];
+    let selectedSensorPonchos = new Map(); // packNumber -> location ("" until chosen)
+
+    function openSensorsModal() {
+        sensorsModal.style.display = "block";
+        selectedSensorPonchos.clear();
+
+        // Parse "Pack X: Location, Pack Y: Location" back into the map, so reopening the modal
+        // shows what was previously selected instead of starting blank.
+        const existingNotes = generalChecksCache['Sensors'].notes || "";
+        existingNotes.split(',').forEach(entry => {
+            const match = entry.trim().match(/^Pack\s+(\d+):\s*(.+)$/i);
+            if (match) selectedSensorPonchos.set(parseInt(match[1], 10), match[2].trim());
+        });
+
+        document.getElementById('sensorsErrorMsg').innerText = "";
+        renderSensorsGrid();
+        renderSensorsLocationList();
+    }
+
+    function renderSensorsGrid() {
+        const grid = document.getElementById('sensorsGrid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= totalPonchos; i++) {
+            const btn = document.createElement('button');
+            btn.innerText = i;
+            const isSelected = selectedSensorPonchos.has(i);
+            btn.style.cssText = `padding: 16px 8px; border-radius: var(--radius-md); border: 2px solid ${isSelected ? 'rgba(244,63,94,0.5)' : 'var(--border-color)'}; background: ${isSelected ? 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))' : 'var(--card-bg-elevated)'}; color: ${isSelected ? '#FDA4AF' : 'var(--text-main)'}; font-weight: 700; font-size: 1.05rem; min-height: 56px; transition: all 0.15s;`;
+
+            btn.addEventListener('click', () => {
+                if (selectedSensorPonchos.has(i)) {
+                    selectedSensorPonchos.delete(i);
+                } else {
+                    selectedSensorPonchos.set(i, ""); // location picked in the list below
+                }
+                renderSensorsGrid();
+                renderSensorsLocationList();
+            });
+            grid.appendChild(btn);
+        }
+    }
+
+    function renderSensorsLocationList() {
+        const list = document.getElementById('sensorsLocationList');
+        const packNumbers = Array.from(selectedSensorPonchos.keys()).sort((a, b) => a - b);
+        if (packNumbers.length === 0) {
+            list.innerHTML = '<p style="color: var(--text-muted); text-align:center; font-size: 0.9rem;">Tap a Poncho number above to flag a sensor issue.</p>';
+            return;
+        }
+        list.innerHTML = packNumbers.map(num => `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background: var(--card-bg-elevated); border:1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px;">
+                <strong>Pack ${num}</strong>
+                <select class="sensor-location-select" data-pack="${num}" style="width: auto; min-width: 160px; margin-bottom: 0;">
+                    <option value="">-- Location --</option>
+                    ${SENSOR_LOCATIONS.map(loc => `<option value="${loc}" ${selectedSensorPonchos.get(num) === loc ? 'selected' : ''}>${loc}</option>`).join('')}
+                </select>
+            </div>
+        `).join('');
+        list.querySelectorAll('.sensor-location-select').forEach(sel => {
+            sel.addEventListener('change', (e) => {
+                selectedSensorPonchos.set(parseInt(e.target.getAttribute('data-pack'), 10), e.target.value);
+            });
+        });
+    }
+
+    document.getElementById('closeSensorsModalBtn').addEventListener('click', () => sensorsModal.style.display = "none");
+
+    document.getElementById('saveSensorsBtn').addEventListener('click', () => {
+        const errorMsg = document.getElementById('sensorsErrorMsg');
+        const packNumbers = Array.from(selectedSensorPonchos.keys()).sort((a, b) => a - b);
+        const missingLocation = packNumbers.some(num => !selectedSensorPonchos.get(num));
+        if (missingLocation) {
+            errorMsg.innerText = "Choose a location for every selected Poncho before saving.";
+            return;
+        }
+
+        const notesArea = document.querySelector('#notes-sensors textarea');
+        if (packNumbers.length > 0) {
+            const noteStr = packNumbers.map(num => `Pack ${num}: ${selectedSensorPonchos.get(num)}`).join(', ');
+            generalChecksCache['Sensors'].notes = noteStr;
+            if (notesArea) notesArea.value = noteStr;
+        } else {
+            generalChecksCache['Sensors'].notes = "";
+            if (notesArea) notesArea.value = "";
+        }
+
+        sensorsModal.style.display = "none";
         document.getElementById('generalSaveIndicator').innerText = "Unsaved Changes";
         document.getElementById('generalSaveIndicator').style.color = "var(--text-muted)";
     });
