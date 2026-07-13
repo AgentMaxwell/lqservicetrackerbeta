@@ -719,6 +719,7 @@
         /* ---------- Print (unchanged behavior) ---------- */
         #printOnlyArea { display: none; }
         @media print {
+            @page { margin: 2cm; }
             body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background-color: white !important; color: black !important; }
             .container, .app-header, .app-section, .nav-controls, .menu-backdrop, .slide-out-menu, .modal, .sticky-action-bar { display: none !important; }
             #printOnlyArea { display: block !important; position: static !important; padding: 0; }
@@ -728,6 +729,18 @@
             .print-issue-list { margin: 0; padding-left: 20px; color: black; }
             .print-issue-list li { margin-bottom: 8px; font-size: 1.1rem;}
             h1, h2, h3, p { color: black !important; }
+
+            /* Customer-facing report — separate look from the internal report above, same #printOnlyArea delivery */
+            .cust-report { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a !important; max-width: 720px; margin: 0 auto; line-height: 1.6; }
+            .cust-report-header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 18px; margin-bottom: 30px; }
+            .cust-report-header h1 { font-size: 1.6rem; margin: 0 0 4px 0; color: #2c3e50 !important; letter-spacing: 0.02em; }
+            .cust-report-header .cust-report-subtitle { font-family: Arial, sans-serif; font-size: 0.95rem; color: #555 !important; margin: 0; }
+            .cust-report-meta { font-family: Arial, sans-serif; font-size: 0.92rem; color: #333 !important; margin-top: 14px; display: flex; justify-content: center; gap: 26px; flex-wrap: wrap; }
+            .cust-report-meta span strong { color: #2c3e50 !important; }
+            .cust-report-section { margin-bottom: 26px; page-break-inside: avoid; }
+            .cust-report-section h2 { font-family: Arial, sans-serif; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2c3e50 !important; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin: 0 0 10px 0; }
+            .cust-report-section p { font-family: Arial, sans-serif; font-size: 0.98rem; white-space: pre-wrap; margin: 0; color: #1a1a1a !important; }
+            .cust-report-footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #ccc; font-family: Arial, sans-serif; font-size: 0.85rem; color: #666 !important; text-align: center; }
         }
     </style>
 </head>
@@ -735,7 +748,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.6.1
+        <h1>Poncho Service Tracker <span class="version-badge">v0.6.2
     </span></h1>
     </div>
 
@@ -868,6 +881,56 @@
         </div>
     </div>
 
+    <div id="customerReportSection" class="app-section">
+        <button class="btn-outline" id="customerReportBackBtn" style="margin-bottom: 18px;">&laquo; Back</button>
+
+        <div class="hero-card">
+            <h2 style="text-align:left;">📧 Customer Report Builder</h2>
+            <p class="hero-subtitle" style="text-align:left;">Auto-drafted from this service's checklist — edit freely before sending. Faults Resolved and Additional Notes are yours to curate; the customer only sees what's written here.</p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px;">
+                <div>
+                    <label>Site</label>
+                    <input type="text" id="custReportSiteDisplay" disabled style="margin-bottom: 0; opacity: 0.75;">
+                </div>
+                <div>
+                    <label>Date of Service</label>
+                    <input type="text" id="custReportDateDisplay" disabled style="margin-bottom: 0; opacity: 0.75;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <label>Next Service Due</label>
+                    <input type="text" id="custReportNextDueDisplay" disabled style="margin-bottom: 0; opacity: 0.75;">
+                </div>
+                <div>
+                    <label for="custReportFirmwareInput">Firmware (editable — e.g. "6d LC H (also had 6d CC)")</label>
+                    <input type="text" id="custReportFirmwareInput" style="margin-bottom: 0;">
+                </div>
+            </div>
+
+            <label for="custDraftGeneral">System &amp; Facility Checks</label>
+            <textarea id="custDraftGeneral" style="min-height: 130px;"></textarea>
+
+            <label for="custDraftGuns">Guns</label>
+            <textarea id="custDraftGuns" style="min-height: 130px;"></textarea>
+
+            <label for="custDraftPonchos">Ponchos</label>
+            <textarea id="custDraftPonchos" style="min-height: 130px;"></textarea>
+
+            <label for="custDraftFaults">Faults Resolved — curate this, pick only what the customer needs to know</label>
+            <textarea id="custDraftFaults" style="min-height: 130px;"></textarea>
+
+            <label for="custDraftNotes">Additional Notes — freeform commentary, follow-ups, reminders</label>
+            <textarea id="custDraftNotes" placeholder="e.g. context on common wear issues, follow-ups discussed on site..." style="min-height: 110px;"></textarea>
+
+            <div class="action-group" style="margin-top: 10px;">
+                <button class="btn-outline" id="regenerateCustDraftBtn" style="flex: 1;">🔄 Regenerate Auto-Draft</button>
+                <button class="btn-success" id="printCustReportBtn" style="flex: 1;">🖨️ Preview &amp; Print / Save as PDF</button>
+            </div>
+        </div>
+    </div>
+
     <div id="generalChecksSection" class="app-section">
         <div class="nav-controls">
             <button class="btn-outline burger-menu-btn" style="flex: 1; max-width: 65px; padding: 12px 4px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">☰</button>
@@ -947,6 +1010,7 @@
         <button class="btn-outline" id="sidebarNotesBtn">📝 General Site Notes</button>
         <button class="btn-outline" id="viewOverlayGridBtn">📊 View Grid Overlay</button>
         <button class="btn-outline" id="sidebarPrintBtn">🖨️ Print Active Report</button>
+        <button class="btn-outline" id="sidebarCustomerReportBtn">📧 Customer Report</button>
 
         <div class="accordion-toggle" id="repAccordionToggle">
             <span>👤 Representative</span>
@@ -2011,6 +2075,160 @@
         if (!hasGeneralIssues && !hasGunIssues && !hasPonchoIssues) {
             html += `<p style="color: green; font-weight: bold; margin-top:20px;">No issues recorded for this site. All Good!</p>`;
         }
+
+        printArea.innerHTML = html;
+        window.print();
+    });
+
+    // --- 6b. CUSTOMER REPORT (separate from the internal report above — never touches it) ---
+    function formatServiceDateUK(yyyyMmDd) {
+        if (!yyyyMmDd) return "—";
+        const parts = yyyyMmDd.split('-');
+        if (parts.length !== 3) return yyyyMmDd;
+        const [y, m, d] = parts;
+        return `${d}-${m}-${y.slice(2)}`;
+    }
+
+    function formatMonthYear(yyyyMmDd) {
+        if (!yyyyMmDd) return "—";
+        const parts = yyyyMmDd.split('-');
+        if (parts.length !== 3) return yyyyMmDd;
+        const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const idx = parseInt(parts[1], 10) - 1;
+        return months[idx] ? `${months[idx]} ${parts[0]}` : yyyyMmDd;
+    }
+
+    // Looks across ALL Ponchos for a given part list (Guns or Poncho parts), separating
+    // parts that were entirely Good from specific per-unit issues.
+    function aggregatePartStatus(partList) {
+        const allGoodParts = [];
+        const issues = [];
+        partList.forEach(part => {
+            let anyIssue = false;
+            for (let i = 1; i <= totalPonchos; i++) {
+                const data = PonchoDataCache[i] ? PonchoDataCache[i][part] : null;
+                if (data && data.status === 'Issue') {
+                    anyIssue = true;
+                    issues.push({ part, unit: i, notes: data.notes || "" });
+                }
+            }
+            if (!anyIssue) allGoodParts.push(part);
+        });
+        return { allGoodParts, issues };
+    }
+
+    function aggregateGeneralStatus() {
+        const allGoodParts = [];
+        const issues = [];
+        generalChecksList.forEach(item => {
+            const data = generalChecksCache[item];
+            if (data && data.status === 'Issue') {
+                issues.push({ part: item, unit: null, notes: data.notes || "" });
+            } else if (data && data.status === 'Good') {
+                allGoodParts.push(item);
+            }
+        });
+        return { allGoodParts, issues };
+    }
+
+    function buildCategoryDraft(allGoodParts, issues, unitLabel) {
+        let text = "";
+        if (allGoodParts.length > 0) {
+            text += `The following were checked and confirmed in good working order: ${allGoodParts.join(', ')}.`;
+        }
+        if (issues.length > 0) {
+            text += (text ? "\n\n" : "") + "Items that needed attention:\n";
+            text += issues.map(iss => {
+                const label = (unitLabel && iss.unit) ? `${unitLabel} ${iss.unit} — ${iss.part}` : iss.part;
+                return `- ${label}${iss.notes ? ': ' + iss.notes : ''}`;
+            }).join('\n');
+        }
+        return text || "Nothing recorded for this section yet.";
+    }
+
+    function generateCustomerDraft() {
+        const gen = aggregateGeneralStatus();
+        const guns = aggregatePartStatus(gunPartsList);
+        const ponchos = aggregatePartStatus(PonchoPartsList);
+
+        document.getElementById('custDraftGeneral').value = buildCategoryDraft(gen.allGoodParts, gen.issues, null);
+        document.getElementById('custDraftGuns').value = buildCategoryDraft(guns.allGoodParts, guns.issues, 'Gun');
+        document.getElementById('custDraftPonchos').value = buildCategoryDraft(ponchos.allGoodParts, ponchos.issues, 'Poncho');
+
+        // Faults Resolved starts pre-filled with EVERY issue found, across all three areas — this
+        // is a starting point only. Trim it down to whatever the customer actually needs to hear.
+        const allIssues = [
+            ...gen.issues.map(i => `${i.part}: ${i.notes}`),
+            ...guns.issues.map(i => `Gun ${i.unit} (${i.part}): ${i.notes}`),
+            ...ponchos.issues.map(i => `Poncho ${i.unit} (${i.part}): ${i.notes}`)
+        ];
+        document.getElementById('custDraftFaults').value = allIssues.join('\n');
+        // Additional Notes is always left blank — purely manual, freeform commentary.
+    }
+
+    function populateCustomerReportHeader() {
+        document.getElementById('custReportSiteDisplay').value = currentSiteName;
+        document.getElementById('custReportDateDisplay').value = formatServiceDateUK(activeServiceDate);
+        document.getElementById('custReportNextDueDisplay').value = formatMonthYear(sitesData[currentSiteName]?.nextServiceDue || "");
+        document.getElementById('custReportFirmwareInput').value = currentFirmware;
+    }
+
+    document.getElementById('sidebarCustomerReportBtn').addEventListener('click', async () => {
+        toggleMenu();
+        await triggerBackgroundSave();
+        navigateTo('customerReportSection');
+        populateCustomerReportHeader();
+        // Only auto-generate on first visit this session — don't clobber edits if the tech
+        // navigated away (e.g. to Notes) and came back. Regenerate button forces a fresh draft.
+        if (!document.getElementById('custDraftGeneral').value.trim()) {
+            generateCustomerDraft();
+        }
+    });
+
+    document.getElementById('customerReportBackBtn').addEventListener('click', () => {
+        navigateTo('serviceSection');
+        renderPonchoUI();
+    });
+
+    document.getElementById('regenerateCustDraftBtn').addEventListener('click', () => {
+        if (!confirm("This replaces the auto-generated sections (System & Facility Checks, Guns, Ponchos, Faults Resolved) with a fresh draft from current data. Additional Notes is left untouched. Continue?")) return;
+        const notesBackup = document.getElementById('custDraftNotes').value;
+        generateCustomerDraft();
+        document.getElementById('custDraftNotes').value = notesBackup;
+    });
+
+    document.getElementById('printCustReportBtn').addEventListener('click', () => {
+        const printArea = document.getElementById('printOnlyArea');
+        const esc = (s) => (s || "").replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const toHtml = (s) => esc(s).replace(/\n/g, '<br>');
+
+        const section = (title, content) => {
+            const val = document.getElementById(content).value.trim();
+            if (!val) return "";
+            return `<div class="cust-report-section"><h2>${title}</h2><p>${toHtml(val)}</p></div>`;
+        };
+
+        const html = `
+            <div class="cust-report">
+                <div class="cust-report-header">
+                    <h1>${esc(currentSiteName)} — Service Report</h1>
+                    <p class="cust-report-subtitle">Poncho Service Tracker</p>
+                    <div class="cust-report-meta">
+                        <span>Date of Service: <strong>${esc(document.getElementById('custReportDateDisplay').value)}</strong></span>
+                        <span>Next Service Due: <strong>${esc(document.getElementById('custReportNextDueDisplay').value)}</strong></span>
+                        <span>Firmware: <strong>${esc(document.getElementById('custReportFirmwareInput').value || "Not specified")}</strong></span>
+                    </div>
+                </div>
+                ${section('System &amp; Facility Checks', 'custDraftGeneral')}
+                ${section('Guns', 'custDraftGuns')}
+                ${section('Ponchos', 'custDraftPonchos')}
+                ${section('Faults Resolved', 'custDraftFaults')}
+                ${section('Additional Notes', 'custDraftNotes')}
+                <div class="cust-report-footer">
+                    Prepared by ${esc(currentRepresentative || "our service team")}. Thank you for your continued business.
+                </div>
+            </div>
+        `;
 
         printArea.innerHTML = html;
         window.print();
