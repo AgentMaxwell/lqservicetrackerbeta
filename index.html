@@ -735,7 +735,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Poncho Service Tracker <span class="version-badge">v0.5.4
+        <h1>Poncho Service Tracker <span class="version-badge">v0.6.0
     </span></h1>
     </div>
 
@@ -788,7 +788,10 @@
             </div>
         </div>
 
-        <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn-outline" id="goToScheduleBtn">📅 Schedule a Service</button>
+            <button class="btn-outline" id="toggleAdminBtn">⚙️ Manage Sites Database</button>
+        </div>
     </div>
 
     <div id="adminSection" class="app-section">
@@ -829,6 +832,35 @@
             <label>Add New Issue</label>
             <input type="text" id="newIssueInput" placeholder="e.g. Cracked Screen">
             <button class="btn-primary" id="addIssueBtn" style="width: 100%;">Add Issue</button>
+        </div>
+    </div>
+
+    <div id="scheduleSection" class="app-section">
+        <button class="btn-outline" id="scheduleBackBtn" style="margin-bottom: 18px;">&laquo; Back to Home</button>
+
+        <div class="admin-card">
+            <h2 style="text-align:left;">📅 Schedule a Service</h2>
+            <label for="scheduleSiteSelect">Location</label>
+            <select id="scheduleSiteSelect"><option value="">-- Choose Site --</option></select>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label for="scheduleDateInput">Date</label>
+                    <input type="date" id="scheduleDateInput" style="margin-bottom: 0;">
+                </div>
+                <div>
+                    <label for="scheduleTimeInput">Time</label>
+                    <input type="time" id="scheduleTimeInput" style="margin-bottom: 0;">
+                </div>
+            </div>
+            <label style="margin-top: 16px;" for="scheduleRepInput">Representative</label>
+            <input type="text" id="scheduleRepInput" placeholder="e.g., Jane Smith">
+            <div id="scheduleFormMsg" style="text-align: center; font-weight: 600; font-size: 0.9rem; min-height: 20px; margin-bottom: 4px;"></div>
+            <button class="btn-primary" id="saveScheduleBtn" style="width: 100%;">Save Scheduled Service</button>
+        </div>
+
+        <div class="admin-card">
+            <h3 style="text-align:left;">Upcoming Scheduled Services</h3>
+            <div id="scheduledServicesList"><p style="color: var(--text-muted); text-align:center;">Loading...</p></div>
         </div>
     </div>
 
@@ -988,6 +1020,23 @@
     </div>
 </div>
 
+<div id="scheduledPromptModal" class="modal">
+    <div class="modal-content" style="max-width: 460px;">
+        <button class="modal-close-btn" id="closeScheduledPromptModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">📅 Scheduled Service Found</h2>
+        <p style="color: var(--text-muted); line-height: 1.5;">
+            <strong id="scheduledPromptSiteName" style="color: var(--text-main);"></strong> has a service scheduled for
+            <strong id="scheduledPromptDateTime" style="color: var(--text-main);"></strong> with
+            <strong id="scheduledPromptRep" style="color: var(--text-main);"></strong>.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
+            <button class="btn-success" id="startScheduledServiceBtn" style="width: 100%;">Start This Scheduled Service</button>
+            <button class="btn-outline" id="startRegularServiceBtn" style="width: 100%;">Start as a Regular (Unscheduled) Visit</button>
+            <button class="btn-secondary" id="cancelScheduledPromptBtn" style="width: 100%;">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <div id="printOnlyArea"></div>
 
 <script type="module">
@@ -1071,12 +1120,15 @@
         menuBackdrop.classList.remove('show');
 
         if(sectionId === 'adminSection') renderAdminList();
+        if(sectionId === 'scheduleSection') { renderScheduleSiteSelect(); renderScheduledServicesList(); }
     }
 
     // Nav Bindings
     document.getElementById('navHomeBtnMenu').addEventListener('click', () => { toggleMenu(); navigateTo('setupSection'); });
     document.getElementById('adminBackBtn').addEventListener('click', () => navigateTo('setupSection'));
     document.getElementById('toggleAdminBtn').addEventListener('click', () => navigateTo('adminSection'));
+    document.getElementById('goToScheduleBtn').addEventListener('click', () => navigateTo('scheduleSection'));
+    document.getElementById('scheduleBackBtn').addEventListener('click', () => navigateTo('setupSection'));
 
     // Synchronize Name Inputs between Home Panel and Sidebar
     function syncRepName(nameValue) {
@@ -1258,7 +1310,10 @@
                     firmware: data.firmware || "",
                     rented: data.rented !== false, // undefined/missing (e.g. manually-added sites) defaults to shown
                     lastServiceDate: data.lastServiceDate || "",
-                    nextServiceDue: data.nextServiceDue || ""
+                    nextServiceDue: data.nextServiceDue || "",
+                    scheduledDate: data.scheduledDate || "",
+                    scheduledTime: data.scheduledTime || "",
+                    scheduledRep: data.scheduledRep || ""
                 };
             });
         } catch (error) { console.error("Failed to load sites from Firestore", error); }
@@ -1275,7 +1330,7 @@
         Object.keys(sitesData).sort().forEach(name => {
             const s = sitesData[name];
             if (!s.rented) return; // Only rented-equipment sites are shown, per the Sheet's "Rented" column
-            select.innerHTML += `<option value="${name}">${name} (${s.count} Ponchos${s.hardware ? ' · ' + s.hardware : ''})</option>`;
+            select.innerHTML += `<option value="${name}">${name} (${s.count} Ponchos${s.hardware ? ' · ' + s.hardware : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
         });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
     }
@@ -1324,10 +1379,13 @@
                     hardware: row.hardware || "",
                     firmware: row.firmware || "",
                     lastServiceDate: row.lastServiceDate || "",
-                    nextServiceDue: row.nextServiceDue || ""
+                    nextServiceDue: row.nextServiceDue || "",
+                    scheduledDate: row.scheduledDate || "",
+                    scheduledTime: row.scheduledTime || "",
+                    scheduledRep: row.scheduledRep || ""
                 };
                 await setDoc(doc(db, "sites", docId), mergedData, { merge: true });
-                sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue };
+                sitesData[row.siteName] = { id: docId, count: mergedData.PonchoCount, hardware: mergedData.hardware, firmware: mergedData.firmware, rented: mergedData.rented, lastServiceDate: mergedData.lastServiceDate, nextServiceDue: mergedData.nextServiceDue, scheduledDate: mergedData.scheduledDate, scheduledTime: mergedData.scheduledTime, scheduledRep: mergedData.scheduledRep };
                 touchedDocIds.add(docId);
             }
 
@@ -1386,6 +1444,19 @@
         }
     }
 
+    async function pushScheduleUpdateToSheet(siteName, updates) {
+        if (!sheetSyncConfigured()) return;
+        try {
+            await fetch(SHEET_SYNC_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'scheduleService', secret: SHEET_SYNC_SECRET, siteName, ...updates })
+            });
+        } catch (error) {
+            console.warn("Could not push schedule update to Google Sheet:", error);
+        }
+    }
+
     // --- 2. ADMIN CRUD ---
     function renderAdminList() {
         renderSheetSyncStatus();
@@ -1426,6 +1497,95 @@
         try { await addDoc(collection(db, "sites"), { name: name, PonchoCount: count }); document.getElementById('newSiteName').value = ""; document.getElementById('newSiteCount').value = ""; btn.innerText = "Save New Site"; await loadSites(); renderAdminList(); } catch (error) { alert("Error."); }
     });
 
+    // --- 2b. SCHEDULING ---
+    function renderScheduleSiteSelect() {
+        const select = document.getElementById('scheduleSiteSelect');
+        const previousValue = select.value;
+        select.innerHTML = '<option value="">-- Choose Site --</option>';
+        Object.keys(sitesData).sort().forEach(name => {
+            if (!sitesData[name].rented) return;
+            select.innerHTML += `<option value="${name}">${name}</option>`;
+        });
+        if (previousValue && sitesData[previousValue]) select.value = previousValue;
+        // Default the representative field to whoever's currently signed in, editable if scheduling for someone else.
+        if (!document.getElementById('scheduleRepInput').value) {
+            document.getElementById('scheduleRepInput').value = currentRepresentative || "";
+        }
+    }
+
+    function renderScheduledServicesList() {
+        const container = document.getElementById('scheduledServicesList');
+        const scheduled = Object.keys(sitesData)
+            .filter(name => sitesData[name].rented && sitesData[name].scheduledDate)
+            .map(name => ({ name, ...sitesData[name] }))
+            .sort((a, b) => `${a.scheduledDate}T${a.scheduledTime || '00:00'}`.localeCompare(`${b.scheduledDate}T${b.scheduledTime || '00:00'}`));
+
+        if (scheduled.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-muted); text-align:center;">No services currently scheduled.</p>';
+            return;
+        }
+        container.innerHTML = scheduled.map(s => `
+            <div class="site-manager-item">
+                <div>
+                    <strong>${s.name}</strong><br>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">${s.scheduledDate}${s.scheduledTime ? ' at ' + s.scheduledTime : ''} — ${s.scheduledRep || 'Unassigned'}</span>
+                </div>
+                <div class="admin-controls"><button class="admin-btn btn-del" data-name="${s.name}">Clear</button></div>
+            </div>
+        `).join('');
+        container.querySelectorAll('.btn-del').forEach(btn => btn.addEventListener('click', handleClearSchedule));
+    }
+
+    async function saveScheduleForSite(siteName, scheduledDate, scheduledTime, scheduledRep) {
+        const siteInfo = sitesData[siteName];
+        if (!siteInfo) return;
+        siteInfo.scheduledDate = scheduledDate;
+        siteInfo.scheduledTime = scheduledTime;
+        siteInfo.scheduledRep = scheduledRep;
+        try {
+            await setDoc(doc(db, "sites", siteInfo.id), { scheduledDate, scheduledTime, scheduledRep }, { merge: true });
+        } catch (e) { console.warn("Could not save schedule to Firestore:", e); }
+        pushScheduleUpdateToSheet(siteName, { scheduledDate, scheduledTime, scheduledRep }); // best-effort
+    }
+
+    async function handleClearSchedule(e) {
+        const name = e.target.getAttribute('data-name');
+        if (!confirm(`Clear the scheduled service for "${name}"?`)) return;
+        await saveScheduleForSite(name, "", "", "");
+        renderScheduledServicesList();
+        renderSiteDropdown();
+    }
+
+    document.getElementById('saveScheduleBtn').addEventListener('click', async () => {
+        const site = document.getElementById('scheduleSiteSelect').value;
+        const date = document.getElementById('scheduleDateInput').value;
+        const time = document.getElementById('scheduleTimeInput').value;
+        const rep = document.getElementById('scheduleRepInput').value.trim();
+        const msg = document.getElementById('scheduleFormMsg');
+
+        if (!site || !date || !time || !rep) {
+            msg.innerText = "Please fill in location, date, time, and representative.";
+            msg.style.color = "var(--danger)";
+            return;
+        }
+
+        const btn = document.getElementById('saveScheduleBtn');
+        btn.disabled = true; btn.innerText = "Saving...";
+
+        await saveScheduleForSite(site, date, time, rep);
+
+        msg.innerText = "Scheduled ✓";
+        msg.style.color = "var(--success)";
+        document.getElementById('scheduleSiteSelect').value = "";
+        document.getElementById('scheduleDateInput').value = "";
+        document.getElementById('scheduleTimeInput').value = "";
+        btn.disabled = false; btn.innerText = "Save Scheduled Service";
+
+        renderScheduledServicesList();
+        renderSiteDropdown();
+        setTimeout(() => { msg.innerText = ""; }, 3000);
+    });
+
     // --- 3. START / LOAD SERVICE FLOW ---
     document.getElementById('siteSelect').addEventListener('change', (e) => {
         currentSiteName = e.target.value;
@@ -1441,12 +1601,54 @@
     });
 
     document.getElementById('startNewServiceBtn').addEventListener('click', async () => {
+        const siteInfo = sitesData[currentSiteName];
+        if (siteInfo?.scheduledDate) {
+            openScheduledServicePromptModal();
+            return;
+        }
+        await continueStartFlow();
+    });
+
+    async function continueStartFlow() {
         const packCount = sitesData[currentSiteName]?.count || 0;
         if (packCount === 0) {
             openSetPacksModal();
             return;
         }
         await proceedWithNewService();
+    }
+
+    // --- SCHEDULED SERVICE PROMPT ---
+    function openScheduledServicePromptModal() {
+        const s = sitesData[currentSiteName];
+        document.getElementById('scheduledPromptSiteName').innerText = currentSiteName;
+        document.getElementById('scheduledPromptDateTime').innerText = `${s.scheduledDate}${s.scheduledTime ? ' at ' + s.scheduledTime : ''}`;
+        document.getElementById('scheduledPromptRep').innerText = s.scheduledRep || "Unassigned";
+        document.getElementById('scheduledPromptModal').style.display = "block";
+    }
+
+    document.getElementById('closeScheduledPromptModalBtn').addEventListener('click', () => document.getElementById('scheduledPromptModal').style.display = "none");
+    document.getElementById('cancelScheduledPromptBtn').addEventListener('click', () => document.getElementById('scheduledPromptModal').style.display = "none");
+
+    document.getElementById('startRegularServiceBtn').addEventListener('click', async () => {
+        document.getElementById('scheduledPromptModal').style.display = "none";
+        await continueStartFlow();
+    });
+
+    document.getElementById('startScheduledServiceBtn').addEventListener('click', async () => {
+        document.getElementById('scheduledPromptModal').style.display = "none";
+        const siteInfo = sitesData[currentSiteName];
+        if (siteInfo?.scheduledRep) {
+            currentRepresentative = siteInfo.scheduledRep;
+            document.getElementById('sidebarRepNameInput').value = currentRepresentative;
+            document.getElementById('homeRepNameInput').value = currentRepresentative;
+            localStorage.setItem('inspectorName', currentRepresentative);
+        }
+        // The schedule has now been acted on — clear it so it drops out of the Scheduled
+        // email section and the 📅 dropdown indicator, both locally and on the Sheet.
+        await saveScheduleForSite(currentSiteName, "", "", "");
+        renderSiteDropdown();
+        await continueStartFlow();
     });
 
     async function proceedWithNewService() {
