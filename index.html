@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#0F172A">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.6.4.1 — Nav Sizing / Compact Service Grid
+           PACK SERVICE TRACKER v0.6.5.1 — Pack Quick-Nav
            ============================================ */
         :root {
             --primary: #FF2800;
@@ -741,7 +741,7 @@
 
 <div class="container">
     <div class="app-header" id="mainAppHeader">
-        <h1>Pack Service Tracker <span class="version-badge">v0.6.5
+        <h1>Pack Service Tracker <span class="version-badge">v0.6.5.1
     </span></h1>
     </div>
 
@@ -977,9 +977,11 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div class="nav-status" style="flex: 0 0 auto; flex-direction: row; align-items: center; padding: 6px 12px; gap: 8px;">
                         <div class="Poncho-counter-text" id="PonchoCounterText" style="font-size: 0.82rem; white-space: nowrap;">Pack 1 of X</div>
-                        <div class="progress-container" style="width: 64px; height: 4px;">
-                            <div class="progress-fill" id="progressBarFill"></div>
-                        </div>
+                        <button type="button" id="progressBarBtn" title="Jump to a specific pack" style="background: transparent; border: none; padding: 8px 4px; margin: 0; cursor: pointer; display: flex; align-items: center; min-height: unset;">
+                            <div class="progress-container" style="width: 64px; height: 4px;">
+                                <div class="progress-fill" id="progressBarFill"></div>
+                            </div>
+                        </button>
                         <div class="save-indicator" id="saveIndicator" style="white-space: nowrap;">Cloud Synced ✓</div>
                     </div>
                     <button class="btn-outline" id="prevBtn" disabled style="flex: 0 0 80px; padding: 10px 6px; font-size: 0.85rem; background: var(--card-bg-elevated); border-color: var(--border-strong); color: var(--text-main);">&laquo; Back</button>
@@ -1041,6 +1043,15 @@
         <div id="modalTableContainer" class="table-responsive">
             <p style="text-align: center; padding: 40px;">Loading data...</p>
         </div>
+    </div>
+</div>
+
+<div id="packQuickNavModal" class="modal">
+    <div class="modal-content" style="max-width: 640px;">
+        <button class="modal-close-btn" id="closePackQuickNavModalBtn">&times;</button>
+        <h2 style="margin-top: 0; text-align: left;">🔢 Jump to a Pack</h2>
+        <p style="text-align: center; color: var(--text-muted); margin: 0 0 22px 0;">Tap a pack number to go straight to it. Green means fully checked, red means it has an issue logged.</p>
+        <div id="packQuickNavGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px;"></div>
     </div>
 </div>
 
@@ -2446,9 +2457,46 @@
 
     document.getElementById('nextBtn').addEventListener('click', async () => {
         await triggerBackgroundSave();
-        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); } 
+        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); }
         else { alert("You have reached the end of the Ponchos for this site."); }
     });
+
+    // --- PACK QUICK-NAV (progress bar tap) — same picker look as the Screens/Sensors modals ---
+    const packQuickNavModal = document.getElementById('packQuickNavModal');
+
+    function openPackQuickNavModal() {
+        const grid = document.getElementById('packQuickNavGrid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= totalPonchos; i++) {
+            const data = PonchoDataCache[i] || {};
+            let checkedCount = 0, issueCount = 0;
+            allPonchoElements.forEach(part => {
+                if (data[part]?.status === 'Good') checkedCount++;
+                else if (data[part]?.status === 'Issue') { checkedCount++; issueCount++; }
+            });
+            const isCurrent = i === currentPonchoIndex;
+
+            let borderColor = 'var(--border-color)', bg = 'var(--card-bg-elevated)', color = 'var(--text-main)';
+            if (issueCount > 0) { borderColor = 'rgba(244,63,94,0.5)'; bg = 'linear-gradient(135deg, rgba(244,63,94,0.25), rgba(244,63,94,0.1))'; color = '#FDA4AF'; }
+            else if (checkedCount === allPonchoElements.length) { borderColor = 'rgba(16,185,129,0.4)'; bg = 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.08))'; color = '#6EE7B7'; }
+
+            const btn = document.createElement('button');
+            btn.innerText = i;
+            btn.style.cssText = `padding: 16px 8px; border-radius: var(--radius-md); border: 2px solid ${isCurrent ? 'var(--primary)' : borderColor}; background: ${bg}; color: ${color}; font-weight: 700; font-size: 1.05rem; min-height: 56px; transition: all 0.15s;${isCurrent ? ' box-shadow: 0 0 0 3px rgba(255,40,0,0.25);' : ''}`;
+            btn.addEventListener('click', async () => {
+                if (i === currentPonchoIndex) { packQuickNavModal.style.display = "none"; return; }
+                await triggerBackgroundSave();
+                currentPonchoIndex = i;
+                renderPonchoUI();
+                packQuickNavModal.style.display = "none";
+            });
+            grid.appendChild(btn);
+        }
+        packQuickNavModal.style.display = "block";
+    }
+
+    document.getElementById('progressBarBtn').addEventListener('click', openPackQuickNavModal);
+    document.getElementById('closePackQuickNavModalBtn').addEventListener('click', () => packQuickNavModal.style.display = "none");
 
     document.getElementById('PonchoAllOkBtn').addEventListener('click', async () => {
         let changed = false;
