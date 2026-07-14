@@ -9,9 +9,9 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.7.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.7.1 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
-           inline icon sprite (no CDN — offline-safe), glove-mode scale.
+           inline icon sprite (no CDN — offline-safe), Large-mode scale.
            ============================================ */
         :root {
             /* spacing (8px grid) */
@@ -26,7 +26,7 @@
             --shadow-md: 0 8px 24px rgba(0,0,0,0.35);
             --shadow-lg: 0 20px 45px rgba(0,0,0,0.45);
 
-            /* touch targets — glove mode scales these up */
+            /* touch targets — Large mode scales these up */
             --tap-min: 48px;
             --text-scale: 1;
 
@@ -103,8 +103,8 @@
             }
         }
 
-        /* ---------- Glove mode ---------- */
-        body.glove-mode { --tap-min: 60px; --text-scale: 1.16; }
+        /* ---------- Large mode ---------- */
+        body.Large-mode { --tap-min: 60px; --text-scale: 1.16; }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
@@ -625,7 +625,7 @@
     <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5.5" r="2.3"/><circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="18.5" r="2.3"/><path d="M8.1 10.8 15.9 6.7M8.1 13.2l7.8 4.1"/></symbol>
     <symbol id="i-toggle-off" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="8" cy="12" r="3.4" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-toggle-on" viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="10" rx="5"/><circle cx="16" cy="12" r="3.4" fill="currentColor" stroke="none"/></symbol>
-    <symbol id="i-glove" viewBox="0 0 24 24"><path d="M8 12V5.2a1.6 1.6 0 0 1 3.2 0V11M11.2 11V4.4a1.6 1.6 0 0 1 3.2 0V11M14.4 11.2V6a1.6 1.6 0 0 1 3.2 0v7.5M8 12l-2 1.5V16a5.5 5.5 0 0 0 5.5 5.5h2A5.5 5.5 0 0 0 19 16v-2.5"/></symbol>
+    <symbol id="i-Large" viewBox="0 0 24 24"><path d="M8 12V5.2a1.6 1.6 0 0 1 3.2 0V11M11.2 11V4.4a1.6 1.6 0 0 1 3.2 0V11M14.4 11.2V6a1.6 1.6 0 0 1 3.2 0v7.5M8 12l-2 1.5V16a5.5 5.5 0 0 0 5.5 5.5h2A5.5 5.5 0 0 0 19 16v-2.5"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7.5 11 12 15.5 16.5 11"/><path d="M4.5 17.5V19a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-1.5"/></symbol>
     <symbol id="i-package" viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z"/><path d="M4 7l8 4 8-4M12 11v10"/></symbol>
     <symbol id="i-tag" viewBox="0 0 24 24"><path d="M11.5 3.5H5v6.5L14.5 20l6.5-6.5L11.5 3.5Z"/><circle cx="8.5" cy="8" r="1.3" fill="currentColor" stroke="none"/></symbol>
@@ -650,7 +650,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.1</div>
         </div>
     </nav>
 
@@ -854,10 +854,10 @@
                 </div>
                 <div class="settings-row">
                     <div>
-                        <strong>Glove Mode</strong>
-                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Larger tap targets and text app-wide — easier with gloves on.</p>
+                        <strong>Large Mode</strong>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Larger tap targets and text app-wide — easier with Larges on.</p>
                     </div>
-                    <button class="btn-ghost" id="gloveToggleBtn"><svg class="icon"><use href="#i-glove"></use></svg><span id="gloveToggleLabel">Off</span></button>
+                    <button class="btn-ghost" id="LargeToggleBtn"><svg class="icon"><use href="#i-Large"></use></svg><span id="LargeToggleLabel">Off</span></button>
                 </div>
                 <div class="settings-row" style="border-bottom:none;">
                     <div>
@@ -1373,7 +1373,7 @@
         return `<div class="flex-row" style="justify-content:center; flex-wrap:wrap; gap:6px;">${statusBadge}${scheduledChip}</div>`;
     }
     /* ============================================================
-       THEME + GLOVE MODE
+       THEME + Large MODE
        ============================================================ */
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
@@ -1395,18 +1395,18 @@
         applyTheme(next);
     });
 
-    function applyGloveMode(on) {
-        document.body.classList.toggle('glove-mode', on);
-        const label = $('gloveToggleLabel');
+    function applyLargeMode(on) {
+        document.body.classList.toggle('Large-mode', on);
+        const label = $('LargeToggleLabel');
         if (label) label.innerText = on ? 'On' : 'Off';
     }
-    function initGloveMode() {
-        applyGloveMode(localStorage.getItem('gloveMode') === '1');
+    function initLargeMode() {
+        applyLargeMode(localStorage.getItem('LargeMode') === '1');
     }
-    $('gloveToggleBtn').addEventListener('click', () => {
-        const next = !document.body.classList.contains('glove-mode');
-        localStorage.setItem('gloveMode', next ? '1' : '0');
-        applyGloveMode(next);
+    $('LargeToggleBtn').addEventListener('click', () => {
+        const next = !document.body.classList.contains('Large-mode');
+        localStorage.setItem('Large', next ? '1' : '0');
+        applyLargeMode(next);
     });
 
     function toggleFullscreenAction() {
@@ -3323,7 +3323,7 @@
        INIT
        ============================================================ */
     initTheme();
-    initGloveMode();
+    initLargeMode();
     updateGlobalSyncPill();
     renderSyncQueue();
 
