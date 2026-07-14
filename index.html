@@ -420,14 +420,21 @@
             padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-md); margin-bottom: var(--sp-4);
             border: 1px solid var(--border-color); box-shadow: var(--shadow-md); position: sticky; top: var(--sp-2); z-index: 60;
         }
-        .service-topbar-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-        .service-topbar-title strong { font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* Centered independent of how much (asymmetric) content sits on each side — absolutely
+           positioned against the topbar (a sticky element, which is itself a positioning context). */
+        .service-topbar-title {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            max-width: min(46%, 320px); pointer-events: none;
+        }
+        .service-topbar-title strong { font-size: 0.98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         .save-indicator { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 4px; }
         .save-indicator.syncing { color: var(--warning-text); }
         .save-indicator.failed { color: var(--danger-text); }
         .items-left-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(245,158,11,0.14); color: var(--warning-text); font-size: var(--fs-xs); font-weight: 700; padding: 6px 12px; border-radius: var(--radius-pill); white-space: nowrap; }
         .items-left-chip.all-done { background: rgba(16,185,129,0.14); color: var(--success-text); }
         .overflow-trigger-inline { position: static !important; }
+        .topbar-push-right { margin-left: auto; }
 
         /* ================= Section headers ================= */
         .section-header {
@@ -483,7 +490,8 @@
 
         /* ================= Pack grid (permanent, master-detail left panel) ================= */
         .checklist-split { grid-template-columns: 220px 1fr; }
-        .pack-grid-panel { padding: var(--sp-4); position: sticky; top: var(--sp-2); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; }
+        .pack-grid-panel { padding: var(--sp-4); position: sticky; top: var(--sp-2); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; display: flex; flex-direction: column; }
+        .pack-grid-panel-actions { margin-top: auto; padding-top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
         .pack-grid-toggle-btn { display: none; }
         /* Portrait / narrow tablets — the pack grid becomes a slide-over instead of a squeezed column */
         @media (max-width: 900px) {
@@ -515,13 +523,18 @@
         .legend-issue { background: var(--danger-text); }
         .legend-none { background: var(--text-dim); opacity: 0.5; }
 
-        /* ================= Sticky action bar ================= */
+        /* ================= Sticky action bar =================
+           position: sticky (not fixed) — it lives inside the actual content column
+           (.checklist-main / #generalChecksSection), so it's bounded and centered by THAT
+           column's width, never the full viewport. That's what keeps it off the pack-grid
+           panel on wide screens, and it naturally stops covering the last row of cards once
+           you scroll to the true end of the content, unlike a fixed bar. */
         .sticky-action-bar {
-            position: fixed; left: var(--sp-5); right: var(--sp-5); bottom: var(--sp-4); z-index: 80;
+            position: sticky; bottom: var(--sp-4); z-index: 80;
             display: flex; gap: var(--sp-3); padding: var(--sp-2);
             background: var(--card-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
             border: 1px solid var(--border-color); border-radius: var(--radius-pill); box-shadow: var(--shadow-lg);
-            max-width: 900px; margin: 0 auto;
+            max-width: 900px; margin: var(--sp-5) auto 0;
         }
         .sticky-action-bar button { min-height: var(--tap-min); }
 
@@ -909,7 +922,7 @@
                 <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                 <button class="btn-ghost btn-icon" id="notesBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
                 <strong style="flex:1;">General Site Notes</strong>
-                <button class="btn-ghost btn-icon overflow-trigger-inline" id="notesOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
+                <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="notesOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
             <div class="card">
                 <p class="text-muted" style="margin-bottom: var(--sp-4);">Broad facility notes, missing packs, anything that doesn't fit a specific checklist item.</p>
@@ -923,7 +936,7 @@
                 <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                 <button class="btn-ghost btn-icon" id="customerReportBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
                 <strong style="flex:1;">Customer Report</strong>
-                <button class="btn-ghost btn-icon overflow-trigger-inline" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
+                <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
             <div class="stepper" id="reportStepper">
@@ -1003,7 +1016,7 @@
                     <strong>General Site Checks</strong>
                     <span class="save-indicator" id="generalSaveIndicator"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced</span>
                 </div>
-                <button class="btn-ghost btn-icon overflow-trigger-inline" id="generalOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
+                <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="generalOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
             <div class="card" style="margin-bottom: var(--sp-4);">
@@ -1048,19 +1061,21 @@
                         <span><i class="legend-dot legend-issue"></i>Issue logged</span>
                         <span><i class="legend-dot legend-none"></i>Not started</span>
                     </div>
+                    <div class="pack-grid-panel-actions">
+                        <button type="button" class="btn-outline btn-sm btn-block" id="pgSiteChecksBtn"><svg class="icon icon-sm"><use href="#i-check"></use></svg>General Site Checks</button>
+                        <button type="button" class="btn-outline btn-sm btn-block" id="pgNotesBtn"><svg class="icon icon-sm"><use href="#i-edit"></use></svg>General Site Notes</button>
+                    </div>
                 </aside>
 
                 <div class="checklist-main">
                     <div class="service-topbar">
                         <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                         <button class="btn-ghost btn-icon pack-grid-toggle-btn" id="packGridToggleBtn" aria-label="Show pack grid"><svg class="icon"><use href="#i-layers"></use></svg></button>
-                        <button class="btn-ghost btn-icon" id="prevBtn" disabled aria-label="Previous pack"><svg class="icon"><use href="#i-chevron-left"></use></svg></button>
                         <div class="service-topbar-title">
                             <strong id="PonchoCounterText">Pack 1 of X</strong>
                             <span class="save-indicator" id="saveIndicator"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced</span>
                         </div>
-                        <span class="items-left-chip" id="itemsLeftChip"><svg class="icon icon-sm"><use href="#i-alert"></use></svg><span id="itemsLeftCount">0</span> items left</span>
-                        <button class="btn-ghost btn-icon" id="nextBtn" aria-label="Next pack"><svg class="icon"><use href="#i-chevron-right"></use></svg></button>
+                        <span class="items-left-chip topbar-push-right" id="itemsLeftChip"><svg class="icon icon-sm"><use href="#i-alert"></use></svg><span id="itemsLeftCount">0</span> items left</span>
                         <button class="btn-ghost btn-icon overflow-trigger-inline" id="serviceOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
                     </div>
 
@@ -1070,14 +1085,12 @@
                     <div class="section-header" id="gunSectionHeader">Gun Elements</div>
                     <div id="gunPartsContainer" class="checklist-grid"></div>
 
-                    <div style="height: 90px;"></div>
+                    <div class="sticky-action-bar">
+                        <button class="btn-outline" id="stickyPrevBtn"><svg class="icon"><use href="#i-chevron-left"></use></svg>Previous</button>
+                        <button class="btn-success" id="PonchoAllOkBtn" style="flex:2;"><svg class="icon"><use href="#i-check"></use></svg>Mark remaining all good</button>
+                        <button class="btn-primary" id="stickyNextBtn">Next<svg class="icon"><use href="#i-chevron-right"></use></svg></button>
+                    </div>
                 </div>
-            </div>
-
-            <div class="sticky-action-bar">
-                <button class="btn-outline" id="stickyPrevBtn"><svg class="icon"><use href="#i-chevron-left"></use></svg>Pack</button>
-                <button class="btn-success" id="PonchoAllOkBtn" style="flex:2;"><svg class="icon"><use href="#i-check"></use></svg>Mark remaining all good</button>
-                <button class="btn-primary" id="stickyNextBtn">Pack<svg class="icon"><use href="#i-chevron-right"></use></svg></button>
             </div>
         </div>
         <div id="completionSection" class="app-section">
@@ -1373,8 +1386,8 @@
         const status = computeDueStatus(site);
         const scheduledChip = site && site.scheduledDate ? `<span class="badge badge-scheduled"><svg class="icon icon-sm"><use href="#i-calendar"></use></svg>Scheduled</span>` : '';
         let statusBadge = '';
-        if (status === 'due') statusBadge = `<span class="badge badge-due">Due</span>`;
-        else if (status === 'soon') statusBadge = `<span class="badge badge-soon">Soon</span>`;
+        if (status === 'due') statusBadge = `<span class="badge badge-due">Overdue</span>`;
+        else if (status === 'soon') statusBadge = `<span class="badge badge-soon">Due Soon</span>`;
         else if (status === 'ok') statusBadge = `<span class="badge badge-ok">OK</span>`;
         return `<div class="flex-row" style="justify-content:center; flex-wrap:wrap; gap:6px;">${statusBadge}${scheduledChip}</div>`;
     }
@@ -2647,17 +2660,18 @@
     function renderPackGrid() {
         const grid = $('packQuickNavGrid');
         grid.innerHTML = '';
-        let totalChecked = 0;
+        let packsComplete = 0;
         for (let i = 1; i <= totalPonchos; i++) {
             const stats = packStats(i);
-            totalChecked += stats.checked;
+            const fullyChecked = stats.checked === stats.total;
+            if (fullyChecked) packsComplete++;
             const isCurrent = i === currentPonchoIndex;
-            const stateClass = stats.issues > 0 ? 'state-issue' : (stats.checked === stats.total ? 'state-good' : '');
+            const stateClass = stats.issues > 0 ? 'state-issue' : (fullyChecked ? 'state-good' : '');
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = `pack-tile ${stateClass} ${isCurrent ? 'current' : ''}`;
             btn.innerText = i;
-            btn.setAttribute('aria-label', `Pack ${i}${stats.issues > 0 ? ', has issues' : (stats.checked === stats.total ? ', fully checked' : ', not fully checked')}`);
+            btn.setAttribute('aria-label', `Pack ${i}${stats.issues > 0 ? ', has issues' : (fullyChecked ? ', fully checked' : ', not fully checked')}`);
             btn.addEventListener('click', async () => {
                 if (i === currentPonchoIndex) return;
                 await triggerBackgroundSave();
@@ -2666,9 +2680,11 @@
             });
             grid.appendChild(btn);
         }
-        const totalItems = totalPonchos * allPonchoElements.length;
-        const pct = totalItems > 0 ? Math.round((totalChecked / totalItems) * 100) : 0;
+        // Percentage complete is "how many packs are fully done", not individual items — matches
+        // what the field tech actually cares about ("am I through the site") over granular item counts.
+        const pct = totalPonchos > 0 ? Math.round((packsComplete / totalPonchos) * 100) : 0;
         $('packGridProgressLabel').innerText = `${pct}% complete`;
+        $('progressBarFill').style.width = `${pct}%`;
         $('checklistSiteName').innerText = `${currentSiteName} — ${totalPonchos} packs`;
     }
 
@@ -2676,11 +2692,9 @@
         if (totalPonchos > 0 && currentPonchoIndex > totalPonchos) currentPonchoIndex = totalPonchos;
 
         $('PonchoCounterText').innerText = `Pack ${currentPonchoIndex} of ${totalPonchos}`;
-        [$('prevBtn'), $('stickyPrevBtn')].forEach(b => b.disabled = currentPonchoIndex === 1);
+        $('stickyPrevBtn').disabled = currentPonchoIndex === 1;
         const isLast = currentPonchoIndex === totalPonchos;
-        $('nextBtn').disabled = isLast;
-        $('stickyNextBtn').innerHTML = isLast ? 'Finish<svg class="icon"><use href="#i-check"></use></svg>' : 'Pack<svg class="icon"><use href="#i-chevron-right"></use></svg>';
-        $('progressBarFill').style.width = `${totalPonchos > 0 ? (currentPonchoIndex / totalPonchos) * 100 : 0}%`;
+        $('stickyNextBtn').innerHTML = isLast ? 'Finish<svg class="icon"><use href="#i-check"></use></svg>' : 'Next<svg class="icon"><use href="#i-chevron-right"></use></svg>';
         setChecklistSaveState('synced');
 
         if (!PonchoDataCache[currentPonchoIndex]) PonchoDataCache[currentPonchoIndex] = {};
@@ -2766,9 +2780,7 @@
         if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); }
         else { await attemptCompleteService(); } // "Finish" on the last pack — actually tries to end the service, not a dead end
     }
-    $('prevBtn').addEventListener('click', goPrevPack);
     $('stickyPrevBtn').addEventListener('click', goPrevPack);
-    $('nextBtn').addEventListener('click', goNextPack);
     $('stickyNextBtn').addEventListener('click', goNextPack);
 
     $('PonchoAllOkBtn').addEventListener('click', async () => {
@@ -2784,17 +2796,20 @@
             }
         });
 
+        // Stays on the current pack — marking the rest "good" is a shortcut for finishing this
+        // pack's paperwork, not a signal to move on; the tech decides when to advance.
         if (changed.length > 0) { markChecklistDirty(); }
+        renderPonchoUI();
         await triggerBackgroundSave();
-        const packJustFinished = currentPonchoIndex;
-        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); }
-        else { renderPonchoUI(); showToast("All parts marked good. You're on the final pack."); }
 
         if (changed.length > 0) {
-            showUndoToast(`Marked ${changed.length} item${changed.length === 1 ? '' : 's'} good on Pack ${packJustFinished}`, () => {
-                changed.forEach(part => { PonchoDataCache[packJustFinished][part].status = snapshot[part].status; PonchoDataCache[packJustFinished][part].notes = snapshot[part].notes; });
-                currentPonchoIndex = packJustFinished; markChecklistDirty(); renderPonchoUI(); triggerBackgroundSave();
+            const packIdx = currentPonchoIndex;
+            showUndoToast(`Marked ${changed.length} item${changed.length === 1 ? '' : 's'} good`, () => {
+                changed.forEach(part => { PonchoDataCache[packIdx][part].status = snapshot[part].status; PonchoDataCache[packIdx][part].notes = snapshot[part].notes; });
+                markChecklistDirty(); renderPonchoUI(); triggerBackgroundSave();
             }, 5000);
+        } else {
+            showToast("Everything on this pack is already marked.");
         }
     });
 
@@ -2802,8 +2817,14 @@
     $('serviceOverflowBtn').addEventListener('click', () => toggleOverflowPanel(true));
     $('generalOverflowBtn').addEventListener('click', () => toggleOverflowPanel(true));
 
-    $('ovSiteChecksBtn').addEventListener('click', () => { toggleOverflowPanel(false); navigateTo('generalChecksSection'); renderGeneralChecksUI(); });
-    $('ovNotesBtn').addEventListener('click', () => { toggleOverflowPanel(false); navigateTo('notesSection'); });
+    // Shared by the overflow panel's entries and the shortcut buttons pinned to the bottom of
+    // the pack-grid panel — same destination, two ways to reach it.
+    function goToGeneralChecks() { toggleOverflowPanel(false); navigateTo('generalChecksSection'); renderGeneralChecksUI(); }
+    function goToNotes() { toggleOverflowPanel(false); navigateTo('notesSection'); }
+    $('ovSiteChecksBtn').addEventListener('click', goToGeneralChecks);
+    $('ovNotesBtn').addEventListener('click', goToNotes);
+    $('pgSiteChecksBtn').addEventListener('click', goToGeneralChecks);
+    $('pgNotesBtn').addEventListener('click', goToNotes);
 
     $('ovGridOverlayBtn').addEventListener('click', async () => {
         toggleOverflowPanel(false);
