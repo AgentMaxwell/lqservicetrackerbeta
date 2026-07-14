@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pack-tracker-v2.0';
+const CACHE_NAME = 'pack-tracker-v2.1';
 
 // List all the core files your app needs to load the UI.
 // Include any local icons or assets here if you add them later.

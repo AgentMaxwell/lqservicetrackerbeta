@@ -222,11 +222,17 @@
 
         .main-pane { flex: 1; min-width: 0; padding: var(--sp-5) var(--sp-6) var(--sp-8); max-width: 1400px; margin: 0 auto; width: 100%; }
 
-        /* Overflow ("more") panel — right slide-over, contextual actions */
-        .overflow-trigger {
-            position: fixed; top: var(--sp-4); right: var(--sp-4); z-index: 250;
-            background: var(--card-bg-elevated); border: 1px solid var(--border-color); color: var(--text-main);
+        /* While a service is active, the browsing sidebar gets out of the way entirely —
+           reclaimed as a pullout via the "☰" button in the service top bar — regardless of
+           viewport width, so the checklist split-view gets full room to breathe. */
+        body.in-service .sidebar {
+            position: fixed; left: 0; top: 0; transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); width: min(280px, 84vw); box-shadow: var(--shadow-lg);
         }
+        body.in-service .sidebar.open { transform: translateX(0); }
+        .open-sidebar-btn { flex: 0 0 auto; }
+
+        /* Overflow ("more") panel — right slide-over, contextual actions */
         .overflow-panel {
             position: fixed; top: 0; right: 0; width: min(360px, 92vw); height: 100%; height: 100dvh;
             background: var(--card-bg); border-left: 1px solid var(--border-color); box-shadow: var(--shadow-lg);
@@ -350,7 +356,7 @@
         @media print {
             @page { margin: 2cm; }
             body, html { height: auto !important; min-height: auto !important; overflow: visible !important; display: block !important; background: white !important; color: black !important; }
-            .app-shell, .overflow-trigger, .overflow-panel, .sidebar-backdrop, .menu-backdrop, .modal, .toast-stack { display: none !important; }
+            .app-shell, .overflow-panel, .sidebar-backdrop, .menu-backdrop, .modal, .toast-stack { display: none !important; }
             #printOnlyArea { display: block !important; position: static !important; padding: 0; }
             #printOnlyArea, #printOnlyArea * { visibility: visible; }
             .print-header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
@@ -367,8 +373,6 @@
             .cust-report-section { margin-bottom: 26px; page-break-inside: avoid; }
             .cust-report-section h2 { font-family: Arial, sans-serif; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2c3e50 !important; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin: 0 0 10px 0; }
             .cust-report-section p { font-family: Arial, sans-serif; font-size: 0.98rem; white-space: pre-wrap; margin: 0; color: #1a1a1a !important; }
-            .cust-report-photos { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-            .cust-report-photos img { width: 140px; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc; }
             .cust-report-signoff { margin-top: 30px; }
             .cust-report-signoff img { max-width: 260px; border-bottom: 1px solid #999; }
             .cust-report-footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #ccc; font-family: Arial, sans-serif; font-size: 0.85rem; color: #666 !important; text-align: center; }
@@ -431,6 +435,7 @@
         /* ================= Checklist card grid ================= */
         .checklist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-bottom: var(--sp-3); }
         @media (max-width: 620px) { .checklist-grid { grid-template-columns: 1fr; } }
+        @media (min-width: 1100px) { .checklist-grid { grid-template-columns: repeat(3, 1fr); } }
 
         .part-section {
             border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--sp-3);
@@ -442,10 +447,10 @@
         .part-header-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
         .part-header { font-size: 0.92rem; font-weight: 700; }
 
-        .button-group { display: flex; background: var(--card-bg-elevated); border-radius: var(--radius-pill); padding: 4px; border: 1px solid var(--border-color); gap: 3px; }
+        .button-group { display: flex; background: var(--card-bg-elevated); border-radius: var(--radius-pill); padding: 3px; border: 1px solid var(--border-color); gap: 3px; max-width: 220px; }
         .btn-good, .btn-issue {
             flex: 1; min-height: 44px; color: var(--text-muted); background: transparent; border: none; border-radius: var(--radius-pill);
-            font-size: 0.86rem; font-weight: 700; padding: 0 6px; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 0.82rem; font-weight: 700; padding: 0 4px; transition: all 0.15s ease; display: flex; align-items: center; justify-content: center; gap: 5px;
         }
         .btn-good.active { background: linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.14)); color: var(--success-text); box-shadow: inset 0 0 0 1px rgba(16,185,129,0.35); }
         .btn-issue.active { background: linear-gradient(135deg, rgba(244,63,94,0.28), rgba(244,63,94,0.14)); color: var(--danger-text); box-shadow: inset 0 0 0 1px rgba(244,63,94,0.35); }
@@ -468,8 +473,7 @@
         .notes-area select.issue-dropdown { margin-bottom: var(--sp-2); min-height: 44px; padding: 10px 30px 10px 12px; font-size: 0.85rem; }
         .notes-area .issue-other-textarea { display: none; }
         .notes-area .issue-other-textarea.visible { display: block; }
-        .issue-photo-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
-        .issue-photo-thumb { width: 52px; height: 52px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-color); cursor: pointer; }
+        .issue-extra-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
         .part-used-input { margin-bottom: 0 !important; font-size: 0.85rem !important; padding: 9px 12px !important; min-height: 40px !important; }
 
         /* ================= Pack grid (permanent, master-detail left panel) ================= */
@@ -588,7 +592,7 @@
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M4 5v4h4"/><path d="M4.6 9A8 8 0 0 1 12 5"/></symbol>
     <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5"/></symbol>
-    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.8 1.8 0 0 0 .36 1.98l.06.06a2.2 2.2 0 1 1-3.1 3.1l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65V20a2.2 2.2 0 1 1-4.4 0v-.1a1.8 1.8 0 0 0-1.18-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06a2.2 2.2 0 1 1-3.1-3.1l.06-.06a1.8 1.8 0 0 0 .36-1.98A1.8 1.8 0 0 0 3.2 12.4H3a2.2 2.2 0 1 1 0-4.4h.1a1.8 1.8 0 0 0 1.65-1.18 1.8 1.8 0 0 0-.36-1.98l-.06-.06a2.2 2.2 0 1 1 3.1-3.1l.06.06a1.8 1.8 0 0 0 1.98.36H9.6A1.8 1.8 0 0 0 10.7 3H10.8a2.2 2.2 0 1 1 4.4 0v.1a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.2 2.2 0 1 1 3.1 3.1l-.06.06a1.8 1.8 0 0 0-.36 1.98v.1c.24.7.86 1.2 1.62 1.28H21a2.2 2.2 0 1 1 0 4.4h-.1a1.8 1.8 0 0 0-1.5 1.02Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.3"/><line x1="12" y1="3.2" x2="12" y2="1.3"/><line x1="12" y1="20.8" x2="12" y2="22.7"/><line x1="3.2" y1="12" x2="1.3" y2="12"/><line x1="20.8" y1="12" x2="22.7" y2="12"/><line x1="6.3" y1="6.3" x2="4.9" y2="4.9"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="6.3" y1="17.7" x2="4.9" y2="19.1"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5-13-7.5Z"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></symbol>
@@ -897,8 +901,10 @@
         </div>
         <div id="notesSection" class="app-section">
             <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                 <button class="btn-ghost btn-icon" id="notesBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
-                <strong>General Site Notes</strong>
+                <strong style="flex:1;">General Site Notes</strong>
+                <button class="btn-ghost btn-icon overflow-trigger-inline" id="notesOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
             <div class="card">
                 <p class="text-muted" style="margin-bottom: var(--sp-4);">Broad facility notes, missing packs, anything that doesn't fit a specific checklist item.</p>
@@ -909,8 +915,10 @@
         </div>
         <div id="customerReportSection" class="app-section">
             <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                 <button class="btn-ghost btn-icon" id="customerReportBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
-                <strong>Customer Report</strong>
+                <strong style="flex:1;">Customer Report</strong>
+                <button class="btn-ghost btn-icon overflow-trigger-inline" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
             <div class="stepper" id="reportStepper">
@@ -984,6 +992,7 @@
         </div>
         <div id="generalChecksSection" class="app-section">
             <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                 <button class="btn-primary btn-icon" id="backToPonchosBtn" aria-label="Back to checklist"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
                 <div class="service-topbar-title">
                     <strong>General Site Checks</strong>
@@ -1038,6 +1047,7 @@
 
                 <div class="checklist-main">
                     <div class="service-topbar">
+                        <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
                         <button class="btn-ghost btn-icon pack-grid-toggle-btn" id="packGridToggleBtn" aria-label="Show pack grid"><svg class="icon"><use href="#i-layers"></use></svg></button>
                         <button class="btn-ghost btn-icon" id="prevBtn" disabled aria-label="Previous pack"><svg class="icon"><use href="#i-chevron-left"></use></svg></button>
                         <div class="service-topbar-title">
@@ -1105,11 +1115,8 @@
     </div>
 </div>
 
-<!-- Global overflow ("more options") trigger + panel — contextual actions, replaces the old hamburger menu.
-     Shown top-right on every screen per the mockups' "•••" affordance. -->
-<button class="btn-icon overflow-trigger" id="overflowTriggerBtn" aria-label="More options" aria-haspopup="true">
-    <svg class="icon"><use href="#i-menu-dots"></use></svg>
-</button>
+<!-- Overflow ("more options") panel — contextual in-service actions, replaces the old hamburger menu.
+     Opened from the "⋯" button in each service-mode top bar (checklist, general checks, notes, report). -->
 <div class="overflow-panel" id="overflowPanel" role="dialog" aria-label="More options">
     <div class="flex-between" style="margin-bottom: var(--sp-5);">
         <strong>Options</strong>
@@ -1236,14 +1243,6 @@
             <button class="btn-outline" id="cancelEditSiteBtn" style="flex:1;">Cancel</button>
             <button class="btn-primary" id="confirmEditSiteBtn" style="flex:1;">Save Changes</button>
         </div>
-    </div>
-</div>
-
-<div id="photoViewerModal" class="modal">
-    <div class="modal-content" style="max-width: 640px; text-align:center;">
-        <button class="modal-close-btn" id="closePhotoViewerBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
-        <h2 style="text-align:left;">Photo</h2>
-        <img id="photoViewerImg" src="" alt="Issue photo" style="max-width:100%; border-radius: var(--radius-md);">
     </div>
 </div>
 
@@ -1442,7 +1441,9 @@
     const mainSidebar = $('mainSidebar');
     const sidebarBackdrop = $('sidebarBackdrop');
     function closeMobileSidebar() { mainSidebar.classList.remove('open'); sidebarBackdrop.classList.remove('show'); }
-    $('mobileSidebarBtn').addEventListener('click', () => { mainSidebar.classList.add('open'); sidebarBackdrop.classList.add('show'); });
+    function openSidebar() { mainSidebar.classList.add('open'); sidebarBackdrop.classList.add('show'); }
+    $('mobileSidebarBtn').addEventListener('click', openSidebar);
+    document.querySelectorAll('.open-sidebar-btn').forEach(btn => btn.addEventListener('click', openSidebar));
     sidebarBackdrop.addEventListener('click', closeMobileSidebar);
 
     const overflowPanel = $('overflowPanel');
@@ -1451,10 +1452,10 @@
         overflowPanel.classList.toggle('open', open);
         $('menuBackdrop').classList.toggle('show', open);
     }
-    $('overflowTriggerBtn').addEventListener('click', () => toggleOverflowPanel());
     $('closeOverflowBtn').addEventListener('click', () => toggleOverflowPanel(false));
     $('menuBackdrop').addEventListener('click', () => toggleOverflowPanel(false));
     $('navSettingsBtnMenu').addEventListener('click', () => { toggleOverflowPanel(false); navigateTo('settingsSection'); });
+    ['notesOverflowBtn', 'reportOverflowBtn'].forEach(id => $(id).addEventListener('click', () => toggleOverflowPanel(true)));
 
     document.querySelectorAll('.sidebar-link').forEach(btn => {
         btn.addEventListener('click', () => navigateTo(btn.getAttribute('data-nav')));
@@ -1472,11 +1473,16 @@
         });
         $('mobileTopbarTitle').innerText = sectionTitles[sectionId] || 'Pack Tracker';
 
-        // The global "•••" overflow panel only shows in-service actions while an active
+        // The "•••" overflow panel only shows in-service actions while an active
         // service/checklist screen is open — keeps it a short, contextual list (Hick's Law).
-        const inService = ['serviceSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
-        $('overflowServiceActions').classList.toggle('hidden', !inService);
-        $('overflowTriggerBtn').classList.toggle('hidden', sectionId === 'completionSection');
+        const inServiceActions = ['serviceSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
+        $('overflowServiceActions').classList.toggle('hidden', !inServiceActions);
+
+        // The browsing sidebar collapses to a pullout for the whole service flow, including
+        // the Completion Summary, so the focused screens get full width (Mockups 2-4 show no
+        // persistent sidebar). It reappears once you're back to browsing (Home/Sites/etc).
+        const inService = inServiceActions || sectionId === 'completionSection';
+        document.body.classList.toggle('in-service', inService);
 
         closeMobileSidebar();
         toggleOverflowPanel(false);
@@ -2262,8 +2268,10 @@
     $('startRegularServiceBtn').addEventListener('click', async () => { $('scheduledPromptModal').style.display = "none"; await continueStartFlow(); });
     $('startScheduledServiceBtn').addEventListener('click', async () => {
         $('scheduledPromptModal').style.display = "none";
-        const siteInfo = sitesData[currentSiteName];
-        if (siteInfo?.scheduledRep) { syncRepName(siteInfo.scheduledRep); }
+        // Deliberately does NOT overwrite this device's saved Representative name (Settings) —
+        // whoever scheduled the visit may not be who's actually on-site running it, and two
+        // techs could be mid-service on two different tablets at once. Each device keeps its
+        // own local identity; the schedule's assigned rep is informational only.
         await saveScheduleForSite(currentSiteName, "", "", "");
         renderSiteDropdown(); renderContextRow();
         await continueStartFlow();
@@ -2417,7 +2425,7 @@
                 <button type="button" class="part-pill ${stateClass}" data-expand-key="${key}">
                     <div>
                         <div class="part-header">${part}</div>
-                        <div class="pill-detail">${detail}${partData.photo ? ' · <svg class="icon icon-sm" style="width:13px;height:13px;"><use href="#i-camera"></use></svg>' : ''}${partData.partUsed ? ' · <svg class="icon icon-sm" style="width:13px;height:13px;"><use href="#i-tag"></use></svg> ' + partData.partUsed : ''}</div>
+                        <div class="pill-detail">${detail}${partData.partUsed ? ' · <svg class="icon icon-sm" style="width:13px;height:13px;"><use href="#i-tag"></use></svg> ' + partData.partUsed : ''}</div>
                     </div>
                     <span class="pill-status">${status === 'Issue' ? '<svg class="icon icon-sm"><use href="#i-alert"></use></svg>Issue' : '<svg class="icon icon-sm"><use href="#i-check"></use></svg>Good'}</span>
                 </button>
@@ -2441,11 +2449,8 @@
             }
         }
 
-        const photoRow = `
-            <div class="issue-photo-row">
-                <input type="file" accept="image/*" capture="environment" class="hidden photo-input" id="photo-${partId}" data-type="${typeStr}" data-part="${part}">
-                <button type="button" class="btn-sm btn-ghost photo-capture-btn" data-target="photo-${partId}"><svg class="icon icon-sm"><use href="#i-camera"></use></svg>${partData.photo ? 'Retake' : 'Add photo'}</button>
-                ${partData.photo ? `<img src="${partData.photo}" class="issue-photo-thumb view-photo-thumb" alt="Issue photo for ${part}">` : ''}
+        const partUsedRow = `
+            <div class="issue-extra-row">
                 <input type="text" class="part-used-input" data-type="${typeStr}" data-part="${part}" placeholder="Part used (optional)" value="${(partData.partUsed || '').replace(/"/g, '&quot;')}">
             </div>
         `;
@@ -2462,43 +2467,13 @@
                 </div>
                 <div class="notes-area ${status === 'Issue' ? '' : 'hidden'}" id="notes-${partId}">
                     ${notesInnerHTML}
-                    ${photoRow}
+                    ${partUsedRow}
                 </div>
             </div>
         `;
     }
 
-    // Downscale + compress a captured photo so it stays well under Firestore's 1MB document
-    // limit (issue docs may hold several fields already). No Storage bucket is configured for
-    // this app, so photos live as base64 data URLs directly on the issue record.
-    function compressImage(file, maxEdge = 900, quality = 0.55) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            const reader = new FileReader();
-            reader.onload = () => {
-                img.onload = () => {
-                    let { width, height } = img;
-                    if (width > height && width > maxEdge) { height = Math.round(height * (maxEdge / width)); width = maxEdge; }
-                    else if (height > maxEdge) { width = Math.round(width * (maxEdge / height)); height = maxEdge; }
-                    const canvas = document.createElement('canvas');
-                    canvas.width = width; canvas.height = height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                    let dataUrl = canvas.toDataURL('image/jpeg', quality);
-                    if (dataUrl.length > 700000 && quality > 0.3) { dataUrl = canvas.toDataURL('image/jpeg', 0.32); }
-                    resolve(dataUrl);
-                };
-                img.onerror = reject;
-                img.src = reader.result;
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    $('closePhotoViewerBtn').addEventListener('click', () => $('photoViewerModal').style.display = 'none');
-    function openPhotoViewer(src) { $('photoViewerImg').src = src; $('photoViewerModal').style.display = 'block'; }
-
-    // Wires the Good/Issue toggle, notes/photo/parts-used inputs, and expand/collapse pill
+    // Wires the Good/Issue toggle, notes/parts-used inputs, and expand/collapse pill
     // behavior for whichever container (General Checks or the active pack) is passed in.
     function attachInteractionListeners(container, { getDataObj, onDirty, rerender }) {
         container.querySelectorAll('[data-expand-key]').forEach(btn => {
@@ -2564,25 +2539,6 @@
                 onDirty(type, part, true);
             });
         });
-
-        container.querySelectorAll('.photo-capture-btn').forEach(btn => {
-            btn.addEventListener('click', () => $(btn.getAttribute('data-target'))?.click());
-        });
-        container.querySelectorAll('.photo-input').forEach(inp => {
-            inp.addEventListener('change', async (e) => {
-                const file = inp.files?.[0];
-                if (!file) return;
-                const type = inp.getAttribute('data-type'); const part = inp.getAttribute('data-part');
-                try {
-                    const dataUrl = await compressImage(file);
-                    getDataObj()[part].photo = dataUrl;
-                    onDirty(type, part, true);
-                    rerender();
-                    showToast('Photo attached ✓');
-                } catch { showToast("Couldn't process that photo — try again."); }
-            });
-        });
-        container.querySelectorAll('.view-photo-thumb').forEach(img => img.addEventListener('click', () => openPhotoViewer(img.src)));
     }
 
     /* ============================================================
@@ -3044,10 +3000,10 @@
        ============================================================ */
     function collectAllIssues() {
         const issues = [];
-        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: d.notes || '', photo: d.photo, partUsed: d.partUsed }); });
+        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: d.notes || '', partUsed: d.partUsed }); });
         for (let i = 1; i <= totalPonchos; i++) {
             const data = PonchoDataCache[i] || {};
-            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: data[part].notes || '', photo: data[part].photo, partUsed: data[part].partUsed }); });
+            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: data[part].notes || '', partUsed: data[part].partUsed }); });
         }
         return issues;
     }
@@ -3077,7 +3033,7 @@
                     <div class="completion-issue-row">
                         <div>
                             <strong style="font-size:0.92rem;">${iss.label}</strong>
-                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${iss.notes || 'No detail recorded'}${iss.photo ? ' <svg class="icon icon-sm" style="width:13px;height:13px;"><use href="#i-camera"></use></svg>' : ''}</p>
+                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${iss.notes || 'No detail recorded'}</p>
                         </div>
                         <button type="button" class="badge resolution-toggle ${state === 'resolved' ? 'badge-resolved' : 'badge-followup'}" data-id="${iss.id}">${state === 'resolved' ? 'Resolved' : 'Follow up'}</button>
                     </div>
@@ -3227,7 +3183,7 @@
             let anyIssue = false;
             for (let i = 1; i <= totalPonchos; i++) {
                 const data = PonchoDataCache[i] ? PonchoDataCache[i][part] : null;
-                if (data && data.status === 'Issue') { anyIssue = true; issues.push({ part, unit: i, notes: data.notes || "", photo: data.photo }); }
+                if (data && data.status === 'Issue') { anyIssue = true; issues.push({ part, unit: i, notes: data.notes || "" }); }
             }
             if (!anyIssue) allGoodParts.push(part);
         });
@@ -3237,7 +3193,7 @@
         const allGoodParts = []; const issues = [];
         generalChecksList.forEach(item => {
             const data = generalChecksCache[item];
-            if (data && data.status === 'Issue') issues.push({ part: item, unit: null, notes: data.notes || "", photo: data.photo });
+            if (data && data.status === 'Issue') issues.push({ part: item, unit: null, notes: data.notes || "" });
             else if (data && data.status === 'Good') allGoodParts.push(item);
         });
         return { allGoodParts, issues };
@@ -3285,7 +3241,6 @@
             id: iss.id, label: iss.label,
             text: issueResolutionState[`${iss.id}::text`] ?? (iss.notes || 'Issue logged and addressed.'),
             included: faultIncludedState[iss.id] !== false, // default: shown to customer
-            photo: iss.photo,
             resolution: issueResolutionState[iss.id] || 'resolved'
         }));
         renderFaultCards();
@@ -3299,7 +3254,7 @@
                 <div class="fault-head">
                     <div>
                         <div class="fault-label">${f.label}</div>
-                        <div class="fault-sub">${f.included ? 'Auto-drafted' : 'Hidden from customer'}${f.photo ? ' · has photo' : ''}</div>
+                        <div class="fault-sub">${f.included ? 'Auto-drafted' : 'Hidden from customer'}</div>
                     </div>
                     <button type="button" class="toggle-switch ${f.included ? 'on' : ''}" data-fault-id="${f.id}" aria-label="Include ${f.label} in customer report" aria-pressed="${f.included}"></button>
                 </div>
@@ -3325,7 +3280,6 @@
         const section = (title, val) => { if (!val || !val.trim()) return ""; return `<div class="cust-report-section"><h2>${title}</h2><p>${toHtml(val)}</p></div>`; };
         const includedFaults = faultItems.filter(f => f.included);
         const faultsText = includedFaults.map(f => `${f.label}: ${f.text}`).join('\n');
-        const photos = includedFaults.filter(f => f.photo).map(f => f.photo);
 
         return `
             <div class="cust-report">
@@ -3342,7 +3296,6 @@
                 ${section('Guns', $('custDraftGuns').value)}
                 ${section('Ponchos', $('custDraftPonchos').value)}
                 ${section('Faults Resolved', faultsText)}
-                ${photos.length ? `<div class="cust-report-photos">${photos.map(p => `<img src="${p}">`).join('')}</div>` : ''}
                 ${section('Additional Notes', $('custDraftNotes').value)}
                 ${signatureDataUrl ? `<div class="cust-report-signoff"><p style="font-size:0.85rem;color:#555;">Customer sign-off:</p><img src="${signatureDataUrl}"></div>` : ''}
                 <div class="cust-report-footer">Prepared by ${esc(currentRepresentative || "our service team")}. Thank you for your continued business.</div>
