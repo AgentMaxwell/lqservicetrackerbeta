@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pack-tracker-v2.1';
+const CACHE_NAME = 'pack-tracker-v2.2';
 
 // List all the core files your app needs to load the UI.
 // Include any local icons or assets here if you add them later.
@@ -6,7 +6,9 @@ const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './manifest.json',
-    './firebase-config.js'
+    './firebase-config.js',
+    './icon-192.png',
+    './icon-512.png'
 ];
 
 // 1. Install Event: Cache the essential files (App Shell)

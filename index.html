@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.7.1 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.7.2 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
            ============================================ */
@@ -205,6 +205,7 @@
             position: sticky; top: 0; height: 100vh; height: 100dvh; z-index: 2050;
         }
         .sidebar-brand { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-2); margin-bottom: var(--sp-7); }
+        .sidebar-brand-logo { width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; object-fit: cover; background: #fff; }
         .sidebar-brand strong { font-size: var(--fs-md); letter-spacing: -0.01em; }
         .sidebar-nav { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; }
         .sidebar-link {
@@ -284,7 +285,11 @@
         .badge-scheduled { background: rgba(56,189,248,0.16); color: var(--accent); }
 
         /* ---------- Toasts ---------- */
-        .toast-stack { position: fixed; bottom: var(--sp-5); left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: var(--sp-2); align-items: center; width: min(480px, 92vw); }
+        /* Sits above the sticky action bar (checklist/general checks "Mark remaining good" etc.)
+           on every screen, not just the ones that have one — simplest way to guarantee toasts
+           never cover it, at the minor cost of sitting a bit higher than strictly necessary
+           on screens without a sticky bar. */
+        .toast-stack { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 3000; display: flex; flex-direction: column; gap: var(--sp-2); align-items: center; width: min(480px, 92vw); }
         .toast {
             display: flex; align-items: center; gap: var(--sp-3); background: var(--card-bg-elevated);
             border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: 10px 10px 10px 18px;
@@ -638,7 +643,7 @@
 <div class="app-shell">
     <nav class="sidebar" id="mainSidebar" aria-label="Primary">
         <div class="sidebar-brand">
-            <svg class="icon icon-lg" style="color: var(--primary);"><use href="#i-package"></use></svg>
+            <img src="./icon-512.png" alt="" class="sidebar-brand-logo">
             <strong>Pack Tracker</strong>
         </div>
         <div class="sidebar-nav">
@@ -650,7 +655,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.1</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.2</div>
         </div>
     </nav>
 
@@ -855,7 +860,7 @@
                 <div class="settings-row">
                     <div>
                         <strong>Large Mode</strong>
-                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Larger tap targets and text app-wide — easier with Larges on.</p>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Larger tap targets and text app-wide!</p>
                     </div>
                     <button class="btn-ghost" id="LargeToggleBtn"><svg class="icon"><use href="#i-Large"></use></svg><span id="LargeToggleLabel">Off</span></button>
                 </div>
@@ -1274,6 +1279,7 @@
     let serviceStartedAt = null; // epoch ms — for the Completion Summary "Duration" metric
     let signatureDataUrl = "";
     let currentReportStep = 'details';
+    let reportEntryScreen = 'serviceSection'; // where "Back" on the Customer Report should return to
     let faultItems = []; // built for the Report Builder's Faults step
     let issueResolutionState = {}; // faultId -> 'resolved' | 'followup'
 
@@ -1462,8 +1468,12 @@
     });
 
     async function navigateTo(sectionId) {
-        if ($('generalChecksSection').classList.contains('active')) await saveGeneralChecks();
-        if ($('serviceSection').classList.contains('active')) await triggerBackgroundSave();
+        // The section swap and everything that depends on layout (canvas sizing, etc.) must
+        // happen synchronously, before any `await` below — most callers don't (and some can't)
+        // await navigateTo() itself, so anything after an await here would otherwise run against
+        // a still-hidden (display:none, zero-size) target section on the next call.
+        const wasGeneralActive = $('generalChecksSection').classList.contains('active');
+        const wasServiceActive = $('serviceSection').classList.contains('active');
 
         sections.forEach(sec => sec.classList.remove('active'));
         $(sectionId).classList.add('active');
@@ -1492,6 +1502,10 @@
         if (sectionId === 'historySection') renderHistorySiteSelect();
         if (sectionId === 'settingsSection') { renderSyncQueue(); }
         if (sectionId === 'setupSection') { renderHomeSitesTable(); renderContextRow(); }
+
+        // Flush whatever we just navigated away from — best-effort, doesn't block the UI above.
+        if (wasGeneralActive) await saveGeneralChecks();
+        if (wasServiceActive) await triggerBackgroundSave();
     }
 
     $('repAccordionToggle').addEventListener('click', () => {
@@ -2747,7 +2761,11 @@
     });
 
     async function goPrevPack() { await triggerBackgroundSave(); if (currentPonchoIndex > 1) { currentPonchoIndex--; renderPonchoUI(); } }
-    async function goNextPack() { await triggerBackgroundSave(); if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); } else { showToast("You're on the final pack."); } }
+    async function goNextPack() {
+        await triggerBackgroundSave();
+        if (currentPonchoIndex < totalPonchos) { currentPonchoIndex++; renderPonchoUI(); }
+        else { await attemptCompleteService(); } // "Finish" on the last pack — actually tries to end the service, not a dead end
+    }
     $('prevBtn').addEventListener('click', goPrevPack);
     $('stickyPrevBtn').addEventListener('click', goPrevPack);
     $('nextBtn').addEventListener('click', goNextPack);
@@ -2985,14 +3003,20 @@
     $('closeIncompleteChecklistModalBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
     $('closeIncompleteChecklistBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
 
-    $('ovCompleteServiceBtn').addEventListener('click', async () => {
-        toggleOverflowPanel(false);
+    // Shared by the overflow panel's "Complete Service" and by tapping "Finish" on the last pack —
+    // both should attempt the exact same end-of-service gate rather than "Finish" being a dead end.
+    async function attemptCompleteService() {
         if (!currentSiteName || !activeServiceDate) { showToast("Start or load a service before completing it."); return; }
         await triggerBackgroundSave();
         await saveGeneralChecks();
         const incomplete = findIncompleteChecklist();
         if (incomplete.missingGeneral.length > 0 || Object.keys(incomplete.missingByPack).length > 0) { openIncompleteChecklistModal(incomplete); return; }
         openCompletionSummary();
+    }
+
+    $('ovCompleteServiceBtn').addEventListener('click', async () => {
+        toggleOverflowPanel(false);
+        await attemptCompleteService();
     });
     /* ============================================================
        COMPLETION SUMMARY (Mockup 3) — Peak-End rule: a positive, informative
@@ -3010,13 +3034,21 @@
 
     function openCompletionSummary() {
         navigateTo('completionSection');
+        renderCompletionSummary();
+        initSignaturePad();
+    }
+
+    // Rebuilds the metrics + issues list only — used on first open AND whenever a Resolved/Follow-up
+    // badge is toggled. Deliberately does not touch the signature pad, so toggling a badge never
+    // wipes a signature the customer already drew.
+    function renderCompletionSummary() {
         const issues = collectAllIssues();
         const totalItems = totalPonchos * allPonchoElements.length;
         let checkedItems = 0;
         for (let i = 1; i <= totalPonchos; i++) { const d = PonchoDataCache[i] || {}; allPonchoElements.forEach(p => { if (d[p]?.status) checkedItems++; }); }
         const partsUsedCount = issues.filter(i => i.partUsed && i.partUsed.trim()).length;
 
-        $('completionSubtitle').innerText = `${fmtDate(new Date())} · Representative: ${currentRepresentative || 'Not specified'} · Next service due in ~3 months`;
+        $('completionSubtitle').innerText = `${fmtDate(new Date())} · Representative: ${currentRepresentative || 'Not specified'} · Next service due in ~12 months`;
         $('metricPacksChecked').innerText = `${Math.round(checkedItems / (allPonchoElements.length || 1))}/${totalPonchos}`;
         $('metricIssuesLogged').innerText = issues.length;
         $('metricPartsUsed').innerText = partsUsedCount;
@@ -3042,10 +3074,9 @@
             list.querySelectorAll('.resolution-toggle').forEach(btn => btn.addEventListener('click', () => {
                 const id = btn.getAttribute('data-id');
                 issueResolutionState[id] = issueResolutionState[id] === 'resolved' ? 'followup' : 'resolved';
-                openCompletionSummary();
+                renderCompletionSummary();
             }));
         }
-        initSignaturePad();
     }
 
     function formatDuration(ms) {
@@ -3059,7 +3090,12 @@
     function initSignaturePad() {
         const canvas = $('signatureCanvas');
         const ratio = window.devicePixelRatio || 1;
-        canvas.width = canvas.clientWidth * ratio; canvas.height = canvas.clientHeight * ratio;
+        // Defensive fallback — if this ever runs before the canvas has been laid out (e.g. its
+        // section was still hidden), clientWidth/clientHeight would be 0 and every stroke would
+        // silently draw into a zero-size buffer. Fall back to the wrapper's box in that case.
+        const w = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
+        const h = canvas.clientHeight || 180;
+        canvas.width = w * ratio; canvas.height = h * ratio;
         sigCtx = canvas.getContext('2d');
         sigCtx.scale(ratio, ratio);
         sigCtx.strokeStyle = '#1a1a1a'; sigCtx.lineWidth = 2.2; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round';
@@ -3081,6 +3117,7 @@
     });
 
     $('buildReportBtn').addEventListener('click', async () => {
+        reportEntryScreen = 'completionSection';
         navigateTo('customerReportSection');
         populateCustomerReportHeader();
         setReportStep('details');
@@ -3132,6 +3169,7 @@
        ============================================================ */
     $('ovCustomerReportBtn').addEventListener('click', async () => {
         toggleOverflowPanel(false);
+        reportEntryScreen = document.querySelector('.app-section.active')?.id || 'serviceSection';
         await triggerBackgroundSave();
         navigateTo('customerReportSection');
         populateCustomerReportHeader();
@@ -3140,7 +3178,14 @@
         buildFaultItems();
         renderLivePreview();
     });
-    $('customerReportBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
+    // Returns to wherever the report was opened from — the checklist, general checks, notes,
+    // or (when reached via "Build report" at the end of a service) the Completion Summary.
+    $('customerReportBackBtn').addEventListener('click', () => {
+        navigateTo(reportEntryScreen);
+        if (reportEntryScreen === 'serviceSection') renderPonchoUI();
+        else if (reportEntryScreen === 'generalChecksSection') renderGeneralChecksUI();
+        else if (reportEntryScreen === 'completionSection') renderCompletionSummary();
+    });
 
     const REPORT_STEPS = ['details', 'checks', 'faults', 'preview'];
     function setReportStep(step) {
