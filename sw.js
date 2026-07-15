@@ -1,26 +1,42 @@
-const CACHE_NAME = 'pack-tracker-v2.3';
+const CACHE_NAME = 'pack-tracker-v2.4';
 
 // List all the core files your app needs to load the UI.
 // Include any local icons or assets here if you add them later.
+// NOTE: every ES module index.html imports has to be in here. A module import that misses the
+// cache is a hard failure — the app won't boot at all, which is precisely the moment (a tablet
+// cold-started in the field with no signal) that it has to.
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './manifest.json',
     './firebase-config.js',
+    './sheet-sync-config.js',
     './icon-192.png',
     './icon-512.png'
 ];
 
+// The Firebase SDK is imported from Google's CDN, so without pre-caching it the app can only
+// cold-start offline if the browser's HTTP cache happens to still hold it. These URLs are
+// version-pinned, so caching them is safe — bump them if firebase-config.js moves version.
+const VENDOR_ASSETS = [
+    'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js',
+    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js'
+];
+
 // 1. Install Event: Cache the essential files (App Shell)
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            console.log('[Service Worker] Pre-caching offline assets');
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        console.log('[Service Worker] Pre-caching offline assets');
+        await cache.addAll(ASSETS_TO_CACHE);
+        // Best-effort and individually caught: addAll is all-or-nothing, so one CDN hiccup
+        // would otherwise abort the whole install and leave the tablet with no worker at all.
+        await Promise.all(VENDOR_ASSETS.map(url =>
+            cache.add(url).catch(err => console.warn('[Service Worker] Could not pre-cache', url, err))
+        ));
+    })());
     // Force the waiting service worker to become the active one immediately
-    self.skipWaiting(); 
+    self.skipWaiting();
 });
 
 // 2. Activate Event: Clean up old caches when you update the version number

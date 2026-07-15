@@ -784,18 +784,17 @@
                 <h1>History</h1>
             </div>
             <div class="card" style="margin-bottom: var(--sp-4);">
-                <label for="historySiteSelect">Site</label>
-                <select id="historySiteSelect"><option value="">-- Choose Site --</option></select>
+                <label for="historySiteSelect">Filter by site</label>
+                <select id="historySiteSelect"><option value="">All sites</option></select>
             </div>
-            <div id="historyEmptyState" class="empty-state">
-                <svg class="icon icon-lg"><use href="#i-history"></use></svg>
-                <p style="margin-top: var(--sp-3);">Choose a site to see its service timeline and recurring issues.</p>
-            </div>
-            <div id="historyContent" class="hidden">
+            <div id="historyContent">
                 <div class="split-view">
                     <div class="card split-list">
-                        <h3 style="text-align:left; margin-bottom: var(--sp-4);">Service Timeline</h3>
-                        <div id="historyTimeline"></div>
+                        <div class="card-title-row">
+                            <h3 style="text-align:left;" id="historyTimelineTitle">Recent services</h3>
+                            <button class="btn-sm btn-ghost" id="historyRefreshBtn" aria-label="Refresh history"><svg class="icon icon-sm"><use href="#i-refresh"></use></svg>Refresh</button>
+                        </div>
+                        <div id="historyTimeline" style="margin-top: var(--sp-4);"></div>
                     </div>
                     <div class="card split-detail">
                         <h3 style="text-align:left; margin-bottom: var(--sp-2);">Recurring Issues</h3>
@@ -891,6 +890,17 @@
                 <p id="sheetSyncStatusMsg" class="text-muted" style="font-size:0.9rem; margin: var(--sp-2) 0 var(--sp-4);">Not yet checked this session.</p>
                 <div id="sheetConflictBanner" class="hidden" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: 0.88rem; color: var(--warning-text);"></div>
                 <button class="btn-ghost btn-block" id="retrySheetSyncBtn"><svg class="icon"><use href="#i-refresh"></use></svg>Retry Sheet Sync Now</button>
+            </div>
+
+            <div class="card">
+                <h3 style="text-align:left; margin-bottom: var(--sp-2);"><svg class="icon"><use href="#i-download"></use></svg> Offline Data</h3>
+                <p class="text-muted" style="font-size:0.85rem; margin: 0 0 var(--sp-4);">Pull every site's details, service history and notes onto this tablet so they're readable with no signal. Do this before you leave, while you still have wifi.</p>
+                <div id="offlineDownloadProgress" class="hidden" style="margin-bottom: var(--sp-4);">
+                    <div class="progress-container"><div class="progress-fill" id="offlineDownloadBar" style="width:0%"></div></div>
+                    <p class="text-muted" style="font-size:0.8rem; margin-top: var(--sp-2);" id="offlineDownloadStep">Starting...</p>
+                </div>
+                <p class="text-muted" style="font-size:0.8rem; margin: 0 0 var(--sp-3);" id="offlineDownloadStamp">Not downloaded on this tablet yet.</p>
+                <button class="btn-primary btn-block" id="downloadOfflineDataBtn"><svg class="icon"><use href="#i-download"></use></svg>Download site data for offline</button>
             </div>
 
             <div class="card">
@@ -1104,7 +1114,6 @@
 
             <div class="metric-row">
                 <div class="metric-card"><div class="metric-value" id="metricPacksChecked">0/0</div><div class="metric-label">Packs checked</div></div>
-                <div class="metric-card"><div class="metric-value" id="metricIssuesLogged">0</div><div class="metric-label">Issues logged</div></div>
                 <div class="metric-card"><div class="metric-value" id="metricPartsUsed">0</div><div class="metric-label">Parts used</div></div>
                 <div class="metric-card"><div class="metric-value" id="metricDuration">—</div><div class="metric-label">Duration</div></div>
             </div>
@@ -1271,7 +1280,7 @@
 <script type="module">
     import { db } from './firebase-config.js';
     import { SHEET_SYNC_URL, SHEET_SYNC_SECRET } from './sheet-sync-config.js';
-    import { collection, addDoc, setDoc, getDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { collection, addDoc, setDoc, getDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, query, where, waitForPendingWrites } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
     const sheetSyncConfigured = () => SHEET_SYNC_URL && !SHEET_SYNC_URL.startsWith("PASTE_YOUR");
@@ -1293,6 +1302,10 @@
     let signatureDataUrl = "";
     let currentReportStep = 'details';
     let reportEntryScreen = 'serviceSection'; // where "Back" on the Customer Report should return to
+    // True while the Report Builder is showing a finished service pulled up from History. The
+    // report screen is normally an in-service screen, so without this the overflow menu would
+    // offer "General Site Checks" etc. and let a tech edit a service that's already signed off.
+    let viewingArchivedReport = false;
     let faultItems = []; // built for the Report Builder's Faults step
     let issueResolutionState = {}; // faultId -> 'resolved' | 'followup'
 
@@ -1499,7 +1512,7 @@
         // The "•••" overflow panel only shows in-service actions while an active
         // service/checklist screen is open — keeps it a short, contextual list (Hick's Law).
         const inServiceActions = ['serviceSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
-        $('overflowServiceActions').classList.toggle('hidden', !inServiceActions);
+        $('overflowServiceActions').classList.toggle('hidden', !inServiceActions || viewingArchivedReport);
 
         // The browsing sidebar collapses to a pullout for the whole service flow, including
         // the Completion Summary, so the focused screens get full width (Mockups 2-4 show no
@@ -1512,8 +1525,8 @@
 
         if (sectionId === 'sitesSection') renderSitesTable();
         if (sectionId === 'scheduleSection') { renderScheduleSiteSelect(); renderScheduledServicesList(); }
-        if (sectionId === 'historySection') renderHistorySiteSelect();
-        if (sectionId === 'settingsSection') { renderSyncQueue(); }
+        if (sectionId === 'historySection') { renderHistorySiteSelect(); renderHistory(); }
+        if (sectionId === 'settingsSection') { renderSyncQueue(); renderOfflineStamp(); }
         if (sectionId === 'setupSection') { renderHomeSitesTable(); renderContextRow(); }
 
         // Flush whatever we just navigated away from — best-effort, doesn't block the UI above.
@@ -1551,26 +1564,99 @@
         }
     }
 
+    /* Three outcomes, because "the data is safe" and "the server has it" are different facts
+       and the UI needs to tell them apart. WRITE_QUEUED is a success for the tech — they can
+       keep working — but the sync pill should still show it as outstanding. */
+    const WRITE_OK = 'ok';         // server acknowledged
+    const WRITE_QUEUED = 'queued'; // durable in the local cache, ack pending
+    const WRITE_FAILED = 'failed'; // rejected outright — needs a manual retry
+
+    /* Firestore's setDoc() promise resolves only on SERVER acknowledgement. Because
+       firebase-config.js enables persistentLocalCache, the write is already durable in
+       IndexedDB the instant it's issued — but while offline the returned promise stays
+       pending forever. It never rejects, so awaiting it hangs the caller outright (this is
+       what froze "Next" on the checklist) and the catch below never sees the offline case.
+       So we race the ack against a short timeout: local durability is the success signal for
+       the UI, and the ack only downgrades "Queued" to "Synced" whenever it eventually lands. */
+    const ACK_TIMEOUT_MS = 3000;
+
+    function markWriteSynced(id) {
+        writeQueue = writeQueue.filter(q => q.id !== id);
+        saveQueueList(writeQueue);
+        delete pendingRetryFns[id];
+        updateGlobalSyncPill();
+        renderSyncQueue();
+        return WRITE_OK;
+    }
+    function upsertQueueEntry(id, label, status, lastError) {
+        const existing = writeQueue.find(q => q.id === id);
+        if (existing) { existing.status = status; existing.label = label; existing.lastError = lastError; existing.ts = Date.now(); }
+        else writeQueue.push({ id, label, status, lastError, ts: Date.now() });
+        saveQueueList(writeQueue);
+        updateGlobalSyncPill();
+        renderSyncQueue();
+    }
+    function markWriteFailed(id, label, fn, error) {
+        console.warn(`Queued write failed (${label}):`, error);
+        pendingRetryFns[id] = fn;
+        upsertQueueEntry(id, label, WRITE_FAILED, error?.message || String(error));
+        return WRITE_FAILED;
+    }
+
     async function queuedWrite(id, label, fn) {
-        try {
-            await fn();
-            writeQueue = writeQueue.filter(q => q.id !== id);
-            saveQueueList(writeQueue);
-            delete pendingRetryFns[id];
-            updateGlobalSyncPill();
-            renderSyncQueue();
-            return true;
-        } catch (error) {
-            console.warn(`Queued write failed (${label}):`, error);
-            const existing = writeQueue.find(q => q.id === id);
-            if (existing) { existing.status = 'failed'; existing.lastError = error.message || String(error); existing.ts = Date.now(); }
-            else writeQueue.push({ id, label, status: 'failed', lastError: error.message || String(error), ts: Date.now() });
-            saveQueueList(writeQueue);
-            pendingRetryFns[id] = fn;
-            updateGlobalSyncPill();
-            renderSyncQueue();
-            return false;
-        }
+        let ack;
+        try { ack = Promise.resolve(fn()); }
+        catch (error) { return markWriteFailed(id, label, fn, error); } // fn threw before returning a promise
+        ack.catch(() => {}); // the race below may not observe a rejection in time; don't let it surface as unhandled
+
+        // A false navigator.onLine is trustworthy (no interface at all), so don't make the tech
+        // sit through the timeout on every tap out in the field. A *true* value isn't
+        // trustworthy — captive portals and dead wifi both report online — which is exactly why
+        // the timeout still backs it up.
+        const ackWindow = navigator.onLine ? ACK_TIMEOUT_MS : 0;
+        const settled = await Promise.race([
+            ack.then(() => ({ status: WRITE_OK }), error => ({ status: WRITE_FAILED, error })),
+            new Promise(resolve => setTimeout(() => resolve({ status: WRITE_QUEUED }), ackWindow))
+        ]);
+
+        if (settled.status === WRITE_OK) return markWriteSynced(id);
+        if (settled.status === WRITE_FAILED) return markWriteFailed(id, label, fn, settled.error);
+
+        // No ack yet. The write is in the local cache and Firestore replays it on reconnect,
+        // so we keep holding the same promise and let it clear the entry when it lands —
+        // no user retry needed, and no second write issued.
+        pendingRetryFns[id] = fn;
+        upsertQueueEntry(id, label, WRITE_QUEUED, null);
+        ack.then(() => { markWriteSynced(id); refreshSaveIndicators(); },
+                 error => { markWriteFailed(id, label, fn, error); refreshSaveIndicators(); });
+        return WRITE_QUEUED;
+    }
+
+    /* A queue entry that outlived a reload has no ack promise to watch anymore (the retry fns
+       live in memory only). Firestore still owns those writes, so ask it when everything has
+       drained rather than leaving the entries stranded as "Waiting to sync" forever. */
+    function reconcileOrphanedWrites() {
+        const orphans = writeQueue.filter(q => q.status === WRITE_QUEUED && !pendingRetryFns[q.id]);
+        if (orphans.length === 0) return;
+        waitForPendingWrites(db).then(() => {
+            orphans.forEach(o => { if (!pendingRetryFns[o.id]) markWriteSynced(o.id); });
+            refreshSaveIndicators();
+        }).catch(e => console.warn('waitForPendingWrites failed:', e));
+    }
+
+    // What the per-screen save indicators should show when nothing is mid-save.
+    function currentSyncState() {
+        if (writeQueue.some(q => q.status === WRITE_FAILED)) return 'failed';
+        return writeQueue.length > 0 ? 'queued' : 'synced';
+    }
+
+    /* Called when an ack lands in the background, long after the save returned. Without this the
+       checklist sits there reading "Saved offline" after the queue has actually drained. */
+    function refreshSaveIndicators() {
+        if (isDirty) return; // unsaved edits outrank queue state — leave "Unsaved" alone
+        const state = currentSyncState();
+        setChecklistSaveState(state);
+        setGeneralSaveState(state);
     }
 
     function renderSyncQueue() {
@@ -1582,15 +1668,25 @@
             return;
         }
         list.className = '';
-        list.innerHTML = writeQueue.map(q => `
+        list.innerHTML = writeQueue.map(q => {
+            // Queued writes retry themselves via Firestore, so offering a Retry button there would
+            // imply the tech has something to fix when they don't. Only failures get one.
+            const detail = q.status === WRITE_QUEUED
+                ? 'Saved on this tablet — will sync automatically'
+                : (q.lastError || 'Failed to sync');
+            const action = q.status === WRITE_QUEUED
+                ? '<span class="badge badge-due">Waiting</span>'
+                : `<button class="btn-sm btn-ghost retry-queue-item" data-id="${q.id}">Retry</button>`;
+            return `
             <div class="settings-row">
                 <div>
                     <strong style="font-size:0.9rem;">${q.label}</strong>
-                    <p class="text-muted" style="font-size:0.78rem; margin-top:2px;">${new Date(q.ts).toLocaleTimeString()} — ${q.lastError || 'Waiting to sync'}</p>
+                    <p class="text-muted" style="font-size:0.78rem; margin-top:2px;">${new Date(q.ts).toLocaleTimeString()} — ${detail}</p>
                 </div>
-                <button class="btn-sm btn-ghost retry-queue-item" data-id="${q.id}">Retry</button>
+                ${action}
             </div>
-        `).join('');
+        `;
+        }).join('');
         list.querySelectorAll('.retry-queue-item').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const id = btn.getAttribute('data-id');
@@ -1602,11 +1698,68 @@
         });
     }
     $('retryAllQueueBtn').addEventListener('click', async () => {
-        const ids = writeQueue.map(q => q.id);
+        // Only genuine failures — re-issuing a WRITE_QUEUED entry would duplicate a write that
+        // Firestore is already going to replay on its own.
+        const ids = writeQueue.filter(q => q.status === WRITE_FAILED).map(q => q.id);
         for (const id of ids) { const fn = pendingRetryFns[id]; if (fn) await queuedWrite(id, writeQueue.find(q => q.id === id)?.label || 'Retry', fn); }
     });
-    window.addEventListener('online', () => { updateGlobalSyncPill(); $('retryAllQueueBtn').click(); });
+    window.addEventListener('online', () => { updateGlobalSyncPill(); reconcileOrphanedWrites(); $('retryAllQueueBtn').click(); });
     window.addEventListener('offline', updateGlobalSyncPill);
+    /* ============================================================
+       OFFLINE PRE-DOWNLOAD — warms Firestore's persistent cache so a tech with no signal can
+       still read every site, its history and its notes. There's no separate "download" API:
+       reading a collection through getDocs() while online is what populates the cache, and
+       Firestore then serves those same docs from IndexedDB once the connection drops.
+       ============================================================ */
+    const OFFLINE_STAMP_KEY = 'packTrackerOfflineDownloadedAt';
+
+    function renderOfflineStamp() {
+        const el = $('offlineDownloadStamp');
+        if (!el) return;
+        const ts = localStorage.getItem(OFFLINE_STAMP_KEY);
+        el.innerText = ts
+            ? `Last downloaded ${new Date(Number(ts)).toLocaleString()}`
+            : 'Not downloaded on this tablet yet.';
+    }
+
+    $('downloadOfflineDataBtn').addEventListener('click', async () => {
+        if (!navigator.onLine) { showToast("You're offline — reconnect to wifi to download site data."); return; }
+
+        const btn = $('downloadOfflineDataBtn');
+        const wrap = $('offlineDownloadProgress');
+        const bar = $('offlineDownloadBar');
+        const stepLabel = $('offlineDownloadStep');
+        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes']];
+        const totalSteps = collections.length + 1; // + the common-issues doc
+
+        btn.disabled = true;
+        wrap.classList.remove('hidden');
+        bar.style.width = '0%';
+        let done = 0, records = 0;
+        try {
+            for (const [coll, label] of collections) {
+                stepLabel.innerText = `Downloading ${label}...`;
+                const snap = await getDocs(collection(db, coll));
+                records += snap.size;
+                bar.style.width = `${Math.round((++done / totalSteps) * 100)}%`;
+            }
+            stepLabel.innerText = 'Downloading common issues list...';
+            await getDoc(doc(db, "settings", "commonIssues"));
+            bar.style.width = '100%';
+            stepLabel.innerText = `Done — ${records} records stored on this tablet.`;
+            localStorage.setItem(OFFLINE_STAMP_KEY, String(Date.now()));
+            renderOfflineStamp();
+            showToast(`Site data downloaded — ${records} records ready for offline use.`);
+        } catch (error) {
+            console.error('Offline download failed:', error);
+            stepLabel.innerText = 'Download failed — check your connection and try again.';
+            showToast("Couldn't download site data.");
+        } finally {
+            btn.disabled = false;
+            setTimeout(() => wrap.classList.add('hidden'), 5000);
+        }
+    });
+
     /* ============================================================
        SITES DATA — Firestore load + Google Sheet sync (behavior preserved from v0.6.5.1)
        ============================================================ */
@@ -1907,6 +2060,7 @@
         totalPonchos = sitesData[currentSiteName]?.count || 0;
         activeServiceDate = resume.date;
         serviceStartedAt = resume.startedAt || Date.now();
+        viewingArchivedReport = false;
         currentFirmware = sitesData[currentSiteName]?.firmware || "";
         currentPackColour = sitesData[currentSiteName]?.packColour || "";
         PonchoDataCache = {};
@@ -2170,65 +2324,95 @@
         const select = $('historySiteSelect');
         if (!select) return;
         const previousValue = select.value;
-        select.innerHTML = '<option value="">-- Choose Site --</option>';
-        Object.keys(sitesData).sort().forEach(name => { select.innerHTML += `<option value="${name}">${name}</option>`; });
+        select.innerHTML = '<option value="">All sites</option>';
+        Object.keys(sitesData).sort().forEach(name => { select.innerHTML += `<option value="${esc(name)}">${esc(name)}</option>`; });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
     }
 
-    $('historySiteSelect').addEventListener('change', async (e) => {
-        const site = e.target.value;
-        if (!site) { $('historyEmptyState').classList.remove('hidden'); $('historyContent').classList.add('hidden'); return; }
-        $('historyEmptyState').classList.add('hidden');
-        $('historyContent').classList.remove('hidden');
+    /* History opens on every site's recent visits rather than demanding a site up front —
+       the common errand here is "reprint the report for the job I just finished", which the
+       tech shouldn't have to name a site to reach. Picking a site narrows the list and is the
+       only way to get recurring-issue trends, which are meaningless across sites. */
+    const HISTORY_VISIT_LIMIT = 25;
+    let historyServiceDocs = null; // session cache — the whole collection, fetched at most once per visit to History
+
+    async function fetchServiceDocs({ force = false } = {}) {
+        if (historyServiceDocs && !force) return historyServiceDocs;
+        const snap = await getDocs(collection(db, "services"));
+        historyServiceDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        return historyServiceDocs;
+    }
+
+    // One service visit = one site on one date, however many pack docs that spans.
+    function groupServiceVisits(records, siteFilter) {
+        const visits = {};
+        const trendCounts = {}; // "PackId::Part" -> Set of dates flagged Issue
+        records.forEach(rec => {
+            if (!rec.site) return;
+            if (siteFilter && rec.site !== siteFilter) return;
+            const match = (rec.id || '').match(/\d{4}-\d{2}-\d{2}/);
+            const date = rec.serviceDate || (match ? match[0] : null);
+            if (!date) return;
+            const key = `${rec.site}::${date}`;
+            if (!visits[key]) visits[key] = { site: rec.site, date, issueCount: 0, packCount: 0 };
+            visits[key].packCount++;
+            const details = rec.serviceDetails || {};
+            Object.keys(details).forEach(part => {
+                if (details[part]?.status !== 'Issue') return;
+                visits[key].issueCount++;
+                if (!siteFilter) return; // trends are per-site only
+                const tkey = `${rec.PonchoId}::${part}`;
+                if (!trendCounts[tkey]) trendCounts[tkey] = new Set();
+                trendCounts[tkey].add(date);
+            });
+        });
+        const ordered = Object.values(visits).sort((a, b) => b.date.localeCompare(a.date) || a.site.localeCompare(b.site));
+        return { visits: ordered, trendCounts };
+    }
+
+    async function renderHistory({ force = false } = {}) {
+        const site = $('historySiteSelect').value;
+        $('historyTimelineTitle').innerText = site ? 'Service timeline' : 'Recent services';
         $('historyTimeline').innerHTML = '<div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>';
         $('historyTrends').innerHTML = '<div class="skeleton skeleton-row"></div>';
 
         try {
-            const q = query(collection(db, "services"), where("site", "==", site));
-            const querySnapshot = await getDocs(q);
-            const byDate = {}; // date -> { packs: {packId: serviceDetails} }
-            const trendCounts = {}; // "PackId::Part" -> Set of dates flagged Issue
+            const records = await fetchServiceDocs({ force });
+            const { visits, trendCounts } = groupServiceVisits(records, site);
+            const shown = visits.slice(0, HISTORY_VISIT_LIMIT);
 
-            querySnapshot.forEach(d => {
-                const data = d.data();
-                const match = d.id.match(/\d{4}-\d{2}-\d{2}/);
-                const date = data.serviceDate || (match ? match[0] : null);
-                if (!date) return;
-                if (!byDate[date]) byDate[date] = { issueCount: 0, packCount: 0 };
-                byDate[date].packCount++;
-                const details = data.serviceDetails || {};
-                Object.keys(details).forEach(part => {
-                    if (details[part]?.status === 'Issue') {
-                        byDate[date].issueCount++;
-                        const key = `${data.PonchoId}::${part}`;
-                        if (!trendCounts[key]) trendCounts[key] = new Set();
-                        trendCounts[key].add(date);
-                    }
-                });
-            });
-
-            const dates = Object.keys(byDate).sort().reverse();
-            if (dates.length === 0) {
-                $('historyTimeline').innerHTML = '<div class="empty-state">No past services recorded for this site yet.</div>';
+            if (shown.length === 0) {
+                $('historyTimeline').innerHTML = `<div class="empty-state">${site ? 'No past services recorded for this site yet.' : 'No services recorded yet.'}</div>`;
             } else {
-                $('historyTimeline').innerHTML = dates.map(date => `
+                $('historyTimeline').innerHTML = shown.map(v => `
                     <div class="settings-row">
                         <div>
-                            <strong>${date}</strong>
-                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${byDate[date].packCount} pack record${byDate[date].packCount === 1 ? '' : 's'}</p>
+                            <strong>${site ? esc(v.date) : esc(v.site)}</strong>
+                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${site ? '' : esc(v.date) + ' · '}${v.packCount} pack record${v.packCount === 1 ? '' : 's'}</p>
                         </div>
-                        ${byDate[date].issueCount > 0 ? `<span class="badge badge-due">${byDate[date].issueCount} issue${byDate[date].issueCount === 1 ? '' : 's'}</span>` : `<span class="badge badge-ok">All good</span>`}
+                        <div style="display:flex; align-items:center; gap: var(--sp-3);">
+                            ${v.issueCount > 0 ? `<span class="badge badge-due">${v.issueCount} issue${v.issueCount === 1 ? '' : 's'}</span>` : `<span class="badge badge-ok">All good</span>`}
+                            <button class="btn-sm btn-outline history-report-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-mail"></use></svg>Report</button>
+                        </div>
                     </div>
-                `).join('');
+                `).join('') + (visits.length > shown.length
+                    ? `<p class="text-muted" style="font-size:0.8rem; text-align:center; margin-top: var(--sp-4);">Showing the ${HISTORY_VISIT_LIMIT} most recent of ${visits.length} services. Filter by site to narrow this down.</p>`
+                    : '');
+                $('historyTimeline').querySelectorAll('.history-report-btn').forEach(btn => btn.addEventListener('click', () =>
+                    openReportForPastService(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
             }
 
+            if (!site) {
+                $('historyTrends').innerHTML = '<div class="empty-state"><svg class="icon icon-lg"><use href="#i-history"></use></svg><p style="margin-top:8px;">Choose a site above to see which parts keep failing there.</p></div>';
+                return;
+            }
             const trends = Object.entries(trendCounts).filter(([, dateSet]) => dateSet.size >= 2).sort((a, b) => b[1].size - a[1].size);
             if (trends.length === 0) {
                 $('historyTrends').innerHTML = '<div class="empty-state">No recurring issues yet — nothing has failed twice.</div>';
             } else {
                 $('historyTrends').innerHTML = trends.map(([key, dateSet]) => {
                     const [packId, part] = key.split('::');
-                    return `<div class="settings-row"><div><strong>${packId} — ${part}</strong><p class="text-muted" style="font-size:0.82rem; margin-top:2px;">Flagged on ${Array.from(dateSet).sort().join(', ')}</p></div><span class="badge badge-due">${dateSet.size}×</span></div>`;
+                    return `<div class="settings-row"><div><strong>${esc(packId)} — ${esc(part)}</strong><p class="text-muted" style="font-size:0.82rem; margin-top:2px;">Flagged on ${Array.from(dateSet).sort().join(', ')}</p></div><span class="badge badge-due">${dateSet.size}×</span></div>`;
                 }).join('');
             }
         } catch (error) {
@@ -2236,7 +2420,82 @@
             $('historyTimeline').innerHTML = '<div class="empty-state">Could not load history. Check your connection.</div>';
             $('historyTrends').innerHTML = '';
         }
-    });
+    }
+
+    $('historySiteSelect').addEventListener('change', () => renderHistory());
+    $('historyRefreshBtn').addEventListener('click', () => renderHistory({ force: true }));
+
+    /* Builds a customer report for a service that's already finished. This reuses the same
+       in-memory state the live checklist works from (PonchoDataCache, generalChecksCache,
+       currentSiteName...), so anything in progress has to be saved and consciously left first. */
+    async function openReportForPastService(site, date) {
+        if (!sitesData[site]) { showToast(`"${site}" is no longer in the site list — can't build a report for it.`); return; }
+
+        const resume = getResumeState();
+        if (resume && !(resume.site === site && resume.date === date)) {
+            const go = await showConfirmModal(
+                `You have an unfinished service at ${resume.site}. Opening this report closes it on this screen — your work is saved, and the Resume card on Home will pick it back up.`,
+                { title: 'Leave the unfinished service?', confirmLabel: 'Open report' });
+            if (!go) return;
+            await triggerBackgroundSave(); // flush while currentSiteName still points at the unfinished job
+        }
+
+        currentSiteName = site;
+        activeServiceDate = date;
+        PonchoDataCache = {};
+        generalChecksCache = {};
+        issueResolutionState = {};
+        Object.keys(faultIncludedState).forEach(k => delete faultIncludedState[k]);
+        signatureDataUrl = ""; // a past customer's signature isn't ours to reprint onto a new report
+        serviceStartedAt = null;
+        isDirty = false; // viewing an archived service must never write back to it
+        viewingArchivedReport = true;
+        currentFirmware = sitesData[site]?.firmware || "";
+        currentPackColour = sitesData[site]?.packColour || "";
+
+        try {
+            const records = await fetchServiceDocs();
+            const serviceMap = {};
+            records.forEach(rec => {
+                if (rec.site !== site || !(rec.id || '').includes(date)) return;
+                if (!serviceMap[rec.PonchoId] || (rec.lastUpdated > serviceMap[rec.PonchoId].lastUpdated)) serviceMap[rec.PonchoId] = rec;
+            });
+
+            // Pack count comes from what was actually serviced that day, not the site's count
+            // today — an archived report should describe the kit as it was, not as it is now.
+            const packNums = Object.keys(serviceMap).map(k => parseInt(String(k).replace('Poncho ', ''), 10)).filter(n => !isNaN(n));
+            totalPonchos = packNums.length ? Math.max(...packNums) : (sitesData[site]?.count || 0);
+            for (let i = 1; i <= totalPonchos; i++) if (serviceMap[`Poncho ${i}`]) PonchoDataCache[i] = serviceMap[`Poncho ${i}`].serviceDetails || {};
+
+            // Its own try/catch: general checks are optional, and offline a getDoc for a doc
+            // that isn't in the cache throws "unavailable" rather than reporting "not found".
+            // Letting that escape would block the report entirely for any service without them.
+            try {
+                const genDoc = await getDoc(doc(db, "general_checks", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (genDoc.exists()) {
+                    generalChecksCache = genDoc.data().checks || {};
+                    currentFirmware = genDoc.data().firmware || currentFirmware;
+                    currentPackColour = genDoc.data().packColour || currentPackColour;
+                }
+            } catch (e) { console.warn('No general checks available for this service:', e.message); }
+
+            reportEntryScreen = 'historySection';
+            await navigateTo('customerReportSection');
+            populateCustomerReportHeader();
+            // The service doc recorded the due date calculated at the time; prefer it over the
+            // site's current one so a reprint matches the report the customer originally got.
+            const recordedNextDue = Object.values(serviceMap)[0]?.nextServiceDue;
+            if (recordedNextDue) $('custReportNextDueDisplay').value = formatMonthYear(recordedNextDue);
+            setReportStep('details');
+            ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
+            generateCustomerDraft();
+            buildFaultItems();
+            renderLivePreview();
+        } catch (error) {
+            console.error('Could not open past service report:', error);
+            showToast("Couldn't load that service. Check your connection.");
+        }
+    }
     /* ============================================================
        SETTINGS — representative name (kept in sync with the overflow panel's copy)
        ============================================================ */
@@ -2311,6 +2570,7 @@
         currentPackColour = sitesData[currentSiteName]?.packColour || "";
         activeServiceDate = new Date().toISOString().split('T')[0];
         serviceStartedAt = Date.now();
+        viewingArchivedReport = false;
         startServiceModal.style.display = 'none';
         await loadSidebarNotes();
         navigateTo('serviceSection');
@@ -2400,6 +2660,7 @@
 
         currentPonchoIndex = 1;
         serviceStartedAt = Date.now();
+        viewingArchivedReport = false;
         startServiceModal.style.display = 'none';
         await loadSidebarNotes();
         navigateTo('serviceSection');
@@ -2418,8 +2679,10 @@
     $('saveSidebarNotesBtn').addEventListener('click', async () => {
         const notes = $('sidebarSiteNotes').value;
         const msg = $('sidebarNotesMsg');
-        const ok = await queuedWrite(`notes-${currentSiteName}-${activeServiceDate}`, `Site notes for ${currentSiteName}`, () => setDoc(doc(db, "site_notes", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`), { notes: notes, lastUpdated: serverTimestamp() }, { merge: true }));
-        msg.innerText = ok ? "Saved ✓" : "Saved locally — will sync when back online"; msg.style.color = ok ? "var(--success)" : "var(--warning-text)";
+        const result = await queuedWrite(`notes-${currentSiteName}-${activeServiceDate}`, `Site notes for ${currentSiteName}`, () => setDoc(doc(db, "site_notes", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`), { notes: notes, lastUpdated: serverTimestamp() }, { merge: true }));
+        if (result === WRITE_OK) { msg.innerText = "Saved ✓"; msg.style.color = "var(--success)"; }
+        else if (result === WRITE_QUEUED) { msg.innerText = "Saved locally — will sync when back online"; msg.style.color = "var(--warning-text)"; }
+        else { msg.innerText = "Couldn't save — retry from Settings"; msg.style.color = "var(--danger)"; }
         setTimeout(() => msg.innerText = "", 3000);
     });
     $('notesBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
@@ -2591,7 +2854,7 @@
         $('siteHardwareLabel').innerText = sitesData[currentSiteName]?.hardware || "Unknown";
 
         const container = $('generalPartsContainer');
-        setGeneralSaveState('synced');
+        setGeneralSaveState(currentSyncState());
         generalChecksList.forEach(item => { if (!generalChecksCache[item]) generalChecksCache[item] = { status: null, notes: "" }; });
         container.innerHTML = generalChecksList.map(item => generatePartCardHTML(item, generalChecksCache[item], 'general', 'site')).join('');
         attachInteractionListeners(container, {
@@ -2607,6 +2870,7 @@
         el.classList.remove('syncing', 'failed');
         if (state === 'dirty') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud-off"></use></svg>Unsaved'; el.classList.add('syncing'); }
         else if (state === 'saving') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-refresh"></use></svg>Saving...'; el.classList.add('syncing'); }
+        else if (state === 'queued') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-wifi-off"></use></svg>Saved offline'; el.classList.add('failed'); }
         else { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced'; }
     }
 
@@ -2633,7 +2897,7 @@
 
     async function saveGeneralChecks() {
         setGeneralSaveState('saving');
-        const ok = await queuedWrite(`general-${currentSiteName}-${activeServiceDate}`, `General checks for ${currentSiteName}`, async () => {
+        const result = await queuedWrite(`general-${currentSiteName}-${activeServiceDate}`, `General checks for ${currentSiteName}`, async () => {
             const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
             await setDoc(doc(db, "general_checks", docId), { site: currentSiteName, date: activeServiceDate, checks: generalChecksCache, firmware: currentFirmware, packColour: currentPackColour, lastUpdated: serverTimestamp() }, { merge: true });
             const siteInfo = sitesData[currentSiteName];
@@ -2643,7 +2907,7 @@
                 pushSiteUpdateToSheet(currentSiteName, { packs: totalPonchos, firmware: currentFirmware, packColour: currentPackColour });
             }
         });
-        setGeneralSaveState(ok ? 'synced' : 'dirty');
+        setGeneralSaveState(result === WRITE_OK ? 'synced' : (result === WRITE_QUEUED ? 'queued' : 'dirty'));
     }
 
     $('backToPonchosBtn').addEventListener('click', async () => { await saveGeneralChecks(); navigateTo('serviceSection'); renderPonchoUI(); });
@@ -2695,7 +2959,9 @@
         $('stickyPrevBtn').disabled = currentPonchoIndex === 1;
         const isLast = currentPonchoIndex === totalPonchos;
         $('stickyNextBtn').innerHTML = isLast ? 'Finish<svg class="icon"><use href="#i-check"></use></svg>' : 'Next<svg class="icon"><use href="#i-chevron-right"></use></svg>';
-        setChecklistSaveState('synced');
+        // Report what's actually outstanding. This used to hard-code 'synced', which offline
+        // meant the indicator claimed "Synced" over a queue that hadn't reached the server.
+        setChecklistSaveState(isDirty ? 'dirty' : currentSyncState());
 
         if (!PonchoDataCache[currentPonchoIndex]) PonchoDataCache[currentPonchoIndex] = {};
         allPonchoElements.forEach(part => { if (!PonchoDataCache[currentPonchoIndex][part]) PonchoDataCache[currentPonchoIndex][part] = { status: null, notes: "" }; });
@@ -2742,7 +3008,8 @@
         el.classList.remove('syncing', 'failed');
         if (state === 'dirty') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud-off"></use></svg>Unsaved'; el.classList.add('syncing'); }
         else if (state === 'saving') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-refresh"></use></svg>Saving...'; el.classList.add('syncing'); }
-        else if (state === 'failed') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-wifi-off"></use></svg>Queued'; el.classList.add('failed'); }
+        else if (state === 'queued') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-wifi-off"></use></svg>Saved offline'; el.classList.add('failed'); }
+        else if (state === 'failed') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-alert"></use></svg>Sync failed'; el.classList.add('failed'); }
         else { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced'; }
     }
 
@@ -2753,7 +3020,7 @@
         isDirty = false;
         setChecklistSaveState('saving');
         const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-Poncho-${PonchoToSave}`;
-        const ok = await queuedWrite(docId, `Pack ${PonchoToSave} — ${currentSiteName}`, async () => {
+        const result = await queuedWrite(docId, `Pack ${PonchoToSave} — ${currentSiteName}`, async () => {
             let nextDueDateStr = "";
             if (activeServiceDate) {
                 const dateParts = activeServiceDate.split('-');
@@ -2761,8 +3028,10 @@
             }
             await setDoc(doc(db, "services", docId), { site: currentSiteName, PonchoId: `Poncho ${PonchoToSave}`, representative: currentRepresentative || "Not Specified", serviceDate: activeServiceDate, nextServiceDue: nextDueDateStr, serviceDetails: dataToSave, lastUpdated: serverTimestamp() });
         });
-        if (!ok) isDirty = true;
-        setChecklistSaveState(ok ? 'synced' : 'failed');
+        // Only a hard failure puts the pack back in the dirty set — a queued write is already
+        // durable, and re-marking it dirty would make the next nav re-save data Firestore has.
+        if (result === WRITE_FAILED) isDirty = true;
+        setChecklistSaveState(result === WRITE_OK ? 'synced' : (result === WRITE_QUEUED ? 'queued' : 'failed'));
     }
 
     $('packGridToggleBtn').addEventListener('click', () => {
@@ -3071,7 +3340,8 @@
 
         $('completionSubtitle').innerText = `${fmtDate(new Date())} · Representative: ${currentRepresentative || 'Not specified'} · Next service due in ~12 months`;
         $('metricPacksChecked').innerText = `${Math.round(checkedItems / (allPonchoElements.length || 1))}/${totalPonchos}`;
-        $('metricIssuesLogged').innerText = issues.length;
+        // No issue count here by design — the customer signs this screen, and a headline
+        // "N issues" reads as a scorecard against their kit. The list below carries the detail.
         $('metricPartsUsed').innerText = partsUsedCount;
         $('metricDuration').innerText = serviceStartedAt ? formatDuration(Date.now() - serviceStartedAt) : '—';
 
@@ -3191,6 +3461,7 @@
     $('ovCustomerReportBtn').addEventListener('click', async () => {
         toggleOverflowPanel(false);
         reportEntryScreen = document.querySelector('.app-section.active')?.id || 'serviceSection';
+        viewingArchivedReport = false;
         await triggerBackgroundSave();
         navigateTo('customerReportSection');
         populateCustomerReportHeader();
@@ -3206,6 +3477,7 @@
         if (reportEntryScreen === 'serviceSection') renderPonchoUI();
         else if (reportEntryScreen === 'generalChecksSection') renderGeneralChecksUI();
         else if (reportEntryScreen === 'completionSection') renderCompletionSummary();
+        // historySection re-renders itself via navigateTo, so nothing to do for it here
     });
 
     const REPORT_STEPS = ['details', 'checks', 'faults', 'preview'];
@@ -3392,6 +3664,8 @@
     initLargeMode();
     updateGlobalSyncPill();
     renderSyncQueue();
+    reconcileOrphanedWrites();
+    renderOfflineStamp();
 
     window.addEventListener('DOMContentLoaded', () => {
         const savedName = localStorage.getItem('inspectorName');
