@@ -9,9 +9,16 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.7.2 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.8.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
+
+           VERSIONING RULE (keep this in sync across chats):
+             • Small change  -> increment patch by 0.0.1  (e.g. 0.8.0 -> 0.8.1)
+             • Medium change -> increment minor by 0.1, reset patch (e.g. 0.8.1 -> 0.9.0)
+           The version lives in THREE places — update all when you bump:
+             1. this header comment,  2. the .version-badge div in the header,
+             3. APP_VERSION in sw.js (drives the cache name + update prompt).
            ============================================ */
         :root {
             /* spacing (8px grid) */
@@ -670,7 +677,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.2</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.0</div>
         </div>
     </nav>
 
@@ -951,14 +958,17 @@
                 <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
+            <!-- Barebones report flow (v0.8.0): Details -> Preview. The Checks & Faults steps from the
+                 full builder are kept in the DOM but hidden ("back pocket") so the richer report can be
+                 restored later without re-wiring. -->
             <div class="stepper" id="reportStepper">
                 <button class="stepper-step active" data-step="details"><span class="stepper-dot">1</span>Details</button>
                 <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="checks"><span class="stepper-dot">2</span>Checks</button>
-                <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="faults"><span class="stepper-dot">3</span>Faults</button>
-                <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="preview"><span class="stepper-dot">4</span>Preview</button>
+                <button class="stepper-step hidden" data-step="checks"><span class="stepper-dot">2</span>Checks</button>
+                <div class="stepper-line hidden"></div>
+                <button class="stepper-step hidden" data-step="faults"><span class="stepper-dot">3</span>Faults</button>
+                <div class="stepper-line hidden"></div>
+                <button class="stepper-step" data-step="preview"><span class="stepper-dot">2</span>Preview</button>
             </div>
 
             <div class="split-view report-split">
@@ -966,13 +976,22 @@
                     <!-- Step: details -->
                     <div class="report-step-panel" data-step-panel="details">
                         <h3 style="text-align:left; margin-bottom: var(--sp-4);">Service Details</h3>
+                        <p class="text-muted" style="font-size:0.86rem; margin-top:0; margin-bottom: var(--sp-4);">These are filled in automatically from the service. Add any notes for the customer below.</p>
                         <div class="grid-2">
-                            <div><label>Site</label><input type="text" id="custReportSiteDisplay" disabled style="margin-bottom:0;"></div>
+                            <div><label>Centre</label><input type="text" id="custReportSiteDisplay" disabled style="margin-bottom:0;"></div>
                             <div><label>Date of Service</label><input type="text" id="custReportDateDisplay" disabled style="margin-bottom:0;"></div>
                         </div>
                         <div class="grid-2" style="margin-top: var(--sp-4);">
-                            <div><label>Next Service Due</label><input type="text" id="custReportNextDueDisplay" disabled style="margin-bottom:0;"></div>
-                            <div><label for="custReportFirmwareInput">Firmware (editable)</label><input type="text" id="custReportFirmwareInput" style="margin-bottom:0;"></div>
+                            <div><label>Service completed by</label><input type="text" id="custReportCompletedByDisplay" disabled style="margin-bottom:0;"></div>
+                            <div><label>Site representative</label><input type="text" id="custReportSiteRepDisplay" disabled style="margin-bottom:0;"></div>
+                        </div>
+                        <label for="simpleRepNotes" style="margin-top: var(--sp-4);">Representative notes (optional)</label>
+                        <textarea id="simpleRepNotes" placeholder="Anything worth passing to the customer — follow-ups, parts taken away for repair, observations..." style="min-height: 110px;"></textarea>
+
+                        <!-- Back-pocket fields retained for the full report builder; hidden in the barebones flow. -->
+                        <div class="hidden">
+                            <input type="text" id="custReportNextDueDisplay" disabled>
+                            <input type="text" id="custReportFirmwareInput">
                         </div>
                     </div>
 
@@ -2499,7 +2518,7 @@
             const recordedNextDue = Object.values(serviceMap)[0]?.nextServiceDue;
             if (recordedNextDue) $('custReportNextDueDisplay').value = formatMonthYear(recordedNextDue);
             setReportStep('details');
-            ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
+            ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'simpleRepNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
             generateCustomerDraft();
             buildFaultItems();
             renderLivePreview();
@@ -3509,7 +3528,9 @@
         // historySection re-renders itself via navigateTo, so nothing to do for it here
     });
 
-    const REPORT_STEPS = ['details', 'checks', 'faults', 'preview'];
+    // Barebones flow only walks Details -> Preview. 'checks' and 'faults' still exist as hidden
+    // panels (back pocket) but are out of the step sequence.
+    const REPORT_STEPS = ['details', 'preview'];
     function setReportStep(step) {
         currentReportStep = step;
         document.querySelectorAll('.stepper-step').forEach(s => {
@@ -3587,6 +3608,9 @@
         $('custReportDateDisplay').value = formatServiceDateUK(activeServiceDate);
         $('custReportNextDueDisplay').value = formatMonthYear(sitesData[currentSiteName]?.nextServiceDue || "");
         $('custReportFirmwareInput').value = currentFirmware;
+        // Barebones report autofill: who did the service, and the site's signing representative.
+        $('custReportCompletedByDisplay').value = currentRepresentative || "";
+        $('custReportSiteRepDisplay').value = ($('siteManagerNameInput')?.value || "").trim();
     }
     $('regenerateCustDraftBtn').addEventListener('click', async () => {
         const ok = await showConfirmModal("This replaces the auto-generated Checks and Faults sections with a fresh draft from current data. Continue?", { title: "Regenerate Draft?", confirmLabel: "Regenerate" });
@@ -3597,8 +3621,8 @@
         buildFaultItems();
         renderLivePreview();
     });
-    ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'custReportFirmwareInput'].forEach(id => {
-        $(id).addEventListener('input', () => renderLivePreview());
+    ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'custReportFirmwareInput', 'simpleRepNotes'].forEach(id => {
+        if ($(id)) $(id).addEventListener('input', () => renderLivePreview());
     });
 
     /* ---- Faults step: discrete include/exclude toggle cards ---- */
@@ -3678,20 +3702,98 @@
         `;
     }
 
+    // ---- Barebones "Laser Quest Service Completion Record" (v0.8.0) ----
+    // Simple, professional, print-ready document mirroring the customer's paper form. Autofilled
+    // from the service; no per-item comment boxes; one optional rep-notes block. The richer
+    // buildCustomerReportHtml() above is kept as the "back pocket" version.
+    function buildSimpleReportHtml() {
+        const gunDisplay = (p) => p.replace(/^G(?=[A-Z])/, ''); // GScrews -> Screws, GLEDs -> LEDs, etc.
+
+        const gen = aggregateGeneralStatus();
+        const guns = aggregatePartStatus(gunPartsList);
+        const ponchos = aggregatePartStatus(PonchoPartsList);
+        const issueParts = (arr) => new Set(arr.map(i => i.part));
+
+        const checkRows = (list, issuesArr, display) => {
+            const iss = issueParts(issuesArr);
+            return list.map(part => {
+                const bad = iss.has(part);
+                return `<tr>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(display ? display(part) : part)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;font-weight:600;color:${bad ? '#b45309' : '#15803d'};">${bad ? 'Issue noted' : '✓'}</td>
+                </tr>`;
+            }).join('');
+        };
+        const checkTable = (title, rowsHtml) => `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">${title}</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Check</th>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;background:#f3f4f6;width:130px;">Completed</th>
+                </tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+
+        const detailRow = (label, value) => `
+            <tr>
+                <td style="border:1px solid #d1d5db;padding:8px 11px;background:#f8fafc;font-weight:600;width:220px;">${label}</td>
+                <td style="border:1px solid #d1d5db;padding:8px 11px;">${value || '<span style="color:#9ca3af;">—</span>'}</td>
+            </tr>`;
+        const sig = (url) => url
+            ? `<img src="${url}" alt="Signature" style="max-height:56px;max-width:220px;">`
+            : '<span style="color:#9ca3af;">—</span>';
+
+        const repNotes = ($('simpleRepNotes')?.value || '').trim();
+        const notesBlock = repNotes ? `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">Representative notes</h3>
+            <p style="white-space:pre-wrap;margin:0;padding:12px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f8fafc;">${toHtml(repNotes)}</p>` : '';
+
+        return `
+        <div style="background:#fff;color:#1f2937;font-family:'Segoe UI',Arial,sans-serif;line-height:1.55;padding:34px;max-width:780px;margin:0 auto;">
+            <div style="border-bottom:3px solid #c8102e;padding-bottom:14px;margin-bottom:20px;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c8102e;">Laser Quest GB Ltd</div>
+                <h1 style="font-size:22px;margin:4px 0 0;color:#0f172a;">Service Completion Record</h1>
+            </div>
+
+            <p style="margin:0 0 8px;">As part of your rental contract agreement with Laser Quest GB Ltd, you receive an annual service on your equipment.</p>
+            <p style="margin:0 0 20px;">Please keep this service completion record for your own records.</p>
+
+            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:6px;">
+                <tbody>
+                    ${detailRow('Centre', esc(currentSiteName || ''))}
+                    ${detailRow('Date &amp; time of service', esc(formatServiceDateUK(activeServiceDate)))}
+                    ${detailRow('Service completed by', esc(currentRepresentative || ''))}
+                    ${detailRow('Signed on completion', sig(repSignatureDataUrl))}
+                    ${detailRow('Site representative', esc(($('siteManagerNameInput')?.value || '').trim()))}
+                    ${detailRow('Signed on completion', sig(signatureDataUrl))}
+                </tbody>
+            </table>
+
+            ${checkTable('Non-pack checks', checkRows(generalChecksList, gen.issues))}
+            ${checkTable('Gun checks', checkRows(gunPartsList, guns.issues, gunDisplay))}
+            ${checkTable('Poncho checks', checkRows(PonchoPartsList, ponchos.issues))}
+
+            ${notesBlock}
+
+            <p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
+            <p style="margin:0;">You will receive a full service report by email.</p>
+        </div>`;
+    }
+
     let livePreviewDebounce = null;
     function renderLivePreview() {
         clearTimeout(livePreviewDebounce);
-        livePreviewDebounce = setTimeout(() => { $('livePreviewArea').innerHTML = buildCustomerReportHtml(); }, 120);
+        livePreviewDebounce = setTimeout(() => { $('livePreviewArea').innerHTML = buildSimpleReportHtml(); }, 120);
     }
 
     $('printCustReportBtn').addEventListener('click', () => {
-        $('printOnlyArea').innerHTML = buildCustomerReportHtml();
+        $('printOnlyArea').innerHTML = buildSimpleReportHtml();
         window.print();
     });
     $('shareCustReportBtn').addEventListener('click', async () => {
-        const includedFaults = faultItems.filter(f => f.included);
-        const summary = `${currentSiteName} — Service Report\nDate: ${$('custReportDateDisplay').value}\nNext due: ${$('custReportNextDueDisplay').value}\n\n${includedFaults.length ? 'Faults resolved:\n' + includedFaults.map(f => `- ${f.label}: ${f.text}`).join('\n') : 'No faults logged — all good.'}`;
-        try { await navigator.share({ title: `${currentSiteName} — Service Report`, text: summary }); }
+        const repNotes = ($('simpleRepNotes')?.value || '').trim();
+        const summary = `Laser Quest — Service Completion Record\nCentre: ${currentSiteName}\nDate: ${$('custReportDateDisplay').value}\nCompleted by: ${currentRepresentative || '—'}${repNotes ? `\n\nNotes: ${repNotes}` : ''}\n\nA full service report will follow by email.`;
+        try { await navigator.share({ title: `${currentSiteName} — Laser Quest Service Record`, text: summary }); }
         catch (err) { if (err.name !== 'AbortError') showToast("Couldn't open the share sheet."); }
     });
     /* ============================================================
@@ -3715,11 +3817,62 @@
 
 <script>
   if ('serviceWorker' in navigator) {
+    // Reload once when a newly-activated worker takes control (triggered by the update banner).
+    let swReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swReloading) return;
+      swReloading = true;
+      window.location.reload();
+    });
+
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
-        .then(registration => { console.log('ServiceWorker registered with scope:', registration.scope); })
+        .then(registration => {
+          console.log('ServiceWorker registered with scope:', registration.scope);
+
+          // Installed + an existing controller means this is an update (not the first install).
+          // Check the state right away as well as on change — a worker can reach "installed"
+          // before this listener attaches, and a pure statechange handler would then miss it.
+          const considerWorker = (worker) => {
+            if (!worker) return;
+            const check = () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(worker);
+            };
+            check();
+            worker.addEventListener('statechange', check);
+          };
+
+          // Ask GitHub Pages for a newer worker now, and hourly while the app stays open.
+          registration.update();
+          setInterval(() => registration.update(), 60 * 60 * 1000);
+
+          if (registration.waiting) considerWorker(registration.waiting);
+          registration.addEventListener('updatefound', () => considerWorker(registration.installing));
+        })
         .catch(error => { console.log('ServiceWorker registration failed:', error); });
     });
+  }
+
+  // Lightweight, self-contained update prompt. Kept out of the app module on purpose so it can run
+  // even if the main bundle changed — it only needs the waiting worker to post SKIP_WAITING to.
+  function showUpdateBanner(worker) {
+    if (!worker || document.getElementById('swUpdateBanner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'swUpdateBanner';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:2147483647;display:flex;gap:14px;align-items:center;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:12px 16px;box-shadow:0 10px 34px rgba(0,0,0,0.45);font-family:system-ui,-apple-system,sans-serif;font-size:14px;max-width:92vw;';
+    const label = document.createElement('span');
+    label.textContent = 'A new version is available.';
+    const update = document.createElement('button');
+    update.textContent = 'Update now';
+    update.style.cssText = 'background:#22c55e;color:#04210f;border:none;border-radius:9px;padding:9px 15px;font-weight:700;cursor:pointer;';
+    update.onclick = () => { update.disabled = true; update.textContent = 'Updating…'; worker.postMessage({ type: 'SKIP_WAITING' }); };
+    const later = document.createElement('button');
+    later.textContent = 'Later';
+    later.style.cssText = 'background:transparent;color:#94A3B8;border:none;cursor:pointer;font-size:13px;';
+    later.onclick = () => bar.remove();
+    bar.append(label, update, later);
+    document.body.appendChild(bar);
   }
 </script>
 </body>
