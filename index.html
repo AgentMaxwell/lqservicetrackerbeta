@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.8.3 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.9.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -677,7 +677,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.3</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.9.0</div>
         </div>
     </nav>
 
@@ -812,6 +812,21 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <!-- Read-only internal record of a past service (v0.9.0). Distinct from "Report": this
+             shows full per-part status + notes for staff review; the Report is the trimmed,
+             customer-facing document. Nothing here writes to Firestore. -->
+        <div id="historyViewSection" class="app-section">
+            <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
+                <button class="btn-ghost btn-icon" id="historyViewBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+                <strong style="flex:1;">Service Details</strong>
+            </div>
+            <div class="home-header">
+                <h1 id="historyViewTitle">—</h1>
+                <p class="text-muted" id="historyViewSubtitle">—</p>
+            </div>
+            <div id="historyViewBody"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
         </div>
         <div id="sitesSection" class="app-section">
             <div class="home-header">
@@ -1502,7 +1517,7 @@
         setupSection: 'Home', scheduleSection: 'Schedule', historySection: 'History',
         sitesSection: 'Sites', settingsSection: 'Settings', notesSection: 'Notes',
         customerReportSection: 'Customer Report', generalChecksSection: 'General Checks',
-        serviceSection: 'Checklist', completionSection: 'Service Complete'
+        serviceSection: 'Checklist', completionSection: 'Service Complete', historyViewSection: 'Service Details'
     };
     const sidebarSectionIds = new Set(['setupSection', 'scheduleSection', 'historySection', 'sitesSection', 'settingsSection']);
 
@@ -2428,6 +2443,7 @@
                         </div>
                         <div style="display:flex; align-items:center; gap: var(--sp-3);">
                             ${v.issueCount > 0 ? `<span class="badge badge-due">${v.issueCount} issue${v.issueCount === 1 ? '' : 's'}</span>` : `<span class="badge badge-ok">All good</span>`}
+                            <button class="btn-sm btn-ghost history-view-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-file-text"></use></svg>View</button>
                             <button class="btn-sm btn-outline history-report-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-mail"></use></svg>Report</button>
                         </div>
                     </div>
@@ -2436,6 +2452,8 @@
                     : '');
                 $('historyTimeline').querySelectorAll('.history-report-btn').forEach(btn => btn.addEventListener('click', () =>
                     openReportForPastService(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
+                $('historyTimeline').querySelectorAll('.history-view-btn').forEach(btn => btn.addEventListener('click', () =>
+                    openHistoryView(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
             }
 
             if (!site) {
@@ -2546,6 +2564,112 @@
             showToast("Couldn't load that service. Check your connection.");
         }
     }
+
+    /* Read-only internal record of a past service — full per-part status + notes, for staff
+       review. Unlike openReportForPastService(), this never touches live app state (PonchoDataCache,
+       currentSiteName, etc.) — it fetches into local variables only, so it's safe to open regardless
+       of any in-progress service and needs no "leave unfinished work" confirmation. */
+    async function openHistoryView(site, date) {
+        if (!sitesData[site]) { showToast(`"${site}" is no longer in the site list.`); return; }
+        await navigateTo('historyViewSection');
+        $('historyViewTitle').innerText = site;
+        $('historyViewSubtitle').innerText = `Service on ${formatServiceDateUK(date)}`;
+        $('historyViewBody').innerHTML = '<div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>';
+        try {
+            const records = await fetchServiceDocs();
+            const serviceMap = {};
+            records.forEach(rec => {
+                if (rec.site !== site || !(rec.id || '').includes(date)) return;
+                if (!serviceMap[rec.PonchoId] || (rec.lastUpdated > serviceMap[rec.PonchoId].lastUpdated)) serviceMap[rec.PonchoId] = rec;
+            });
+            const packNums = Object.keys(serviceMap).map(k => parseInt(String(k).replace('Poncho ', ''), 10)).filter(n => !isNaN(n));
+            const packTotal = packNums.length ? Math.max(...packNums) : 0;
+            const packData = {};
+            for (let i = 1; i <= packTotal; i++) if (serviceMap[`Poncho ${i}`]) packData[i] = serviceMap[`Poncho ${i}`].serviceDetails || {};
+            const representative = Object.values(serviceMap)[0]?.representative || '';
+
+            let generalChecks = {}, firmware = '', packColour = '';
+            try {
+                const genDoc = await getDoc(doc(db, "general_checks", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (genDoc.exists()) { generalChecks = genDoc.data().checks || {}; firmware = genDoc.data().firmware || ''; packColour = genDoc.data().packColour || ''; }
+            } catch (e) { console.warn('No general checks available for this service:', e.message); }
+
+            let signoff = null;
+            try {
+                const soDoc = await getDoc(doc(db, "signoffs", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (soDoc.exists()) signoff = soDoc.data();
+            } catch (e) { console.warn('No sign-off available for this service:', e.message); }
+
+            $('historyViewBody').innerHTML = buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff });
+        } catch (error) {
+            console.error('Could not load service view:', error);
+            $('historyViewBody').innerHTML = '<div class="empty-state">Could not load this service. Check your connection.</div>';
+        }
+    }
+
+    function buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff }) {
+        const statusBadge = (status) => status === 'Issue'
+            ? '<span class="badge badge-due">Issue</span>'
+            : (status === 'Good' ? '<span class="badge badge-ok">Good</span>' : '<span class="badge">Not checked</span>');
+
+        const itemRow = (label, data) => `
+            <div class="completion-issue-row">
+                <div>
+                    <strong style="font-size:0.92rem;">${esc(label)}</strong>
+                    ${data?.notes ? `<p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${esc(data.notes)}${data.partUsed ? ` · Part used: ${esc(data.partUsed)}` : ''}</p>` : ''}
+                </div>
+                ${statusBadge(data?.status)}
+            </div>`;
+
+        const genSection = `
+            <div class="card" style="margin-bottom: var(--sp-4);">
+                <h3 style="text-align:left; margin-bottom: var(--sp-2);">General site checks</h3>
+                ${generalChecksList.map(item => itemRow(item, generalChecks[item])).join('')}
+            </div>`;
+
+        const allPackParts = [...PonchoPartsList, ...gunPartsList];
+        const packsSection = packTotal > 0 ? Array.from({ length: packTotal }, (_, idx) => {
+            const i = idx + 1;
+            const data = packData[i];
+            const checkedParts = data ? allPackParts.filter(p => data[p]?.status) : [];
+            if (checkedParts.length === 0) return '';
+            return `
+                <div class="card" style="margin-bottom: var(--sp-4);">
+                    <h3 style="text-align:left; margin-bottom: var(--sp-2);">Pack ${i}</h3>
+                    ${checkedParts.map(p => itemRow(p, data[p])).join('')}
+                </div>`;
+        }).join('') : '';
+
+        const infoCard = `
+            <div class="card" style="margin-bottom: var(--sp-4);">
+                <div class="grid-2">
+                    <div><label>Service completed by</label><p style="margin:0;">${esc(representative || '—')}</p></div>
+                    <div><label>Firmware</label><p style="margin:0;">${esc(firmware || '—')}</p></div>
+                </div>
+                <div class="grid-2" style="margin-top: var(--sp-3);">
+                    <div><label>Pack colour</label><p style="margin:0;">${esc(packColour || '—')}</p></div>
+                    <div><label>Site representative</label><p style="margin:0;">${esc(signoff?.siteManagerName || '—')}</p></div>
+                </div>
+            </div>`;
+
+        const sig = (url) => url
+            ? `<img src="${url}" alt="Signature" style="max-height:56px;max-width:220px;border-bottom:1px solid var(--border-color);">`
+            : '<span class="text-muted">Not signed</span>';
+        const signaturesCard = `
+            <div class="card">
+                <h3 style="text-align:left; margin-bottom: var(--sp-3);">Sign-off</h3>
+                <div class="grid-2">
+                    <div><label>Site manager signature</label>${sig(signoff?.customerSignature)}</div>
+                    <div><label>Representative signature</label>${sig(signoff?.repSignature)}</div>
+                </div>
+            </div>`;
+
+        return infoCard + genSection
+            + (packsSection || '<div class="empty-state" style="margin-bottom: var(--sp-4);">No pack records found for this service.</div>')
+            + signaturesCard;
+    }
+    $('historyViewBackBtn').addEventListener('click', () => navigateTo('historySection'));
+
     /* ============================================================
        SETTINGS — representative name (kept in sync with the overflow panel's copy)
        ============================================================ */
