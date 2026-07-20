@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.8.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.8.1 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -589,7 +589,7 @@
         .badge-followup { background: rgba(245,158,11,0.16); color: var(--warning-text); }
 
         .signature-pad-wrap { position: relative; border: 2px dashed var(--border-strong); border-radius: var(--radius-md); background: #fff; }
-        #signatureCanvas { display: block; width: 100%; height: 180px; touch-action: none; border-radius: var(--radius-md); }
+        #signatureCanvas, #repSignatureCanvas { display: block; width: 100%; height: 180px; touch-action: none; border-radius: var(--radius-md); }
         .signature-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #94A3B8; font-size: 0.85rem; pointer-events: none; }
         .signature-placeholder.hidden { display: none; }
 
@@ -677,7 +677,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.1</div>
         </div>
     </nav>
 
@@ -3709,20 +3709,13 @@
     function buildSimpleReportHtml() {
         const gunDisplay = (p) => p.replace(/^G(?=[A-Z])/, ''); // GScrews -> Screws, GLEDs -> LEDs, etc.
 
-        const gen = aggregateGeneralStatus();
-        const guns = aggregatePartStatus(gunPartsList);
-        const ponchos = aggregatePartStatus(PonchoPartsList);
-        const issueParts = (arr) => new Set(arr.map(i => i.part));
-
-        const checkRows = (list, issuesArr, display) => {
-            const iss = issueParts(issuesArr);
-            return list.map(part => {
-                const bad = iss.has(part);
-                return `<tr>
+        // Barebones form just confirms each item was checked — good vs. issue detail lives in the
+        // rep notes box, not per-row, so every checked item gets the same tick regardless of status.
+        const checkRows = (list, display) => {
+            return list.map(part => `<tr>
                     <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(display ? display(part) : part)}</td>
-                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;font-weight:600;color:${bad ? '#b45309' : '#15803d'};">${bad ? 'Issue noted' : '✓'}</td>
-                </tr>`;
-            }).join('');
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;font-weight:600;color:#15803d;">✓</td>
+                </tr>`).join('');
         };
         const checkTable = (title, rowsHtml) => `
             <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">${title}</h3>
@@ -3769,9 +3762,9 @@
                 </tbody>
             </table>
 
-            ${checkTable('Non-pack checks', checkRows(generalChecksList, gen.issues))}
-            ${checkTable('Gun checks', checkRows(gunPartsList, guns.issues, gunDisplay))}
-            ${checkTable('Poncho checks', checkRows(PonchoPartsList, ponchos.issues))}
+            ${checkTable('Non-pack checks', checkRows(generalChecksList))}
+            ${checkTable('Gun checks', checkRows(gunPartsList, gunDisplay))}
+            ${checkTable('Poncho checks', checkRows(PonchoPartsList))}
 
             ${notesBlock}
 
