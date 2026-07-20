@@ -378,7 +378,9 @@
             .cust-report-section { margin-bottom: 26px; page-break-inside: avoid; }
             .cust-report-section h2 { font-family: Arial, sans-serif; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2c3e50 !important; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin: 0 0 10px 0; }
             .cust-report-section p { font-family: Arial, sans-serif; font-size: 0.98rem; white-space: pre-wrap; margin: 0; color: #1a1a1a !important; }
-            .cust-report-signoff { margin-top: 30px; }
+            .cust-report-signoff { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 40px; page-break-inside: avoid; }
+            .cust-report-signoff .signoff-party { flex: 1; min-width: 220px; }
+            .cust-report-signoff .signoff-label { font-family: Arial, sans-serif; font-size: 0.85rem; color: #555 !important; margin: 0 0 4px 0; }
             .cust-report-signoff img { max-width: 260px; border-bottom: 1px solid #999; }
             .cust-report-footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #ccc; font-family: Arial, sans-serif; font-size: 0.85rem; color: #666 !important; text-align: center; }
         }
@@ -1124,12 +1126,21 @@
                     <div id="completionIssuesList"></div>
                 </div>
                 <div class="card split-detail">
-                    <h3 style="text-align:left; margin-bottom: var(--sp-3);">Customer sign-off</h3>
+                    <h3 style="text-align:left; margin-bottom: var(--sp-3);">Site manager sign-off</h3>
+                    <label for="siteManagerNameInput">Site manager name</label>
+                    <input type="text" id="siteManagerNameInput" placeholder="Name of person signing" style="margin-bottom: var(--sp-3);">
                     <div class="signature-pad-wrap">
-                        <canvas id="signatureCanvas" width="480" height="180" aria-label="Signature capture area"></canvas>
+                        <canvas id="signatureCanvas" width="480" height="180" aria-label="Site manager signature capture area"></canvas>
                         <div class="signature-placeholder" id="signaturePlaceholder"><svg class="icon"><use href="#i-pen"></use></svg>Tap and drag to capture signature</div>
                     </div>
                     <button class="btn-sm btn-ghost" id="clearSignatureBtn" style="margin-top: var(--sp-2);">Clear signature</button>
+
+                    <h3 style="text-align:left; margin: var(--sp-5) 0 var(--sp-3);">Representative sign-off</h3>
+                    <div class="signature-pad-wrap">
+                        <canvas id="repSignatureCanvas" width="480" height="180" aria-label="Representative signature capture area"></canvas>
+                        <div class="signature-placeholder" id="repSignaturePlaceholder"><svg class="icon"><use href="#i-pen"></use></svg>Tap and drag to capture signature</div>
+                    </div>
+                    <button class="btn-sm btn-ghost" id="clearRepSignatureBtn" style="margin-top: var(--sp-2);">Clear signature</button>
 
                     <div class="action-group" style="display:flex; gap: var(--sp-3); margin-top: var(--sp-5);">
                         <button class="btn-outline" id="buildReportBtn" style="flex:1;"><svg class="icon"><use href="#i-mail"></use></svg>Build report</button>
@@ -1299,7 +1310,8 @@
     let currentPackColour = "";
     let commonIssuesByPart = {};
     let serviceStartedAt = null; // epoch ms — for the Completion Summary "Duration" metric
-    let signatureDataUrl = "";
+    let signatureDataUrl = "";       // site manager (customer) signature PNG
+    let repSignatureDataUrl = "";     // attending representative signature PNG
     let currentReportStep = 'details';
     let reportEntryScreen = 'serviceSection'; // where "Back" on the Customer Report should return to
     // True while the Report Builder is showing a finished service pulled up from History. The
@@ -2446,7 +2458,7 @@
         generalChecksCache = {};
         issueResolutionState = {};
         Object.keys(faultIncludedState).forEach(k => delete faultIncludedState[k]);
-        signatureDataUrl = ""; // a past customer's signature isn't ours to reprint onto a new report
+        signatureDataUrl = ""; repSignatureDataUrl = ""; // a past service's signatures aren't ours to reprint onto a new report
         serviceStartedAt = null;
         isDirty = false; // viewing an archived service must never write back to it
         viewingArchivedReport = true;
@@ -2810,9 +2822,10 @@
         container.querySelectorAll('.issue-dropdown').forEach(sel => {
             sel.addEventListener('change', (e) => {
                 const type = sel.getAttribute('data-type'); const part = sel.getAttribute('data-part');
-                const partId = part.replace(/\s+/g, '-').toLowerCase();
-                const notesArea = container.querySelector(`#notes-${partId}`);
-                const otherTextarea = notesArea?.querySelector('.issue-other-textarea');
+                // Resolve the sibling textarea via the enclosing part card. The notes-area id is
+                // built from the composite `key` (type + pack index + part), not the bare part name,
+                // so a `#notes-${part}` lookup misses and the "Other" textarea never reveals.
+                const otherTextarea = sel.closest('.part-section')?.querySelector('.issue-other-textarea');
                 const value = sel.value;
                 let newNotes;
                 if (value === '__other__') { otherTextarea?.classList.add('visible'); if (otherTextarea) otherTextarea.value = ""; otherTextarea?.focus(); newNotes = ""; }
@@ -3377,35 +3390,51 @@
     }
 
     /* ---- Signature capture ---- */
-    let sigCtx = null, sigDrawing = false, sigHasStroke = false;
-    function initSignaturePad() {
-        const canvas = $('signatureCanvas');
-        const ratio = window.devicePixelRatio || 1;
-        // Defensive fallback — if this ever runs before the canvas has been laid out (e.g. its
-        // section was still hidden), clientWidth/clientHeight would be 0 and every stroke would
-        // silently draw into a zero-size buffer. Fall back to the wrapper's box in that case.
-        const w = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
-        const h = canvas.clientHeight || 180;
-        canvas.width = w * ratio; canvas.height = h * ratio;
-        sigCtx = canvas.getContext('2d');
-        sigCtx.scale(ratio, ratio);
-        sigCtx.strokeStyle = '#1a1a1a'; sigCtx.lineWidth = 2.2; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round';
-        sigHasStroke = false; signatureDataUrl = "";
-        $('signaturePlaceholder').classList.remove('hidden');
+    // The completion screen has two independent pads: the site manager (customer) signs one and
+    // the attending representative signs the other. Each pad owns its own canvas context and
+    // reports its PNG data URL back through onEnd so the report builder can embed both.
+    function createSignaturePad(canvasId, placeholderId, onEnd) {
+        let ctx = null, drawing = false;
+        function init() {
+            const canvas = $(canvasId);
+            const ratio = window.devicePixelRatio || 1;
+            // Defensive fallback — if this ever runs before the canvas has been laid out (e.g. its
+            // section was still hidden), clientWidth/clientHeight would be 0 and every stroke would
+            // silently draw into a zero-size buffer. Fall back to the wrapper's box in that case.
+            const w = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
+            const h = canvas.clientHeight || 180;
+            canvas.width = w * ratio; canvas.height = h * ratio;
+            ctx = canvas.getContext('2d');
+            ctx.scale(ratio, ratio);
+            ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            $(placeholderId).classList.remove('hidden');
 
-        function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
-        function start(e) { e.preventDefault(); sigDrawing = true; sigHasStroke = true; $('signaturePlaceholder').classList.add('hidden'); const p = pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); }
-        function move(e) { if (!sigDrawing) return; e.preventDefault(); const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); }
-        function end() { if (!sigDrawing) return; sigDrawing = false; signatureDataUrl = canvas.toDataURL('image/png'); }
+            function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
+            function start(e) { e.preventDefault(); drawing = true; $(placeholderId).classList.add('hidden'); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+            function move(e) { if (!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+            function end() { if (!drawing) return; drawing = false; onEnd(canvas.toDataURL('image/png')); }
 
-        canvas.onpointerdown = start; canvas.onpointermove = move; canvas.onpointerup = end; canvas.onpointerleave = end;
+            canvas.onpointerdown = start; canvas.onpointermove = move; canvas.onpointerup = end; canvas.onpointerleave = end;
+        }
+        function clear() {
+            const canvas = $(canvasId);
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            $(placeholderId).classList.remove('hidden');
+        }
+        return { init, clear };
     }
-    $('clearSignatureBtn').addEventListener('click', () => {
-        const canvas = $('signatureCanvas');
-        sigCtx.clearRect(0, 0, canvas.width, canvas.height);
-        signatureDataUrl = ""; sigHasStroke = false;
-        $('signaturePlaceholder').classList.remove('hidden');
-    });
+
+    const customerSignaturePad = createSignaturePad('signatureCanvas', 'signaturePlaceholder', url => { signatureDataUrl = url; });
+    const repSignaturePad = createSignaturePad('repSignatureCanvas', 'repSignaturePlaceholder', url => { repSignatureDataUrl = url; });
+
+    function initSignaturePad() {
+        signatureDataUrl = ""; repSignatureDataUrl = "";
+        $('siteManagerNameInput').value = "";
+        customerSignaturePad.init();
+        repSignaturePad.init();
+    }
+    $('clearSignatureBtn').addEventListener('click', () => { signatureDataUrl = ""; customerSignaturePad.clear(); });
+    $('clearRepSignatureBtn').addEventListener('click', () => { repSignatureDataUrl = ""; repSignaturePad.clear(); });
 
     $('buildReportBtn').addEventListener('click', async () => {
         reportEntryScreen = 'completionSection';
@@ -3619,6 +3648,14 @@
         const includedFaults = faultItems.filter(f => f.included);
         const faultsText = includedFaults.map(f => `${f.label}: ${f.text}`).join('\n');
 
+        const siteManagerName = ($('siteManagerNameInput')?.value || "").trim();
+        const signoffParty = (label, name, url) => url
+            ? `<div class="signoff-party"><p class="signoff-label">${label}${name ? ` — ${esc(name)}` : ''}:</p><img src="${url}"></div>`
+            : '';
+        const signoffBlock = (signatureDataUrl || repSignatureDataUrl)
+            ? `<div class="cust-report-signoff">${signoffParty('Site manager sign-off', siteManagerName, signatureDataUrl)}${signoffParty('Representative sign-off', currentRepresentative, repSignatureDataUrl)}</div>`
+            : '';
+
         return `
             <div class="cust-report">
                 <div class="cust-report-header">
@@ -3635,7 +3672,7 @@
                 ${section('Ponchos', $('custDraftPonchos').value)}
                 ${section('Faults Resolved', faultsText)}
                 ${section('Additional Notes', $('custDraftNotes').value)}
-                ${signatureDataUrl ? `<div class="cust-report-signoff"><p style="font-size:0.85rem;color:#555;">Customer sign-off:</p><img src="${signatureDataUrl}"></div>` : ''}
+                ${signoffBlock}
                 <div class="cust-report-footer">Prepared by ${esc(currentRepresentative || "our service team")}. Thank you for your continued business.</div>
             </div>
         `;

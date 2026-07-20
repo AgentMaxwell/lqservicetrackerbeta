@@ -450,6 +450,8 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${escapeHtml(s.scheduledDate)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledTime ? escapeHtml(s.scheduledTime) : '—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledRep ? escapeHtml(s.scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.firmware ? escapeHtml(s.firmware) : '—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.packColour ? escapeHtml(s.packColour) : '—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.notes ? escapeHtml(s.notes) : '—'}</td>
       </tr>`).join('');
     return `
@@ -460,6 +462,8 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
           <th style="padding:6px 10px;">Date</th>
           <th style="padding:6px 10px;">Time</th>
           <th style="padding:6px 10px;">Representative</th>
+          <th style="padding:6px 10px;">Firmware</th>
+          <th style="padding:6px 10px;">Pack Colour</th>
           <th style="padding:6px 10px;">Notes</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
