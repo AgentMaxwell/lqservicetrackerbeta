@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.8.2 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.8.3 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -677,7 +677,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.2</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.3</div>
         </div>
     </nav>
 
@@ -1765,7 +1765,7 @@
         const wrap = $('offlineDownloadProgress');
         const bar = $('offlineDownloadBar');
         const stepLabel = $('offlineDownloadStep');
-        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes']];
+        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes'], ['signoffs', 'sign-offs']];
         const totalSteps = collections.length + 1; // + the common-issues doc
 
         btn.disabled = true;
@@ -2514,6 +2514,20 @@
                     currentPackColour = genDoc.data().packColour || currentPackColour;
                 }
             } catch (e) { console.warn('No general checks available for this service:', e.message); }
+
+            // Sign-offs live in their own doc (see completeServiceFinalBtn) — restore them here so
+            // reprinting a past report still shows both signatures instead of blank boxes.
+            try {
+                const signoffDoc = await getDoc(doc(db, "signoffs", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (signoffDoc.exists()) {
+                    const so = signoffDoc.data();
+                    signatureDataUrl = so.customerSignature || '';
+                    repSignatureDataUrl = so.repSignature || '';
+                    if ($('siteManagerNameInput')) $('siteManagerNameInput').value = so.siteManagerName || '';
+                } else {
+                    if ($('siteManagerNameInput')) $('siteManagerNameInput').value = '';
+                }
+            } catch (e) { console.warn('No sign-off available for this service:', e.message); }
 
             reportEntryScreen = 'historySection';
             await navigateTo('customerReportSection');
@@ -3494,6 +3508,22 @@
                 await queuedWrite(`complete-${siteInfo.id}`, `Complete service — ${currentSiteName}`, () => setDoc(doc(db, "sites", siteInfo.id), { lastServiceDate: activeServiceDate, lastServiceCompletedAt: serverTimestamp() }, { merge: true }));
                 siteInfo.lastServiceDate = activeServiceDate;
                 pushServiceCompletionToSheet(currentSiteName, activeServiceDate, currentRepresentative || "");
+            }
+
+            // Persist both sign-offs so re-opening this service's report later (e.g. from History,
+            // or after a reload) can still show them — signatureDataUrl/repSignatureDataUrl only
+            // ever lived in memory before this, so they vanished the moment the page navigated away.
+            if (signatureDataUrl || repSignatureDataUrl) {
+                const signoffDocId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+                await queuedWrite(`signoff-${signoffDocId}`, `Sign-off for ${currentSiteName}`, () => setDoc(doc(db, "signoffs", signoffDocId), {
+                    site: currentSiteName,
+                    date: activeServiceDate,
+                    siteManagerName: ($('siteManagerNameInput')?.value || '').trim(),
+                    customerSignature: signatureDataUrl || '',
+                    repSignature: repSignatureDataUrl || '',
+                    representative: currentRepresentative || '',
+                    lastUpdated: serverTimestamp()
+                }, { merge: true }));
             }
 
             clearResumeState();
