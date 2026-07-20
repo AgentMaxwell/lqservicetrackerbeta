@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.8.1 — Tablet UX redesign
+           PACK SERVICE TRACKER v0.8.2 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -677,7 +677,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.1</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.8.2</div>
         </div>
     </nav>
 
@@ -1125,6 +1125,11 @@
             </div>
         </div>
         <div id="completionSection" class="app-section">
+            <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
+                <button class="btn-ghost btn-icon" id="completionBackBtn" aria-label="Back to checklist"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+                <strong style="flex:1;">Service Complete</strong>
+            </div>
             <div class="completion-header">
                 <div class="completion-check"><svg class="icon icon-lg"><use href="#i-check-circle"></use></svg></div>
                 <div>
@@ -2717,6 +2722,10 @@
         setTimeout(() => msg.innerText = "", 3000);
     });
     $('notesBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
+    // Lets a rep who spots a mistake while signing off return to the checklist to fix it —
+    // signatures/name typed so far are left as-is, since openCompletionSummary() re-inits the
+    // pads fresh only when re-entered via "Complete Service" again.
+    $('completionBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
     /* ============================================================
        SHARED CHECKLIST CARD COMPONENT — used by both General Site Checks
        and the pack Checklist. Cards start open; once answered they collapse
@@ -3466,6 +3475,11 @@
     });
 
     $('completeServiceFinalBtn').addEventListener('click', async () => {
+        const ok = await showConfirmModal(
+            "This finalises the service and updates the site's last-serviced date. You'll have 30 seconds to undo afterwards.",
+            { title: "Complete this service?", confirmLabel: "Complete Service" }
+        );
+        if (!ok) return;
         const btn = $('completeServiceFinalBtn');
         btn.disabled = true; btn.innerHTML = 'Completing...';
         try {
