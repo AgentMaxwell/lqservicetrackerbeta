@@ -9,9 +9,16 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v0.7.2 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.0.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
+
+           VERSIONING RULE (keep this in sync across chats):
+             • Small change  -> increment patch by 0.0.1  (e.g. 0.8.0 -> 0.8.1)
+             • Medium change -> increment minor by 0.1, reset patch (e.g. 0.8.1 -> 0.9.0)
+           The version lives in THREE places — update all when you bump:
+             1. this header comment,  2. the .version-badge div in the header,
+             3. APP_VERSION in sw.js (drives the cache name + update prompt).
            ============================================ */
         :root {
             /* spacing (8px grid) */
@@ -378,7 +385,9 @@
             .cust-report-section { margin-bottom: 26px; page-break-inside: avoid; }
             .cust-report-section h2 { font-family: Arial, sans-serif; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: #2c3e50 !important; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin: 0 0 10px 0; }
             .cust-report-section p { font-family: Arial, sans-serif; font-size: 0.98rem; white-space: pre-wrap; margin: 0; color: #1a1a1a !important; }
-            .cust-report-signoff { margin-top: 30px; }
+            .cust-report-signoff { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 40px; page-break-inside: avoid; }
+            .cust-report-signoff .signoff-party { flex: 1; min-width: 220px; }
+            .cust-report-signoff .signoff-label { font-family: Arial, sans-serif; font-size: 0.85rem; color: #555 !important; margin: 0 0 4px 0; }
             .cust-report-signoff img { max-width: 260px; border-bottom: 1px solid #999; }
             .cust-report-footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid #ccc; font-family: Arial, sans-serif; font-size: 0.85rem; color: #666 !important; text-align: center; }
         }
@@ -395,6 +404,20 @@
             position: relative; border: 1px solid var(--border-color); box-shadow: var(--shadow-lg);
         }
         .modal-content h2 { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+
+        /* ================= PIN pad (generic — used to gate destructive actions like History delete) ================= */
+        .pin-dots { display: flex; justify-content: center; gap: var(--sp-3); margin: var(--sp-2) 0 var(--sp-4); }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-strong); background: transparent; transition: background 0.15s, border-color 0.15s; }
+        .pin-dot.filled { background: var(--success); border-color: var(--success); }
+        .pin-dot.pin-error { background: var(--danger); border-color: var(--danger); }
+        .pin-pad-error-text { color: var(--danger-text); font-size: 0.85rem; min-height: 1.2em; margin: 0 0 var(--sp-2); }
+        .pin-pad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); max-width: 260px; margin: 0 auto; }
+        .pin-key {
+            font-size: 1.3rem; font-weight: 700; padding: var(--sp-4) 0; border-radius: var(--radius-md);
+            border: 1px solid var(--border-color); background: var(--card-bg-elevated); color: var(--text-main); cursor: pointer;
+        }
+        .pin-key:active { background: var(--border-strong); }
+        .pin-key-ghost { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
         .modal-close-btn {
             position: absolute; top: var(--sp-4); right: var(--sp-4); color: var(--text-muted);
             border: none; background: var(--card-bg-elevated); width: 40px; height: 40px; border-radius: 50%;
@@ -410,8 +433,12 @@
         .split-list, .split-detail { padding: var(--sp-5); }
 
         /* ================= Settings rows ================= */
-        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-4) 0; border-bottom: 1px solid var(--border-color); }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3) var(--sp-4); padding: var(--sp-4) 0; border-bottom: 1px solid var(--border-color); }
         .settings-row:first-child { padding-top: 0; }
+        /* History row's badge + View + Report cluster: wraps onto its own line (and wraps its own
+           buttons too) rather than overflowing the narrow split-list column; margin-left:auto keeps
+           it right-aligned whichever line it ends up on. */
+        .history-row-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); justify-content: flex-end; margin-left: auto; }
 
         /* ================= Service-mode top bar ================= */
         .service-topbar {
@@ -585,7 +612,7 @@
         .resolution-toggle:active { transform: scale(0.95); }
 
         .signature-pad-wrap { position: relative; border: 2px dashed var(--border-strong); border-radius: var(--radius-md); background: #fff; }
-        #signatureCanvas { display: block; width: 100%; height: 180px; touch-action: none; border-radius: var(--radius-md); }
+        #signatureCanvas, #repSignatureCanvas { display: block; width: 100%; height: 180px; touch-action: none; border-radius: var(--radius-md); }
         .signature-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #94A3B8; font-size: 0.85rem; pointer-events: none; }
         .signature-placeholder.hidden { display: none; }
 
@@ -673,7 +700,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v0.7.2</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.0.0</div>
         </div>
     </nav>
 
@@ -808,6 +835,21 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <!-- Read-only internal record of a past service (v0.9.0). Distinct from "Report": this
+             shows full per-part status + notes for staff review; the Report is the trimmed,
+             customer-facing document. Nothing here writes to Firestore. -->
+        <div id="historyViewSection" class="app-section">
+            <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
+                <button class="btn-ghost btn-icon" id="historyViewBackBtn" aria-label="Back"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+                <strong style="flex:1;">Service Details</strong>
+            </div>
+            <div class="home-header">
+                <h1 id="historyViewTitle">—</h1>
+                <p class="text-muted" id="historyViewSubtitle">—</p>
+            </div>
+            <div id="historyViewBody"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
         </div>
         <div id="sitesSection" class="app-section">
             <div class="home-header">
@@ -954,14 +996,17 @@
                 <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
+            <!-- Barebones report flow (v0.8.0): Details -> Preview. The Checks & Faults steps from the
+                 full builder are kept in the DOM but hidden ("back pocket") so the richer report can be
+                 restored later without re-wiring. -->
             <div class="stepper" id="reportStepper">
                 <button class="stepper-step active" data-step="details"><span class="stepper-dot">1</span>Details</button>
                 <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="checks"><span class="stepper-dot">2</span>Checks</button>
-                <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="faults"><span class="stepper-dot">3</span>Faults</button>
-                <div class="stepper-line"></div>
-                <button class="stepper-step" data-step="preview"><span class="stepper-dot">4</span>Preview</button>
+                <button class="stepper-step hidden" data-step="checks"><span class="stepper-dot">2</span>Checks</button>
+                <div class="stepper-line hidden"></div>
+                <button class="stepper-step hidden" data-step="faults"><span class="stepper-dot">3</span>Faults</button>
+                <div class="stepper-line hidden"></div>
+                <button class="stepper-step" data-step="preview"><span class="stepper-dot">2</span>Preview</button>
             </div>
 
             <div class="split-view report-split">
@@ -969,13 +1014,22 @@
                     <!-- Step: details -->
                     <div class="report-step-panel" data-step-panel="details">
                         <h3 style="text-align:left; margin-bottom: var(--sp-4);">Service Details</h3>
+                        <p class="text-muted" style="font-size:0.86rem; margin-top:0; margin-bottom: var(--sp-4);">These are filled in automatically from the service. Add any notes for the customer below.</p>
                         <div class="grid-2">
-                            <div><label>Site</label><input type="text" id="custReportSiteDisplay" disabled style="margin-bottom:0;"></div>
+                            <div><label>Centre</label><input type="text" id="custReportSiteDisplay" disabled style="margin-bottom:0;"></div>
                             <div><label>Date of Service</label><input type="text" id="custReportDateDisplay" disabled style="margin-bottom:0;"></div>
                         </div>
                         <div class="grid-2" style="margin-top: var(--sp-4);">
-                            <div><label>Next Service Due</label><input type="text" id="custReportNextDueDisplay" disabled style="margin-bottom:0;"></div>
-                            <div><label for="custReportFirmwareInput">Firmware (editable)</label><input type="text" id="custReportFirmwareInput" style="margin-bottom:0;"></div>
+                            <div><label>Service completed by</label><input type="text" id="custReportCompletedByDisplay" disabled style="margin-bottom:0;"></div>
+                            <div><label>Site representative</label><input type="text" id="custReportSiteRepDisplay" disabled style="margin-bottom:0;"></div>
+                        </div>
+                        <label for="simpleRepNotes" style="margin-top: var(--sp-4);">Representative notes (optional)</label>
+                        <textarea id="simpleRepNotes" placeholder="Anything worth passing to the customer — follow-ups, parts taken away for repair, observations..." style="min-height: 110px;"></textarea>
+
+                        <!-- Back-pocket fields retained for the full report builder; hidden in the barebones flow. -->
+                        <div class="hidden">
+                            <input type="text" id="custReportNextDueDisplay" disabled>
+                            <input type="text" id="custReportFirmwareInput">
                         </div>
                     </div>
 
@@ -1110,6 +1164,11 @@
             </div>
         </div>
         <div id="completionSection" class="app-section">
+            <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
+                <button class="btn-ghost btn-icon" id="completionBackBtn" aria-label="Back to checklist"><svg class="icon"><use href="#i-arrow-left"></use></svg></button>
+                <strong style="flex:1;">Service Complete</strong>
+            </div>
             <div class="completion-header">
                 <div class="completion-check"><svg class="icon icon-lg"><use href="#i-check-circle"></use></svg></div>
                 <div>
@@ -1130,12 +1189,21 @@
                     <div id="completionIssuesList"></div>
                 </div>
                 <div class="card split-detail">
-                    <h3 style="text-align:left; margin-bottom: var(--sp-3);">Customer sign-off</h3>
+                    <h3 style="text-align:left; margin-bottom: var(--sp-3);">Site manager sign-off</h3>
+                    <label for="siteManagerNameInput">Site manager name</label>
+                    <input type="text" id="siteManagerNameInput" placeholder="Name of person signing" style="margin-bottom: var(--sp-3);">
                     <div class="signature-pad-wrap">
-                        <canvas id="signatureCanvas" width="480" height="180" aria-label="Signature capture area"></canvas>
+                        <canvas id="signatureCanvas" width="480" height="180" aria-label="Site manager signature capture area"></canvas>
                         <div class="signature-placeholder" id="signaturePlaceholder"><svg class="icon"><use href="#i-pen"></use></svg>Tap and drag to capture signature</div>
                     </div>
                     <button class="btn-sm btn-ghost" id="clearSignatureBtn" style="margin-top: var(--sp-2);">Clear signature</button>
+
+                    <h3 style="text-align:left; margin: var(--sp-5) 0 var(--sp-3);">Representative sign-off</h3>
+                    <div class="signature-pad-wrap">
+                        <canvas id="repSignatureCanvas" width="480" height="180" aria-label="Representative signature capture area"></canvas>
+                        <div class="signature-placeholder" id="repSignaturePlaceholder"><svg class="icon"><use href="#i-pen"></use></svg>Tap and drag to capture signature</div>
+                    </div>
+                    <button class="btn-sm btn-ghost" id="clearRepSignatureBtn" style="margin-top: var(--sp-2);">Clear signature</button>
 
                     <div class="action-group" style="display:flex; gap: var(--sp-3); margin-top: var(--sp-5);">
                         <button class="btn-outline" id="buildReportBtn" style="flex:1;"><svg class="icon"><use href="#i-mail"></use></svg>Build report</button>
@@ -1284,6 +1352,32 @@
     </div>
 </div>
 
+<div id="pinPadModal" class="modal">
+    <div class="modal-content" style="max-width: 340px; text-align:center;">
+        <button class="modal-close-btn" id="closePinPadModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+        <h2 style="justify-content:center;" id="pinPadTitle">Enter PIN</h2>
+        <p class="text-muted" id="pinPadSubtitle" style="margin-bottom: var(--sp-2);">Enter the 4-digit PIN to continue.</p>
+        <div class="pin-dots" id="pinDots">
+            <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+        </div>
+        <p class="pin-pad-error-text hidden" id="pinPadErrorText">Incorrect PIN</p>
+        <div class="pin-pad-grid" id="pinPadGrid">
+            <button type="button" class="pin-key" data-key="1">1</button>
+            <button type="button" class="pin-key" data-key="2">2</button>
+            <button type="button" class="pin-key" data-key="3">3</button>
+            <button type="button" class="pin-key" data-key="4">4</button>
+            <button type="button" class="pin-key" data-key="5">5</button>
+            <button type="button" class="pin-key" data-key="6">6</button>
+            <button type="button" class="pin-key" data-key="7">7</button>
+            <button type="button" class="pin-key" data-key="8">8</button>
+            <button type="button" class="pin-key" data-key="9">9</button>
+            <button type="button" class="pin-key pin-key-ghost" id="pinPadClearBtn">Clear</button>
+            <button type="button" class="pin-key" data-key="0">0</button>
+            <button type="button" class="pin-key pin-key-ghost" id="pinPadBackspaceBtn" aria-label="Backspace">⌫</button>
+        </div>
+    </div>
+</div>
+
 <div id="editSiteModal" class="modal">
     <div class="modal-content" style="max-width: 440px;">
         <button class="modal-close-btn" id="closeEditSiteModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
@@ -1326,7 +1420,8 @@
     let currentPackColour = "";
     let commonIssuesByPart = {};
     let serviceStartedAt = null; // epoch ms — for the Completion Summary "Duration" metric
-    let signatureDataUrl = "";
+    let signatureDataUrl = "";       // site manager (customer) signature PNG
+    let repSignatureDataUrl = "";     // attending representative signature PNG
     let currentReportStep = 'details';
     let reportEntryScreen = 'serviceSection'; // where "Back" on the Customer Report should return to
     // True while the Report Builder is showing a finished service pulled up from History. The
@@ -1412,6 +1507,56 @@
     $('genericConfirmCancelBtn').addEventListener('click', () => closeGenericConfirmModal(false));
     $('genericConfirmOkBtn').addEventListener('click', () => closeGenericConfirmModal(true));
 
+    /* ============================================================
+       PIN PAD — generic 4-digit gate for destructive actions (currently just
+       History's delete). The PIN (1111) is a deliberate speed bump against
+       fat-fingering delete, not real security — don't treat it as one.
+       ============================================================ */
+    const PIN_CODE = '1111';
+    let pinPadResolver = null;
+    let pinPadEntered = '';
+
+    function renderPinDots(errorFlash) {
+        $('pinDots').querySelectorAll('.pin-dot').forEach((d, i) => {
+            d.classList.toggle('filled', i < pinPadEntered.length && !errorFlash);
+            d.classList.toggle('pin-error', !!errorFlash);
+        });
+    }
+    function openPinPad(title, subtitle) {
+        $('pinPadTitle').innerText = title || 'Enter PIN';
+        $('pinPadSubtitle').innerText = subtitle || 'Enter the 4-digit PIN to continue.';
+        pinPadEntered = '';
+        $('pinPadErrorText').classList.add('hidden');
+        renderPinDots();
+        $('pinPadModal').style.display = 'block';
+        return new Promise(resolve => { pinPadResolver = resolve; });
+    }
+    function closePinPad(result) {
+        $('pinPadModal').style.display = 'none';
+        if (pinPadResolver) { pinPadResolver(result); pinPadResolver = null; }
+    }
+    function pinPadPressKey(digit) {
+        if (pinPadEntered.length >= 4) return;
+        $('pinPadErrorText').classList.add('hidden');
+        pinPadEntered += digit;
+        renderPinDots();
+        if (pinPadEntered.length === 4) {
+            if (pinPadEntered === PIN_CODE) {
+                setTimeout(() => closePinPad(true), 150); // let the 4th dot register before closing
+            } else {
+                renderPinDots(true);
+                $('pinPadErrorText').classList.remove('hidden');
+                setTimeout(() => { pinPadEntered = ''; renderPinDots(); }, 500);
+            }
+        }
+    }
+    $('pinPadGrid').querySelectorAll('.pin-key[data-key]').forEach(btn => {
+        btn.addEventListener('click', () => pinPadPressKey(btn.getAttribute('data-key')));
+    });
+    $('pinPadBackspaceBtn').addEventListener('click', () => { pinPadEntered = pinPadEntered.slice(0, -1); $('pinPadErrorText').classList.add('hidden'); renderPinDots(); });
+    $('pinPadClearBtn').addEventListener('click', () => { pinPadEntered = ''; $('pinPadErrorText').classList.add('hidden'); renderPinDots(); });
+    $('closePinPadModalBtn').addEventListener('click', () => closePinPad(false));
+
     function computeDueStatus(site) {
         if (!site || !site.nextServiceDue) return null;
         const due = new Date(site.nextServiceDue);
@@ -1493,7 +1638,7 @@
         setupSection: 'Home', scheduleSection: 'Schedule', historySection: 'History',
         sitesSection: 'Sites', settingsSection: 'Settings', notesSection: 'Notes',
         customerReportSection: 'Customer Report', generalChecksSection: 'General Checks',
-        serviceSection: 'Checklist', completionSection: 'Service Complete'
+        serviceSection: 'Checklist', completionSection: 'Service Complete', historyViewSection: 'Service Details'
     };
     const sidebarSectionIds = new Set(['setupSection', 'scheduleSection', 'historySection', 'sitesSection', 'settingsSection']);
 
@@ -1756,7 +1901,7 @@
         const wrap = $('offlineDownloadProgress');
         const bar = $('offlineDownloadBar');
         const stepLabel = $('offlineDownloadStep');
-        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes']];
+        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes'], ['signoffs', 'sign-offs']];
         const totalSteps = collections.length + 1; // + the common-issues doc
 
         btn.disabled = true;
@@ -2417,9 +2562,11 @@
                             <strong>${site ? esc(v.date) : esc(v.site)}</strong>
                             <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${site ? '' : esc(v.date) + ' · '}${v.packCount} pack record${v.packCount === 1 ? '' : 's'}</p>
                         </div>
-                        <div style="display:flex; align-items:center; gap: var(--sp-3);">
+                        <div class="history-row-actions">
                             ${v.issueCount > 0 ? `<span class="badge badge-due">${v.issueCount} issue${v.issueCount === 1 ? '' : 's'}</span>` : `<span class="badge badge-ok">All good</span>`}
+                            <button class="btn-sm btn-ghost history-view-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-file-text"></use></svg>View</button>
                             <button class="btn-sm btn-outline history-report-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-mail"></use></svg>Report</button>
+                            <button class="btn-sm btn-icon btn-ghost history-delete-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}" aria-label="Delete this service" title="Delete this service"><svg class="icon icon-sm"><use href="#i-trash"></use></svg></button>
                         </div>
                     </div>
                 `).join('') + (visits.length > shown.length
@@ -2427,6 +2574,10 @@
                     : '');
                 $('historyTimeline').querySelectorAll('.history-report-btn').forEach(btn => btn.addEventListener('click', () =>
                     openReportForPastService(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
+                $('historyTimeline').querySelectorAll('.history-view-btn').forEach(btn => btn.addEventListener('click', () =>
+                    openHistoryView(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
+                $('historyTimeline').querySelectorAll('.history-delete-btn').forEach(btn => btn.addEventListener('click', () =>
+                    deleteHistoryVisit(btn.getAttribute('data-site'), btn.getAttribute('data-date'))));
             }
 
             if (!site) {
@@ -2452,6 +2603,40 @@
     $('historySiteSelect').addEventListener('change', () => renderHistory());
     $('historyRefreshBtn').addEventListener('click', () => renderHistory({ force: true }));
 
+    /* Permanently removes one service visit (a site+date) — every pack's "services" doc for that
+       date, plus its general_checks/signoffs/site_notes docs if present. Meant for clearing out
+       test data, so it's gated by the PIN pad (speed bump, not real security) and a normal confirm
+       on top of that. Does NOT touch the site's lastServiceDate/nextServiceDue — if the deleted
+       visit was the site's most recent service, those will look stale until the next real one. */
+    async function deleteHistoryVisit(site, date) {
+        const pinOk = await openPinPad('Enter PIN to Delete', `Deleting the ${date} service record for "${site}".`);
+        if (!pinOk) return;
+        const confirmed = await showConfirmModal(
+            `Permanently delete the service record for "${site}" on ${date}? This removes all pack checks, general checks, sign-offs and notes for this visit. This cannot be undone.`,
+            { title: 'Delete Service Record?', confirmLabel: 'Delete' });
+        if (!confirmed) return;
+
+        try {
+            const records = await fetchServiceDocs();
+            const toDelete = records.filter(rec => rec.site === site && (rec.id || '').includes(date));
+            await Promise.all(toDelete.map(rec => deleteDoc(doc(db, 'services', rec.id))));
+
+            const baseId = `${site.replace(/\s+/g, '-')}-${date}`;
+            await Promise.all([
+                deleteDoc(doc(db, 'general_checks', baseId)).catch(() => {}),
+                deleteDoc(doc(db, 'signoffs', baseId)).catch(() => {}),
+                deleteDoc(doc(db, 'site_notes', baseId)).catch(() => {})
+            ]);
+
+            historyServiceDocs = null; // cache is now stale — force a refetch
+            showToast(`Deleted the ${date} service record for "${site}".`);
+            renderHistory({ force: true });
+        } catch (error) {
+            console.error('Could not delete service record:', error);
+            showToast("Couldn't delete that service. Check your connection.");
+        }
+    }
+
     /* Builds a customer report for a service that's already finished. This reuses the same
        in-memory state the live checklist works from (PonchoDataCache, generalChecksCache,
        currentSiteName...), so anything in progress has to be saved and consciously left first. */
@@ -2473,7 +2658,7 @@
         generalChecksCache = {};
         issueResolutionState = {};
         Object.keys(faultIncludedState).forEach(k => delete faultIncludedState[k]);
-        signatureDataUrl = ""; // a past customer's signature isn't ours to reprint onto a new report
+        signatureDataUrl = ""; repSignatureDataUrl = ""; // a past service's signatures aren't ours to reprint onto a new report
         serviceStartedAt = null;
         isDirty = false; // viewing an archived service must never write back to it
         viewingArchivedReport = true;
@@ -2506,6 +2691,20 @@
                 }
             } catch (e) { console.warn('No general checks available for this service:', e.message); }
 
+            // Sign-offs live in their own doc (see completeServiceFinalBtn) — restore them here so
+            // reprinting a past report still shows both signatures instead of blank boxes.
+            try {
+                const signoffDoc = await getDoc(doc(db, "signoffs", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (signoffDoc.exists()) {
+                    const so = signoffDoc.data();
+                    signatureDataUrl = so.customerSignature || '';
+                    repSignatureDataUrl = so.repSignature || '';
+                    if ($('siteManagerNameInput')) $('siteManagerNameInput').value = so.siteManagerName || '';
+                } else {
+                    if ($('siteManagerNameInput')) $('siteManagerNameInput').value = '';
+                }
+            } catch (e) { console.warn('No sign-off available for this service:', e.message); }
+
             reportEntryScreen = 'historySection';
             await navigateTo('customerReportSection');
             populateCustomerReportHeader();
@@ -2514,7 +2713,7 @@
             const recordedNextDue = Object.values(serviceMap)[0]?.nextServiceDue;
             if (recordedNextDue) $('custReportNextDueDisplay').value = formatMonthYear(recordedNextDue);
             setReportStep('details');
-            ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
+            ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'simpleRepNotes'].forEach(id => { if ($(id)) $(id).value = ''; });
             generateCustomerDraft();
             buildFaultItems();
             renderLivePreview();
@@ -2523,6 +2722,112 @@
             showToast("Couldn't load that service. Check your connection.");
         }
     }
+
+    /* Read-only internal record of a past service — full per-part status + notes, for staff
+       review. Unlike openReportForPastService(), this never touches live app state (PonchoDataCache,
+       currentSiteName, etc.) — it fetches into local variables only, so it's safe to open regardless
+       of any in-progress service and needs no "leave unfinished work" confirmation. */
+    async function openHistoryView(site, date) {
+        if (!sitesData[site]) { showToast(`"${site}" is no longer in the site list.`); return; }
+        await navigateTo('historyViewSection');
+        $('historyViewTitle').innerText = site;
+        $('historyViewSubtitle').innerText = `Service on ${formatServiceDateUK(date)}`;
+        $('historyViewBody').innerHTML = '<div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>';
+        try {
+            const records = await fetchServiceDocs();
+            const serviceMap = {};
+            records.forEach(rec => {
+                if (rec.site !== site || !(rec.id || '').includes(date)) return;
+                if (!serviceMap[rec.PonchoId] || (rec.lastUpdated > serviceMap[rec.PonchoId].lastUpdated)) serviceMap[rec.PonchoId] = rec;
+            });
+            const packNums = Object.keys(serviceMap).map(k => parseInt(String(k).replace('Poncho ', ''), 10)).filter(n => !isNaN(n));
+            const packTotal = packNums.length ? Math.max(...packNums) : 0;
+            const packData = {};
+            for (let i = 1; i <= packTotal; i++) if (serviceMap[`Poncho ${i}`]) packData[i] = serviceMap[`Poncho ${i}`].serviceDetails || {};
+            const representative = Object.values(serviceMap)[0]?.representative || '';
+
+            let generalChecks = {}, firmware = '', packColour = '';
+            try {
+                const genDoc = await getDoc(doc(db, "general_checks", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (genDoc.exists()) { generalChecks = genDoc.data().checks || {}; firmware = genDoc.data().firmware || ''; packColour = genDoc.data().packColour || ''; }
+            } catch (e) { console.warn('No general checks available for this service:', e.message); }
+
+            let signoff = null;
+            try {
+                const soDoc = await getDoc(doc(db, "signoffs", `${site.replace(/\s+/g, '-')}-${date}`));
+                if (soDoc.exists()) signoff = soDoc.data();
+            } catch (e) { console.warn('No sign-off available for this service:', e.message); }
+
+            $('historyViewBody').innerHTML = buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff });
+        } catch (error) {
+            console.error('Could not load service view:', error);
+            $('historyViewBody').innerHTML = '<div class="empty-state">Could not load this service. Check your connection.</div>';
+        }
+    }
+
+    function buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff }) {
+        const statusBadge = (status) => status === 'Issue'
+            ? '<span class="badge badge-due">Issue</span>'
+            : (status === 'Good' ? '<span class="badge badge-ok">Good</span>' : '<span class="badge">Not checked</span>');
+
+        const itemRow = (label, data) => `
+            <div class="completion-issue-row">
+                <div>
+                    <strong style="font-size:0.92rem;">${esc(label)}</strong>
+                    ${data?.notes ? `<p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${esc(data.notes)}${data.partUsed ? ` · Part used: ${esc(data.partUsed)}` : ''}</p>` : ''}
+                </div>
+                ${statusBadge(data?.status)}
+            </div>`;
+
+        const genSection = `
+            <div class="card" style="margin-bottom: var(--sp-4);">
+                <h3 style="text-align:left; margin-bottom: var(--sp-2);">General site checks</h3>
+                ${generalChecksList.map(item => itemRow(item, generalChecks[item])).join('')}
+            </div>`;
+
+        const allPackParts = [...PonchoPartsList, ...gunPartsList];
+        const packsSection = packTotal > 0 ? Array.from({ length: packTotal }, (_, idx) => {
+            const i = idx + 1;
+            const data = packData[i];
+            const checkedParts = data ? allPackParts.filter(p => data[p]?.status) : [];
+            if (checkedParts.length === 0) return '';
+            return `
+                <div class="card" style="margin-bottom: var(--sp-4);">
+                    <h3 style="text-align:left; margin-bottom: var(--sp-2);">Pack ${i}</h3>
+                    ${checkedParts.map(p => itemRow(p, data[p])).join('')}
+                </div>`;
+        }).join('') : '';
+
+        const infoCard = `
+            <div class="card" style="margin-bottom: var(--sp-4);">
+                <div class="grid-2">
+                    <div><label>Service completed by</label><p style="margin:0;">${esc(representative || '—')}</p></div>
+                    <div><label>Firmware</label><p style="margin:0;">${esc(firmware || '—')}</p></div>
+                </div>
+                <div class="grid-2" style="margin-top: var(--sp-3);">
+                    <div><label>Pack colour</label><p style="margin:0;">${esc(packColour || '—')}</p></div>
+                    <div><label>Site representative</label><p style="margin:0;">${esc(signoff?.siteManagerName || '—')}</p></div>
+                </div>
+            </div>`;
+
+        const sig = (url) => url
+            ? `<img src="${url}" alt="Signature" style="max-height:56px;max-width:220px;border-bottom:1px solid var(--border-color);">`
+            : '<span class="text-muted">Not signed</span>';
+        const signaturesCard = `
+            <div class="card">
+                <h3 style="text-align:left; margin-bottom: var(--sp-3);">Sign-off</h3>
+                <div class="grid-2">
+                    <div><label>Site manager signature</label>${sig(signoff?.customerSignature)}</div>
+                    <div><label>Representative signature</label>${sig(signoff?.repSignature)}</div>
+                </div>
+            </div>`;
+
+        return infoCard + genSection
+            + (packsSection || '<div class="empty-state" style="margin-bottom: var(--sp-4);">No pack records found for this service.</div>')
+            + signaturesCard;
+    }
+    $('historyViewBackBtn').addEventListener('click', () => navigateTo('historySection'));
+
     /* ============================================================
        SETTINGS — representative name (kept in sync with the overflow panel's copy)
        ============================================================ */
@@ -2713,6 +3018,10 @@
         setTimeout(() => msg.innerText = "", 3000);
     });
     $('notesBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
+    // Lets a rep who spots a mistake while signing off return to the checklist to fix it —
+    // signatures/name typed so far are left as-is, since openCompletionSummary() re-inits the
+    // pads fresh only when re-entered via "Complete Service" again.
+    $('completionBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
     /* ============================================================
        SHARED CHECKLIST CARD COMPONENT — used by both General Site Checks
        and the pack Checklist. Cards start open; once answered they collapse
@@ -2837,9 +3146,10 @@
         container.querySelectorAll('.issue-dropdown').forEach(sel => {
             sel.addEventListener('change', (e) => {
                 const type = sel.getAttribute('data-type'); const part = sel.getAttribute('data-part');
-                const partId = part.replace(/\s+/g, '-').toLowerCase();
-                const notesArea = container.querySelector(`#notes-${partId}`);
-                const otherTextarea = notesArea?.querySelector('.issue-other-textarea');
+                // Resolve the sibling textarea via the enclosing part card. The notes-area id is
+                // built from the composite `key` (type + pack index + part), not the bare part name,
+                // so a `#notes-${part}` lookup misses and the "Other" textarea never reveals.
+                const otherTextarea = sel.closest('.part-section')?.querySelector('.issue-other-textarea');
                 const value = sel.value;
                 let newNotes;
                 if (value === '__other__') { otherTextarea?.classList.add('visible'); if (otherTextarea) otherTextarea.value = ""; otherTextarea?.focus(); newNotes = ""; }
@@ -3449,35 +3759,51 @@
     }
 
     /* ---- Signature capture ---- */
-    let sigCtx = null, sigDrawing = false, sigHasStroke = false;
-    function initSignaturePad() {
-        const canvas = $('signatureCanvas');
-        const ratio = window.devicePixelRatio || 1;
-        // Defensive fallback — if this ever runs before the canvas has been laid out (e.g. its
-        // section was still hidden), clientWidth/clientHeight would be 0 and every stroke would
-        // silently draw into a zero-size buffer. Fall back to the wrapper's box in that case.
-        const w = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
-        const h = canvas.clientHeight || 180;
-        canvas.width = w * ratio; canvas.height = h * ratio;
-        sigCtx = canvas.getContext('2d');
-        sigCtx.scale(ratio, ratio);
-        sigCtx.strokeStyle = '#1a1a1a'; sigCtx.lineWidth = 2.2; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round';
-        sigHasStroke = false; signatureDataUrl = "";
-        $('signaturePlaceholder').classList.remove('hidden');
+    // The completion screen has two independent pads: the site manager (customer) signs one and
+    // the attending representative signs the other. Each pad owns its own canvas context and
+    // reports its PNG data URL back through onEnd so the report builder can embed both.
+    function createSignaturePad(canvasId, placeholderId, onEnd) {
+        let ctx = null, drawing = false;
+        function init() {
+            const canvas = $(canvasId);
+            const ratio = window.devicePixelRatio || 1;
+            // Defensive fallback — if this ever runs before the canvas has been laid out (e.g. its
+            // section was still hidden), clientWidth/clientHeight would be 0 and every stroke would
+            // silently draw into a zero-size buffer. Fall back to the wrapper's box in that case.
+            const w = canvas.clientWidth || canvas.parentElement.clientWidth || 480;
+            const h = canvas.clientHeight || 180;
+            canvas.width = w * ratio; canvas.height = h * ratio;
+            ctx = canvas.getContext('2d');
+            ctx.scale(ratio, ratio);
+            ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            $(placeholderId).classList.remove('hidden');
 
-        function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
-        function start(e) { e.preventDefault(); sigDrawing = true; sigHasStroke = true; $('signaturePlaceholder').classList.add('hidden'); const p = pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); }
-        function move(e) { if (!sigDrawing) return; e.preventDefault(); const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); }
-        function end() { if (!sigDrawing) return; sigDrawing = false; signatureDataUrl = canvas.toDataURL('image/png'); }
+            function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
+            function start(e) { e.preventDefault(); drawing = true; $(placeholderId).classList.add('hidden'); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+            function move(e) { if (!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+            function end() { if (!drawing) return; drawing = false; onEnd(canvas.toDataURL('image/png')); }
 
-        canvas.onpointerdown = start; canvas.onpointermove = move; canvas.onpointerup = end; canvas.onpointerleave = end;
+            canvas.onpointerdown = start; canvas.onpointermove = move; canvas.onpointerup = end; canvas.onpointerleave = end;
+        }
+        function clear() {
+            const canvas = $(canvasId);
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            $(placeholderId).classList.remove('hidden');
+        }
+        return { init, clear };
     }
-    $('clearSignatureBtn').addEventListener('click', () => {
-        const canvas = $('signatureCanvas');
-        sigCtx.clearRect(0, 0, canvas.width, canvas.height);
-        signatureDataUrl = ""; sigHasStroke = false;
-        $('signaturePlaceholder').classList.remove('hidden');
-    });
+
+    const customerSignaturePad = createSignaturePad('signatureCanvas', 'signaturePlaceholder', url => { signatureDataUrl = url; });
+    const repSignaturePad = createSignaturePad('repSignatureCanvas', 'repSignaturePlaceholder', url => { repSignatureDataUrl = url; });
+
+    function initSignaturePad() {
+        signatureDataUrl = ""; repSignatureDataUrl = "";
+        $('siteManagerNameInput').value = "";
+        customerSignaturePad.init();
+        repSignaturePad.init();
+    }
+    $('clearSignatureBtn').addEventListener('click', () => { signatureDataUrl = ""; customerSignaturePad.clear(); });
+    $('clearRepSignatureBtn').addEventListener('click', () => { repSignatureDataUrl = ""; repSignaturePad.clear(); });
 
     $('buildReportBtn').addEventListener('click', async () => {
         reportEntryScreen = 'completionSection';
@@ -3490,6 +3816,11 @@
     });
 
     $('completeServiceFinalBtn').addEventListener('click', async () => {
+        const ok = await showConfirmModal(
+            "This finalises the service and updates the site's last-serviced date. You'll have 30 seconds to undo afterwards.",
+            { title: "Complete this service?", confirmLabel: "Complete Service" }
+        );
+        if (!ok) return;
         const btn = $('completeServiceFinalBtn');
         btn.disabled = true; btn.innerHTML = 'Completing...';
         try {
@@ -3504,6 +3835,22 @@
                 await queuedWrite(`complete-${siteInfo.id}`, `Complete service — ${currentSiteName}`, () => setDoc(doc(db, "sites", siteInfo.id), { lastServiceDate: activeServiceDate, lastServiceCompletedAt: serverTimestamp() }, { merge: true }));
                 siteInfo.lastServiceDate = activeServiceDate;
                 pushServiceCompletionToSheet(currentSiteName, activeServiceDate, currentRepresentative || "");
+            }
+
+            // Persist both sign-offs so re-opening this service's report later (e.g. from History,
+            // or after a reload) can still show them — signatureDataUrl/repSignatureDataUrl only
+            // ever lived in memory before this, so they vanished the moment the page navigated away.
+            if (signatureDataUrl || repSignatureDataUrl) {
+                const signoffDocId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+                await queuedWrite(`signoff-${signoffDocId}`, `Sign-off for ${currentSiteName}`, () => setDoc(doc(db, "signoffs", signoffDocId), {
+                    site: currentSiteName,
+                    date: activeServiceDate,
+                    siteManagerName: ($('siteManagerNameInput')?.value || '').trim(),
+                    customerSignature: signatureDataUrl || '',
+                    repSignature: repSignatureDataUrl || '',
+                    representative: currentRepresentative || '',
+                    lastUpdated: serverTimestamp()
+                }, { merge: true }));
             }
 
             clearResumeState();
@@ -3552,7 +3899,9 @@
         // historySection re-renders itself via navigateTo, so nothing to do for it here
     });
 
-    const REPORT_STEPS = ['details', 'checks', 'faults', 'preview'];
+    // Barebones flow only walks Details -> Preview. 'checks' and 'faults' still exist as hidden
+    // panels (back pocket) but are out of the step sequence.
+    const REPORT_STEPS = ['details', 'preview'];
     function setReportStep(step) {
         currentReportStep = step;
         document.querySelectorAll('.stepper-step').forEach(s => {
@@ -3630,6 +3979,9 @@
         $('custReportDateDisplay').value = formatServiceDateUK(activeServiceDate);
         $('custReportNextDueDisplay').value = formatMonthYear(sitesData[currentSiteName]?.nextServiceDue || "");
         $('custReportFirmwareInput').value = currentFirmware;
+        // Barebones report autofill: who did the service, and the site's signing representative.
+        $('custReportCompletedByDisplay').value = currentRepresentative || "";
+        $('custReportSiteRepDisplay').value = ($('siteManagerNameInput')?.value || "").trim();
     }
     $('regenerateCustDraftBtn').addEventListener('click', async () => {
         const ok = await showConfirmModal("This replaces the auto-generated Checks and Faults sections with a fresh draft from current data. Continue?", { title: "Regenerate Draft?", confirmLabel: "Regenerate" });
@@ -3640,8 +3992,8 @@
         buildFaultItems();
         renderLivePreview();
     });
-    ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'custReportFirmwareInput'].forEach(id => {
-        $(id).addEventListener('input', () => renderLivePreview());
+    ['custDraftGeneral', 'custDraftGuns', 'custDraftPonchos', 'custDraftNotes', 'custReportFirmwareInput', 'simpleRepNotes'].forEach(id => {
+        if ($(id)) $(id).addEventListener('input', () => renderLivePreview());
     });
 
     /* ---- Faults step: discrete include/exclude toggle cards ---- */
@@ -3691,6 +4043,14 @@
         const includedFaults = faultItems.filter(f => f.included);
         const faultsText = includedFaults.map(f => `${f.label}: ${f.text}`).join('\n');
 
+        const siteManagerName = ($('siteManagerNameInput')?.value || "").trim();
+        const signoffParty = (label, name, url) => url
+            ? `<div class="signoff-party"><p class="signoff-label">${label}${name ? ` — ${esc(name)}` : ''}:</p><img src="${url}"></div>`
+            : '';
+        const signoffBlock = (signatureDataUrl || repSignatureDataUrl)
+            ? `<div class="cust-report-signoff">${signoffParty('Site manager sign-off', siteManagerName, signatureDataUrl)}${signoffParty('Representative sign-off', currentRepresentative, repSignatureDataUrl)}</div>`
+            : '';
+
         return `
             <div class="cust-report">
                 <div class="cust-report-header">
@@ -3707,26 +4067,97 @@
                 ${section('Ponchos', $('custDraftPonchos').value)}
                 ${section('Faults Resolved', faultsText)}
                 ${section('Additional Notes', $('custDraftNotes').value)}
-                ${signatureDataUrl ? `<div class="cust-report-signoff"><p style="font-size:0.85rem;color:#555;">Customer sign-off:</p><img src="${signatureDataUrl}"></div>` : ''}
+                ${signoffBlock}
                 <div class="cust-report-footer">Prepared by ${esc(currentRepresentative || "our service team")}. Thank you for your continued business.</div>
             </div>
         `;
     }
 
+    // ---- Barebones "Laser Quest Service Completion Record" (v0.8.0) ----
+    // Simple, professional, print-ready document mirroring the customer's paper form. Autofilled
+    // from the service; no per-item comment boxes; one optional rep-notes block. The richer
+    // buildCustomerReportHtml() above is kept as the "back pocket" version.
+    function buildSimpleReportHtml() {
+        const gunDisplay = (p) => p.replace(/^G(?=[A-Z])/, ''); // GScrews -> Screws, GLEDs -> LEDs, etc.
+
+        // Barebones form just confirms each item was checked — good vs. issue detail lives in the
+        // rep notes box, not per-row, so every checked item gets the same tick regardless of status.
+        const checkRows = (list, display) => {
+            return list.map(part => `<tr>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(display ? display(part) : part)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;font-weight:600;color:#15803d;">✓</td>
+                </tr>`).join('');
+        };
+        const checkTable = (title, rowsHtml) => `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">${title}</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Check</th>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;background:#f3f4f6;width:130px;">Completed</th>
+                </tr></thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>`;
+
+        const detailRow = (label, value) => `
+            <tr>
+                <td style="border:1px solid #d1d5db;padding:8px 11px;background:#f8fafc;font-weight:600;width:220px;">${label}</td>
+                <td style="border:1px solid #d1d5db;padding:8px 11px;">${value || '<span style="color:#9ca3af;">—</span>'}</td>
+            </tr>`;
+        const sig = (url) => url
+            ? `<img src="${url}" alt="Signature" style="max-height:56px;max-width:220px;">`
+            : '<span style="color:#9ca3af;">—</span>';
+
+        const repNotes = ($('simpleRepNotes')?.value || '').trim();
+        const notesBlock = repNotes ? `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">Representative notes</h3>
+            <p style="white-space:pre-wrap;margin:0;padding:12px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f8fafc;">${toHtml(repNotes)}</p>` : '';
+
+        return `
+        <div style="background:#fff;color:#1f2937;font-family:'Segoe UI',Arial,sans-serif;line-height:1.55;padding:34px;max-width:780px;margin:0 auto;">
+            <div style="border-bottom:3px solid #c8102e;padding-bottom:14px;margin-bottom:20px;">
+                <div style="font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#c8102e;">Laser Quest GB Ltd</div>
+                <h1 style="font-size:22px;margin:4px 0 0;color:#0f172a;">Service Completion Record</h1>
+            </div>
+
+            <p style="margin:0 0 8px;">As part of your rental contract agreement with Laser Quest GB Ltd, you receive an annual service on your equipment.</p>
+            <p style="margin:0 0 20px;">Please keep this service completion record for your own records.</p>
+
+            <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:6px;">
+                <tbody>
+                    ${detailRow('Centre', esc(currentSiteName || ''))}
+                    ${detailRow('Date &amp; time of service', esc(formatServiceDateUK(activeServiceDate)))}
+                    ${detailRow('Service completed by', esc(currentRepresentative || ''))}
+                    ${detailRow('Signed on completion', sig(repSignatureDataUrl))}
+                    ${detailRow('Site representative', esc(($('siteManagerNameInput')?.value || '').trim()))}
+                    ${detailRow('Signed on completion', sig(signatureDataUrl))}
+                </tbody>
+            </table>
+
+            ${checkTable('Non-pack checks', checkRows(generalChecksList))}
+            ${checkTable('Gun checks', checkRows(gunPartsList, gunDisplay))}
+            ${checkTable('Poncho checks', checkRows(PonchoPartsList))}
+
+            ${notesBlock}
+
+            <p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
+            <p style="margin:0;">You will receive a full service report by email.</p>
+        </div>`;
+    }
+
     let livePreviewDebounce = null;
     function renderLivePreview() {
         clearTimeout(livePreviewDebounce);
-        livePreviewDebounce = setTimeout(() => { $('livePreviewArea').innerHTML = buildCustomerReportHtml(); }, 120);
+        livePreviewDebounce = setTimeout(() => { $('livePreviewArea').innerHTML = buildSimpleReportHtml(); }, 120);
     }
 
     $('printCustReportBtn').addEventListener('click', () => {
-        $('printOnlyArea').innerHTML = buildCustomerReportHtml();
+        $('printOnlyArea').innerHTML = buildSimpleReportHtml();
         window.print();
     });
     $('shareCustReportBtn').addEventListener('click', async () => {
-        const includedFaults = faultItems.filter(f => f.included);
-        const summary = `${currentSiteName} — Service Report\nDate: ${$('custReportDateDisplay').value}\nNext due: ${$('custReportNextDueDisplay').value}\n\n${includedFaults.length ? 'Faults resolved:\n' + includedFaults.map(f => `- ${f.label}: ${f.text}`).join('\n') : 'No faults logged — all good.'}`;
-        try { await navigator.share({ title: `${currentSiteName} — Service Report`, text: summary }); }
+        const repNotes = ($('simpleRepNotes')?.value || '').trim();
+        const summary = `Laser Quest — Service Completion Record\nCentre: ${currentSiteName}\nDate: ${$('custReportDateDisplay').value}\nCompleted by: ${currentRepresentative || '—'}${repNotes ? `\n\nNotes: ${repNotes}` : ''}\n\nA full service report will follow by email.`;
+        try { await navigator.share({ title: `${currentSiteName} — Laser Quest Service Record`, text: summary }); }
         catch (err) { if (err.name !== 'AbortError') showToast("Couldn't open the share sheet."); }
     });
     /* ============================================================
@@ -3750,11 +4181,62 @@
 
 <script>
   if ('serviceWorker' in navigator) {
+    // Reload once when a newly-activated worker takes control (triggered by the update banner).
+    let swReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swReloading) return;
+      swReloading = true;
+      window.location.reload();
+    });
+
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
-        .then(registration => { console.log('ServiceWorker registered with scope:', registration.scope); })
+        .then(registration => {
+          console.log('ServiceWorker registered with scope:', registration.scope);
+
+          // Installed + an existing controller means this is an update (not the first install).
+          // Check the state right away as well as on change — a worker can reach "installed"
+          // before this listener attaches, and a pure statechange handler would then miss it.
+          const considerWorker = (worker) => {
+            if (!worker) return;
+            const check = () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(worker);
+            };
+            check();
+            worker.addEventListener('statechange', check);
+          };
+
+          // Ask GitHub Pages for a newer worker now, and hourly while the app stays open.
+          registration.update();
+          setInterval(() => registration.update(), 60 * 60 * 1000);
+
+          if (registration.waiting) considerWorker(registration.waiting);
+          registration.addEventListener('updatefound', () => considerWorker(registration.installing));
+        })
         .catch(error => { console.log('ServiceWorker registration failed:', error); });
     });
+  }
+
+  // Lightweight, self-contained update prompt. Kept out of the app module on purpose so it can run
+  // even if the main bundle changed — it only needs the waiting worker to post SKIP_WAITING to.
+  function showUpdateBanner(worker) {
+    if (!worker || document.getElementById('swUpdateBanner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'swUpdateBanner';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:2147483647;display:flex;gap:14px;align-items:center;background:#0F172A;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:12px 16px;box-shadow:0 10px 34px rgba(0,0,0,0.45);font-family:system-ui,-apple-system,sans-serif;font-size:14px;max-width:92vw;';
+    const label = document.createElement('span');
+    label.textContent = 'A new version is available.';
+    const update = document.createElement('button');
+    update.textContent = 'Update now';
+    update.style.cssText = 'background:#22c55e;color:#04210f;border:none;border-radius:9px;padding:9px 15px;font-weight:700;cursor:pointer;';
+    update.onclick = () => { update.disabled = true; update.textContent = 'Updating…'; worker.postMessage({ type: 'SKIP_WAITING' }); };
+    const later = document.createElement('button');
+    later.textContent = 'Later';
+    later.style.cssText = 'background:transparent;color:#94A3B8;border:none;cursor:pointer;font-size:13px;';
+    later.onclick = () => bar.remove();
+    bar.append(label, update, later);
+    document.body.appendChild(bar);
   }
 </script>
 </body>

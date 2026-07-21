@@ -130,6 +130,9 @@ function doGet(e) {
     if (action === "listSites") {
       return jsonOutput({ ok: true, sites: readAllSites() });
     }
+    if (action === "ics") {
+      return buildIcsResponse(e.parameter);
+    }
     return jsonOutput({ ok: false, error: "Unknown action" });
   } catch (err) {
     return jsonOutput({ ok: false, error: err.message });
@@ -450,7 +453,11 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${escapeHtml(s.scheduledDate)}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledTime ? escapeHtml(s.scheduledTime) : '—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.scheduledRep ? escapeHtml(s.scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.hardware ? escapeHtml(s.hardware) : '—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.firmware ? escapeHtml(s.firmware) : '—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.packColour ? escapeHtml(s.packColour) : '—'}</td>
         <td style="padding:6px 10px;border-bottom:1px solid #ddd;">${s.notes ? escapeHtml(s.notes) : '—'}</td>
+        <td style="padding:6px 10px;border-bottom:1px solid #ddd;white-space:nowrap;">${calendarButtonsHtml(s.siteName, s.scheduledDate, s.scheduledTime, s.scheduledRep)}</td>
       </tr>`).join('');
     return `
       <h3 style="font-family:Arial,sans-serif;color:#2e7d32;margin-bottom:8px;">🟢 Scheduled</h3>
@@ -460,7 +467,11 @@ function buildEmailHtml(overdue, dueSoon, scheduled) {
           <th style="padding:6px 10px;">Date</th>
           <th style="padding:6px 10px;">Time</th>
           <th style="padding:6px 10px;">Representative</th>
+          <th style="padding:6px 10px;">Hardware</th>
+          <th style="padding:6px 10px;">Firmware</th>
+          <th style="padding:6px 10px;">Pack Colour</th>
           <th style="padding:6px 10px;">Notes</th>
+          <th style="padding:6px 10px;">Calendar</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>`;
@@ -488,6 +499,121 @@ function stripTime(date) {
 }
 
 // =====================================================================
+// CALENDAR LINKS — "Add to Calendar" buttons for scheduled services, used
+// in both the weekly digest's Scheduled section and the immediate
+// "service scheduled" email. Two flavours:
+//   - Google Calendar: a plain calendar.google.com "render" URL — pure
+//     client-side link, no server round-trip involved.
+//   - iCal (.ics): there's no URL-based quick-add for Apple/Outlook/etc.,
+//     so this links back to THIS script's own Web App (doGet, action=ics)
+//     which generates and serves a real .ics file on click.
+// Both use "floating" local time (no Z / TZID) since the app has no
+// timezone concept of its own — calendar clients read that as local time.
+// =====================================================================
+
+function formatIcsDateTime(date) {
+  const p = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}T${p(date.getHours())}${p(date.getMinutes())}00`;
+}
+function formatIcsDateOnly(date) {
+  const p = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}${p(date.getMonth() + 1)}${p(date.getDate())}`;
+}
+
+function buildGoogleCalendarLink(siteName, scheduledDate, scheduledTime, scheduledRep) {
+  const dateObj = parseDate(scheduledDate);
+  if (!dateObj) return '';
+  const title = encodeURIComponent(`Pack Service — ${siteName}`);
+  const details = encodeURIComponent(`Scheduled Pack Service Tracker visit.${scheduledRep ? ' Representative: ' + scheduledRep : ''}`);
+  const location = encodeURIComponent(siteName);
+  let datesParam;
+  if (scheduledTime) {
+    const [h, m] = String(scheduledTime).split(':').map(Number);
+    const start = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), h || 0, m || 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000); // 1hr default duration
+    datesParam = `${formatIcsDateTime(start)}/${formatIcsDateTime(end)}`;
+  } else {
+    const end = new Date(dateObj.getTime() + 24 * 60 * 60 * 1000); // all-day; end date is exclusive
+    datesParam = `${formatIcsDateOnly(dateObj)}/${formatIcsDateOnly(end)}`;
+  }
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${datesParam}&details=${details}&location=${location}`;
+}
+
+function buildIcsLink(siteName, scheduledDate, scheduledTime, scheduledRep) {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  if (!webAppUrl) return ''; // script hasn't been deployed as a Web App yet
+  const params = [
+    'action=ics',
+    `secret=${encodeURIComponent(CONFIG.SECRET)}`,
+    `site=${encodeURIComponent(siteName)}`,
+    `date=${encodeURIComponent(scheduledDate)}`,
+    scheduledTime ? `time=${encodeURIComponent(scheduledTime)}` : '',
+    scheduledRep ? `rep=${encodeURIComponent(scheduledRep)}` : ''
+  ].filter(Boolean).join('&');
+  return `${webAppUrl}?${params}`;
+}
+
+function calendarButtonsHtml(siteName, scheduledDate, scheduledTime, scheduledRep) {
+  const gcalLink = buildGoogleCalendarLink(siteName, scheduledDate, scheduledTime, scheduledRep);
+  const icsLink = buildIcsLink(siteName, scheduledDate, scheduledTime, scheduledRep);
+  const btn = (href, label) => href
+    ? `<a href="${href}" style="display:inline-block;margin:2px 4px 2px 0;padding:4px 9px;background:#2e7d32;color:#fff;text-decoration:none;border-radius:4px;font-size:12px;font-family:Arial,sans-serif;">${label}</a>`
+    : '';
+  return `${btn(gcalLink, '📅 Google')}${btn(icsLink, '📥 iCal')}`;
+}
+
+// Serves the actual .ics file behind the "iCal" button above (doGet, action=ics).
+function buildIcsResponse(params) {
+  const siteName = params.site || 'Pack Service';
+  const scheduledDate = params.date || '';
+  const scheduledTime = params.time || '';
+  const scheduledRep = params.rep || '';
+  const dateObj = parseDate(scheduledDate);
+  if (!dateObj) return ContentService.createTextOutput('Invalid or missing date').setMimeType(ContentService.MimeType.TEXT);
+
+  let dtstart, dtend;
+  if (scheduledTime) {
+    const [h, m] = String(scheduledTime).split(':').map(Number);
+    const start = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), h || 0, m || 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    dtstart = `DTSTART:${formatIcsDateTime(start)}`;
+    dtend = `DTEND:${formatIcsDateTime(end)}`;
+  } else {
+    const end = new Date(dateObj.getTime() + 24 * 60 * 60 * 1000);
+    dtstart = `DTSTART;VALUE=DATE:${formatIcsDateOnly(dateObj)}`;
+    dtend = `DTEND;VALUE=DATE:${formatIcsDateOnly(end)}`;
+  }
+
+  const uid = `packservice-${String(siteName).replace(/\s+/g, '-')}-${scheduledDate}-${(scheduledTime || 'allday').replace(/:/g, '')}@packservicetracker`;
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Pack Service Tracker//EN',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${formatIcsDateTime(new Date())}`,
+    dtstart,
+    dtend,
+    `SUMMARY:${escapeIcsText('Pack Service — ' + siteName)}`,
+    `DESCRIPTION:${escapeIcsText('Scheduled Pack Service Tracker visit.' + (scheduledRep ? ' Representative: ' + scheduledRep : ''))}`,
+    `LOCATION:${escapeIcsText(siteName)}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  return ContentService.createTextOutput(ics).setMimeType(ContentService.MimeType.ICAL);
+}
+
+function escapeIcsText(str) {
+  return String(str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
+// =====================================================================
 // IMMEDIATE "SERVICE SCHEDULED" EMAIL — fires right away from doPost's
 // scheduleService action, separate from the weekly digest and its own
 // recipient list (CONFIG.SCHEDULE_NOTIFY_EMAILS).
@@ -506,6 +632,7 @@ function sendScheduleNotificationEmail(siteName, scheduledDate, scheduledTime, s
           <tr><td style="padding:4px 10px;color:#666;">Date</td><td style="padding:4px 10px;"><strong>${escapeHtml(scheduledDate)}</strong></td></tr>
           <tr><td style="padding:4px 10px;color:#666;">Time</td><td style="padding:4px 10px;">${scheduledTime ? escapeHtml(scheduledTime) : '—'}</td></tr>
           <tr><td style="padding:4px 10px;color:#666;">Representative</td><td style="padding:4px 10px;">${scheduledRep ? escapeHtml(scheduledRep) : '<em style="color:#999;">Unassigned</em>'}</td></tr>
+          <tr><td style="padding:4px 10px;color:#666;vertical-align:top;">Add to calendar</td><td style="padding:4px 10px;">${calendarButtonsHtml(siteName, scheduledDate, scheduledTime, scheduledRep)}</td></tr>
         </table>
         <p style="font-family:Arial,sans-serif;color:#999;font-size:12px;margin-top:16px;">Automated notification from Pack Service Tracker.</p>
       </div>`;
