@@ -2,7 +2,7 @@
 // old-cache cleanup on activate). NOTE: app freshness no longer depends on remembering to bump it.
 // The app shell is served stale-while-revalidate, so a new index.html deployed to GitHub Pages is
 // picked up automatically on the next launch — the stale cache that used to pin old builds is gone.
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.1.0';
 const CACHE_NAME = `pack-tracker-${APP_VERSION}`;
 
 // Core files the UI needs to boot. Every ES module index.html imports must be here — a module

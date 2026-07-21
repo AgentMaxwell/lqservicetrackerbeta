@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v1.0.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.1.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -486,6 +486,7 @@
         .part-header-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
         .part-header { font-size: 0.92rem; font-weight: 700; }
 
+        .button-group-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
         .button-group { display: flex; background: var(--card-bg-elevated); border-radius: var(--radius-pill); padding: 3px; border: 1px solid var(--border-color); gap: 3px; max-width: 220px; }
         .btn-good, .btn-issue {
             flex: 1; min-height: 44px; color: var(--text-muted); background: transparent; border: none; border-radius: var(--radius-pill);
@@ -514,6 +515,16 @@
         .notes-area .issue-other-textarea.visible { display: block; }
         .issue-extra-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
         .part-used-input { margin-bottom: 0 !important; font-size: 0.85rem !important; padding: 9px 12px !important; min-height: 40px !important; }
+
+        /* Side/position toggle (Left-Right, Front-Back) — sits inline with the Good/Issue bar,
+           in the leftover space next to it, for parts where which side failed matters
+           (shoulders, casings, plates). Each button toggles independently — both sides can be on. */
+        .side-toggle-group { display: flex; flex: 0 0 auto; background: var(--card-bg-elevated); border-radius: var(--radius-pill); padding: 3px; border: 1px solid var(--border-color); gap: 3px; }
+        .side-toggle-btn {
+            min-height: 44px; min-width: 56px; color: var(--text-muted); background: transparent; border: none; border-radius: var(--radius-pill);
+            font-size: 0.78rem; font-weight: 700; padding: 0 12px; transition: all 0.15s ease;
+        }
+        .side-toggle-btn.active { background: linear-gradient(135deg, rgba(56,189,248,0.28), rgba(56,189,248,0.14)); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(56,189,248,0.35); }
 
         /* ================= Pack grid (permanent, master-detail left panel) ================= */
         .checklist-split { grid-template-columns: 220px 1fr; }
@@ -700,7 +711,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.0.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.1.0</div>
         </div>
     </nav>
 
@@ -848,6 +859,17 @@
             <div class="home-header">
                 <h1 id="historyViewTitle">—</h1>
                 <p class="text-muted" id="historyViewSubtitle">—</p>
+            </div>
+            <div class="grid-2" style="margin-bottom: var(--sp-4);">
+                <select id="historyViewStatusFilter" style="margin-bottom:0;">
+                    <option value="all">All items</option>
+                    <option value="issue">Issues only</option>
+                    <option value="good">Good only</option>
+                </select>
+                <select id="historyViewSortBy" style="margin-bottom:0;">
+                    <option value="pack">Group by pack</option>
+                    <option value="part">Group by part</option>
+                </select>
             </div>
             <div id="historyViewBody"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
         </div>
@@ -2727,11 +2749,16 @@
        review. Unlike openReportForPastService(), this never touches live app state (PonchoDataCache,
        currentSiteName, etc.) — it fetches into local variables only, so it's safe to open regardless
        of any in-progress service and needs no "leave unfinished work" confirmation. */
+    // Cached raw data for whichever service is currently open in the History View — lets the
+    // filter/sort selects re-render instantly from memory instead of re-fetching Firestore.
+    let historyViewData = null;
+
     async function openHistoryView(site, date) {
         if (!sitesData[site]) { showToast(`"${site}" is no longer in the site list.`); return; }
         await navigateTo('historyViewSection');
         $('historyViewTitle').innerText = site;
         $('historyViewSubtitle').innerText = `Service on ${formatServiceDateUK(date)}`;
+        historyViewData = null;
         $('historyViewBody').innerHTML = '<div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>';
         try {
             const records = await fetchServiceDocs();
@@ -2758,45 +2785,85 @@
                 if (soDoc.exists()) signoff = soDoc.data();
             } catch (e) { console.warn('No sign-off available for this service:', e.message); }
 
-            $('historyViewBody').innerHTML = buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff });
+            historyViewData = { representative, firmware, packColour, generalChecks, packData, packTotal, signoff };
+            renderHistoryViewBody();
         } catch (error) {
             console.error('Could not load service view:', error);
             $('historyViewBody').innerHTML = '<div class="empty-state">Could not load this service. Check your connection.</div>';
         }
     }
 
-    function buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff }) {
+    function renderHistoryViewBody() {
+        if (!historyViewData) return;
+        $('historyViewBody').innerHTML = buildHistoryViewHtml({
+            ...historyViewData,
+            statusFilter: $('historyViewStatusFilter').value,
+            sortBy: $('historyViewSortBy').value
+        });
+    }
+    $('historyViewStatusFilter').addEventListener('change', renderHistoryViewBody);
+    $('historyViewSortBy').addEventListener('change', renderHistoryViewBody);
+
+    function buildHistoryViewHtml({ representative, firmware, packColour, generalChecks, packData, packTotal, signoff, statusFilter, sortBy }) {
         const statusBadge = (status) => status === 'Issue'
             ? '<span class="badge badge-due">Issue</span>'
             : (status === 'Good' ? '<span class="badge badge-ok">Good</span>' : '<span class="badge">Not checked</span>');
 
-        const itemRow = (label, data) => `
-            <div class="completion-issue-row">
-                <div>
-                    <strong style="font-size:0.92rem;">${esc(label)}</strong>
-                    ${data?.notes ? `<p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${esc(data.notes)}${data.partUsed ? ` · Part used: ${esc(data.partUsed)}` : ''}</p>` : ''}
-                </div>
-                ${statusBadge(data?.status)}
-            </div>`;
+        const itemRow = (label, data) => {
+            const notes = data ? notesWithSide(data) : '';
+            return `
+                <div class="completion-issue-row">
+                    <div>
+                        <strong style="font-size:0.92rem;">${esc(label)}</strong>
+                        ${notes ? `<p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${esc(notes)}${data.partUsed ? ` · Part used: ${esc(data.partUsed)}` : ''}</p>` : ''}
+                    </div>
+                    ${statusBadge(data?.status)}
+                </div>`;
+        };
 
-        const genSection = `
+        // General checks originally listed every facility item regardless of whether it was ever
+        // checked ("all" keeps that); pack parts only ever listed items that were actually checked
+        // ("all" keeps that too) — the status filter narrows further on top of each baseline.
+        const matchesStatus = (status) => statusFilter === 'issue' ? status === 'Issue' : (statusFilter === 'good' ? status === 'Good' : true);
+
+        const genItems = generalChecksList.filter(item => matchesStatus(generalChecks[item]?.status));
+        const genSection = genItems.length ? `
             <div class="card" style="margin-bottom: var(--sp-4);">
                 <h3 style="text-align:left; margin-bottom: var(--sp-2);">General site checks</h3>
-                ${generalChecksList.map(item => itemRow(item, generalChecks[item])).join('')}
-            </div>`;
+                ${genItems.map(item => itemRow(item, generalChecks[item])).join('')}
+            </div>` : '';
 
         const allPackParts = [...PonchoPartsList, ...gunPartsList];
-        const packsSection = packTotal > 0 ? Array.from({ length: packTotal }, (_, idx) => {
-            const i = idx + 1;
-            const data = packData[i];
-            const checkedParts = data ? allPackParts.filter(p => data[p]?.status) : [];
-            if (checkedParts.length === 0) return '';
-            return `
-                <div class="card" style="margin-bottom: var(--sp-4);">
-                    <h3 style="text-align:left; margin-bottom: var(--sp-2);">Pack ${i}</h3>
-                    ${checkedParts.map(p => itemRow(p, data[p])).join('')}
-                </div>`;
-        }).join('') : '';
+        let packsSection = '';
+        if (packTotal > 0) {
+            if (sortBy === 'part') {
+                const rows = [];
+                for (let i = 1; i <= packTotal; i++) {
+                    const data = packData[i];
+                    if (!data) continue;
+                    allPackParts.forEach(p => { if (data[p]?.status && matchesStatus(data[p].status)) rows.push({ label: `Pack ${i} — ${p}`, part: p, data: data[p] }); });
+                }
+                rows.sort((a, b) => a.part.localeCompare(b.part) || a.label.localeCompare(b.label));
+                packsSection = rows.length ? `
+                    <div class="card" style="margin-bottom: var(--sp-4);">
+                        <h3 style="text-align:left; margin-bottom: var(--sp-2);">All packs — by part</h3>
+                        ${rows.map(r => itemRow(r.label, r.data)).join('')}
+                    </div>` : '';
+            } else {
+                packsSection = Array.from({ length: packTotal }, (_, idx) => {
+                    const i = idx + 1;
+                    const data = packData[i];
+                    const checkedParts = data ? allPackParts.filter(p => data[p]?.status && matchesStatus(data[p].status)) : [];
+                    if (checkedParts.length === 0) return '';
+                    return `
+                        <div class="card" style="margin-bottom: var(--sp-4);">
+                            <h3 style="text-align:left; margin-bottom: var(--sp-2);">Pack ${i}</h3>
+                            ${checkedParts.map(p => itemRow(p, data[p])).join('')}
+                        </div>`;
+                }).join('');
+            }
+        }
+        const packsEmptyMessage = packTotal === 0 ? 'No pack records found for this service.' : 'No items match this filter.';
 
         const infoCard = `
             <div class="card" style="margin-bottom: var(--sp-4);">
@@ -2823,7 +2890,7 @@
             </div>`;
 
         return infoCard + genSection
-            + (packsSection || '<div class="empty-state" style="margin-bottom: var(--sp-4);">No pack records found for this service.</div>')
+            + (packsSection || `<div class="empty-state" style="margin-bottom: var(--sp-4);">${packsEmptyMessage}</div>`)
             + signaturesCard;
     }
     $('historyViewBackBtn').addEventListener('click', () => navigateTo('historySection'));
@@ -3035,6 +3102,31 @@
         return opts;
     }
 
+    // Parts where which side failed is worth capturing — shoulders read Left/Right, the front-
+    // facing/rear plastics read Front/Back. Stored as partData.side alongside status/notes.
+    const PART_SIDE_OPTIONS = {
+        'Shoulder Casings': ['Left', 'Right'],
+        'Shoulder Bases': ['Left', 'Right'],
+        'Casings': ['Front', 'Back'],
+        'Black Plates': ['Front', 'Back'],
+    };
+
+    // selectedSides is an array — both sides can be flagged at once (e.g. a casing cracked on
+    // both Front and Back), so each button toggles independently rather than one excluding the other.
+    // Rendered unconditionally (hidden via class, like notesArea) rather than only when
+    // status === 'Issue' — the Good/Issue click handler flips a class instead of re-rendering,
+    // so anything gated on `status` at render time would never appear until the next full rerender.
+    function sideToggleHTML(part, typeStr, selectedSides, hidden) {
+        const options = PART_SIDE_OPTIONS[part];
+        if (!options) return '';
+        const selected = selectedSides || [];
+        return `
+            <div class="side-toggle-group${hidden ? ' hidden' : ''}" data-type="${typeStr}" data-part="${part}">
+                ${options.map(opt => `<button type="button" class="side-toggle-btn ${selected.includes(opt) ? 'active' : ''}" data-side="${opt}">${opt}</button>`).join('')}
+            </div>
+        `;
+    }
+
     function generatePartCardHTML(part, partData, typeStr, keyExtra) {
         const key = `${typeStr}::${keyExtra || ''}::${part}`;
         const partId = key.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
@@ -3046,7 +3138,8 @@
 
         if (status && !expanded) {
             const stateClass = status === 'Issue' ? 'state-issue' : 'state-good';
-            const detail = status === 'Issue' ? (notes || 'Issue logged') : 'Checked — all good';
+            const sideLabel = (partData.side && partData.side.length) ? ` · ${partData.side.join(' & ')}` : '';
+            const detail = status === 'Issue' ? `${notes || 'Issue logged'}${sideLabel}` : 'Checked — all good';
             return `
                 <button type="button" class="part-pill ${stateClass}" data-expand-key="${key}">
                     <div>
@@ -3087,9 +3180,12 @@
                     <div class="part-header">${part}</div>
                     ${status ? `<button type="button" class="btn-icon btn-ghost" style="width:28px;height:28px;min-height:28px;" data-collapse-key="${key}" aria-label="Collapse ${part}"><svg class="icon icon-sm"><use href="#i-chevron-down"></use></svg></button>` : ''}
                 </div>
-                <div class="button-group">
-                    <button type="button" class="btn-good ${status === 'Good' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}"><svg class="icon icon-sm"><use href="#i-check"></use></svg>Good</button>
-                    <button type="button" class="btn-issue ${status === 'Issue' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}"><svg class="icon icon-sm"><use href="#i-alert"></use></svg>Issue</button>
+                <div class="button-group-row">
+                    <div class="button-group">
+                        <button type="button" class="btn-good ${status === 'Good' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}"><svg class="icon icon-sm"><use href="#i-check"></use></svg>Good</button>
+                        <button type="button" class="btn-issue ${status === 'Issue' ? 'active' : ''}" data-type="${typeStr}" data-part="${part}"><svg class="icon icon-sm"><use href="#i-alert"></use></svg>Issue</button>
+                    </div>
+                    ${sideToggleHTML(part, typeStr, partData.side, status !== 'Issue')}
                 </div>
                 <div class="notes-area ${status === 'Issue' ? '' : 'hidden'}" id="notes-${partId}">
                     ${notesInnerHTML}
@@ -3115,20 +3211,30 @@
                 const part = btn.getAttribute('data-part');
                 const isGoodBtn = btn.classList.contains('btn-good');
                 const dataObj = getDataObj();
-                const prev = { status: dataObj[part].status, notes: dataObj[part].notes };
+                // Shallow-copy side (an array) — otherwise prev.side would alias the live array and
+                // a side-toggle tap during the undo window would silently rewrite "prev" too.
+                const prev = { status: dataObj[part].status, notes: dataObj[part].notes, side: Array.isArray(dataObj[part].side) ? [...dataObj[part].side] : [] };
 
                 const notesArea = container.querySelector(`#notes-${part.replace(/\s+/g, '-').toLowerCase()}`) || btn.closest('.part-section')?.querySelector('.notes-area');
+                const sideGroup = btn.closest('.part-section')?.querySelector('.side-toggle-group');
                 const siblings = btn.parentElement.querySelectorAll('button');
                 siblings.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
                 dataObj[part].status = isGoodBtn ? "Good" : "Issue";
-                if (isGoodBtn) { dataObj[part].notes = ""; if (notesArea) notesArea.classList.add('hidden'); }
-                else { if (notesArea) notesArea.classList.remove('hidden'); if (part === "Screens" && type === 'general') openScreensModal(); else if (part === "Sensors" && type === 'general') openSensorsModal(); }
+                if (isGoodBtn) {
+                    dataObj[part].notes = ""; dataObj[part].side = [];
+                    if (notesArea) notesArea.classList.add('hidden');
+                    if (sideGroup) { sideGroup.classList.add('hidden'); sideGroup.querySelectorAll('.side-toggle-btn').forEach(b => b.classList.remove('active')); }
+                } else {
+                    if (notesArea) notesArea.classList.remove('hidden');
+                    if (sideGroup) sideGroup.classList.remove('hidden');
+                    if (part === "Screens" && type === 'general') openScreensModal(); else if (part === "Sensors" && type === 'general') openSensorsModal();
+                }
 
                 onDirty(type, part);
                 showUndoToast(`${part} marked ${isGoodBtn ? 'Good' : 'Issue'}`, () => {
-                    dataObj[part].status = prev.status; dataObj[part].notes = prev.notes;
+                    dataObj[part].status = prev.status; dataObj[part].notes = prev.notes; dataObj[part].side = prev.side;
                     onDirty(type, part); rerender();
                 }, 5000);
             });
@@ -3163,6 +3269,21 @@
             inp.addEventListener('input', () => {
                 const type = inp.getAttribute('data-type'); const part = inp.getAttribute('data-part');
                 getDataObj()[part].partUsed = inp.value;
+                onDirty(type, part, true);
+            });
+        });
+
+        container.querySelectorAll('.side-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.closest('.side-toggle-group');
+                const type = group.getAttribute('data-type'); const part = group.getAttribute('data-part');
+                const side = btn.getAttribute('data-side');
+                const dataObj = getDataObj();
+                const current = Array.isArray(dataObj[part].side) ? dataObj[part].side : [];
+                const idx = current.indexOf(side);
+                if (idx === -1) current.push(side); else current.splice(idx, 1);
+                dataObj[part].side = current;
+                btn.classList.toggle('active');
                 onDirty(type, part, true);
             });
         });
@@ -3649,12 +3770,20 @@
        COMPLETION SUMMARY (Mockup 3) — Peak-End rule: a positive, informative
        summary instead of a single scary "cannot be undone" confirm dialog.
        ============================================================ */
+    // Folds the Left/Right/Front/Back side flags into the displayed notes text — everywhere an
+    // issue's notes are shown (Fix it List, Completion Summary, and the customer report's fallback
+    // fault text), the side reads as part of the note rather than being silently dropped.
+    function notesWithSide(data) {
+        const side = (data.side && data.side.length) ? data.side.join(' & ') : '';
+        return [data.notes || '', side].filter(Boolean).join(' · ');
+    }
+
     function collectAllIssues() {
         const issues = [];
-        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: d.notes || '', partUsed: d.partUsed, pack: null, part: item }); });
+        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: notesWithSide(d), partUsed: d.partUsed, pack: null, part: item }); });
         for (let i = 1; i <= totalPonchos; i++) {
             const data = PonchoDataCache[i] || {};
-            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: data[part].notes || '', partUsed: data[part].partUsed, pack: i, part }); });
+            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: notesWithSide(data[part]), partUsed: data[part].partUsed, pack: i, part }); });
         }
         return issues;
     }
