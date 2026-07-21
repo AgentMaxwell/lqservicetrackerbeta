@@ -578,6 +578,11 @@
         .completion-issue-row:last-child { border-bottom: none; }
         .badge-resolved { background: rgba(16,185,129,0.16); color: var(--success-text); }
         .badge-followup { background: rgba(245,158,11,0.16); color: var(--warning-text); }
+        /* Toggle badges double as buttons — a plain .badge reads as a static status pill,
+           so give this variant a visible border, pointer cursor and press feedback. */
+        .resolution-toggle { cursor: pointer; border: 1.5px solid currentColor; box-shadow: 0 1px 3px rgba(0,0,0,0.15); transition: transform 0.12s ease, filter 0.12s ease; }
+        .resolution-toggle:hover { filter: brightness(1.15); }
+        .resolution-toggle:active { transform: scale(0.95); }
 
         .signature-pad-wrap { position: relative; border: 2px dashed var(--border-strong); border-radius: var(--radius-md); background: #fff; }
         #signatureCanvas { display: block; width: 100%; height: 180px; touch-action: none; border-radius: var(--radius-md); }
@@ -1074,6 +1079,7 @@
                     <div class="pack-grid-panel-actions">
                         <button type="button" class="btn-outline btn-sm btn-block" id="pgSiteChecksBtn"><svg class="icon icon-sm"><use href="#i-check"></use></svg>General Site Checks</button>
                         <button type="button" class="btn-outline btn-sm btn-block" id="pgNotesBtn"><svg class="icon icon-sm"><use href="#i-edit"></use></svg>General Site Notes</button>
+                        <button type="button" class="btn-outline btn-sm btn-block" id="pgFixItBtn"><svg class="icon icon-sm"><use href="#i-tag"></use></svg>Fix it List</button>
                     </div>
                 </aside>
 
@@ -1153,6 +1159,7 @@
     <div id="overflowServiceActions" class="stack-gap hidden" style="margin-bottom: var(--sp-4);">
         <button class="btn-outline btn-block" id="ovSiteChecksBtn"><svg class="icon"><use href="#i-check"></use></svg>General Site Checks</button>
         <button class="btn-outline btn-block" id="ovNotesBtn"><svg class="icon"><use href="#i-edit"></use></svg>General Site Notes</button>
+        <button class="btn-outline btn-block" id="ovFixItBtn"><svg class="icon"><use href="#i-tag"></use></svg>Fix it List</button>
         <button class="btn-outline btn-block" id="ovGridOverlayBtn"><svg class="icon"><use href="#i-layers"></use></svg>View Live Grid</button>
         <button class="btn-outline btn-block" id="ovPrintBtn"><svg class="icon"><use href="#i-printer"></use></svg>Print Active Report</button>
         <button class="btn-outline btn-block" id="ovCustomerReportBtn"><svg class="icon"><use href="#i-mail"></use></svg>Customer Report</button>
@@ -1182,6 +1189,26 @@
         <div id="modalTableContainer" class="table-responsive">
             <div class="skeleton skeleton-row"></div>
         </div>
+    </div>
+</div>
+
+<div id="fixItModal" class="modal">
+    <div class="modal-content" style="max-width: 640px;">
+        <button class="modal-close-btn" id="closeFixItModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+        <h2 style="text-align:left;"><svg class="icon"><use href="#i-tag"></use></svg> Fix it List</h2>
+        <p class="text-muted" style="font-size:0.86rem; margin-bottom: var(--sp-4); text-align:left;">Every issue logged so far this visit. Mark items off as you fix them.</p>
+        <div class="grid-2" style="margin-bottom: var(--sp-2);">
+            <select id="fixItStatusFilter" style="margin-bottom:0;">
+                <option value="all">All statuses</option>
+                <option value="followup">Follow up only</option>
+                <option value="resolved">Resolved only</option>
+            </select>
+            <select id="fixItSortBy" style="margin-bottom:0;">
+                <option value="pack">Sort by pack</option>
+                <option value="part">Sort by part</option>
+            </select>
+        </div>
+        <div id="fixItListContainer"></div>
     </div>
 </div>
 
@@ -3314,10 +3341,10 @@
        ============================================================ */
     function collectAllIssues() {
         const issues = [];
-        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: d.notes || '', partUsed: d.partUsed }); });
+        generalChecksList.forEach(item => { const d = generalChecksCache[item]; if (d?.status === 'Issue') issues.push({ id: `general::${item}`, label: item, notes: d.notes || '', partUsed: d.partUsed, pack: null, part: item }); });
         for (let i = 1; i <= totalPonchos; i++) {
             const data = PonchoDataCache[i] || {};
-            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: data[part].notes || '', partUsed: data[part].partUsed }); });
+            allPonchoElements.forEach(part => { if (data[part]?.status === 'Issue') issues.push({ id: `pack${i}::${part}`, label: `Pack ${i} — ${part}`, notes: data[part].notes || '', partUsed: data[part].partUsed, pack: i, part }); });
         }
         return issues;
     }
@@ -3345,30 +3372,75 @@
         $('metricPartsUsed').innerText = partsUsedCount;
         $('metricDuration').innerText = serviceStartedAt ? formatDuration(Date.now() - serviceStartedAt) : '—';
 
-        const list = $('completionIssuesList');
-        if (issues.length === 0) {
-            list.innerHTML = '<div class="empty-state"><svg class="icon icon-lg"><use href="#i-check-circle"></use></svg><p style="margin-top:8px;">No issues logged — everything checked out good.</p></div>';
-        } else {
-            list.innerHTML = issues.map(iss => {
-                if (!(iss.id in issueResolutionState)) issueResolutionState[iss.id] = 'resolved';
-                const state = issueResolutionState[iss.id];
-                return `
-                    <div class="completion-issue-row">
-                        <div>
-                            <strong style="font-size:0.92rem;">${iss.label}</strong>
-                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${iss.notes || 'No detail recorded'}</p>
-                        </div>
-                        <button type="button" class="badge resolution-toggle ${state === 'resolved' ? 'badge-resolved' : 'badge-followup'}" data-id="${iss.id}">${state === 'resolved' ? 'Resolved' : 'Follow up'}</button>
-                    </div>
-                `;
-            }).join('');
-            list.querySelectorAll('.resolution-toggle').forEach(btn => btn.addEventListener('click', () => {
-                const id = btn.getAttribute('data-id');
-                issueResolutionState[id] = issueResolutionState[id] === 'resolved' ? 'followup' : 'resolved';
-                renderCompletionSummary();
-            }));
-        }
+        renderIssuesListInto($('completionIssuesList'), collectAllIssues(), renderCompletionSummary);
     }
+
+    // Shared by the Completion Summary and the in-service Fix it List — both are just views
+    // onto the same issueResolutionState, so a toggle in either place is immediately reflected
+    // in the other next time it's opened. Takes the issue list rather than collecting it itself
+    // so callers can filter/sort (the Fix it List) or pass it through as-is (Completion Summary).
+    function renderIssuesListInto(container, issues, onToggle, emptyMessage) {
+        if (issues.length === 0) {
+            container.innerHTML = `<div class="empty-state"><svg class="icon icon-lg"><use href="#i-check-circle"></use></svg><p style="margin-top:8px;">${emptyMessage || 'No issues logged — everything checked out good.'}</p></div>`;
+            return;
+        }
+        container.innerHTML = issues.map(iss => {
+            if (!(iss.id in issueResolutionState)) issueResolutionState[iss.id] = 'followup';
+            const state = issueResolutionState[iss.id];
+            return `
+                <div class="completion-issue-row">
+                    <div>
+                        <strong style="font-size:0.92rem;">${iss.label}</strong>
+                        <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${iss.notes || 'No detail recorded'}</p>
+                    </div>
+                    <button type="button" class="badge resolution-toggle ${state === 'resolved' ? 'badge-resolved' : 'badge-followup'}" data-id="${iss.id}"><svg class="icon icon-sm"><use href="#i-toggle-${state === 'resolved' ? 'on' : 'off'}"></use></svg>${state === 'resolved' ? 'Resolved' : 'Follow up'}</button>
+                </div>
+            `;
+        }).join('');
+        container.querySelectorAll('.resolution-toggle').forEach(btn => btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            issueResolutionState[id] = issueResolutionState[id] === 'resolved' ? 'followup' : 'resolved';
+            onToggle();
+        }));
+    }
+
+    // Fix it List filter/sort — kept across opens within the session so re-opening mid-visit
+    // doesn't reset a tech's chosen view.
+    let fixItFilters = { status: 'all', sortBy: 'pack' };
+
+    function renderFixItList() {
+        const allIssues = collectAllIssues();
+        let issues = fixItFilters.status === 'all'
+            ? allIssues
+            : allIssues.filter(iss => (issueResolutionState[iss.id] || 'followup') === fixItFilters.status);
+
+        issues = issues.slice().sort((a, b) => {
+            const packA = a.pack ?? -1, packB = b.pack ?? -1;
+            if (fixItFilters.sortBy === 'pack') {
+                return packA - packB || a.part.localeCompare(b.part);
+            }
+            return a.part.localeCompare(b.part) || packA - packB;
+        });
+
+        const emptyMessage = allIssues.length === 0 ? undefined : 'No issues match this filter.';
+        renderIssuesListInto($('fixItListContainer'), issues, () => renderFixItList(), emptyMessage);
+    }
+
+    $('fixItStatusFilter').addEventListener('change', (e) => { fixItFilters.status = e.target.value; renderFixItList(); });
+    $('fixItSortBy').addEventListener('change', (e) => { fixItFilters.sortBy = e.target.value; renderFixItList(); });
+
+    // Shared by the overflow panel and the pack-grid panel's pinned shortcut — same button, two places.
+    async function openFixItList() {
+        toggleOverflowPanel(false);
+        await triggerBackgroundSave();
+        $('fixItStatusFilter').value = fixItFilters.status;
+        $('fixItSortBy').value = fixItFilters.sortBy;
+        renderFixItList();
+        $('fixItModal').style.display = 'block';
+    }
+    $('ovFixItBtn').addEventListener('click', openFixItList);
+    $('pgFixItBtn').addEventListener('click', openFixItList);
+    $('closeFixItModalBtn').addEventListener('click', () => $('fixItModal').style.display = 'none');
 
     function formatDuration(ms) {
         const mins = Math.round(ms / 60000);
