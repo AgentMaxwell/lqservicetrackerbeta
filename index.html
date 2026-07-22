@@ -4337,7 +4337,7 @@
             return `<tr>
                     <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(item)}</td>
                     <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;">${marker(isIssue)}</td>
-                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${comment}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;word-wrap:break-word;overflow-wrap:break-word;">${comment}</td>
                 </tr>`;
         }).join('');
 
@@ -4363,15 +4363,18 @@
             return `<tr>
                     <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(label)}</td>
                     <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;">${marker(isIssue)}</td>
-                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${pieces.join('') || dash}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;word-wrap:break-word;overflow-wrap:break-word;">${pieces.join('') || dash}</td>
                 </tr>`;
         }).join('');
 
+        // table-layout:fixed pins the Check/Completed columns and gives Comments the rest of the
+        // width as one consistent size across every row and every table, instead of the column
+        // stretching per-row to fit whatever the longest comment happens to be that row.
         const checkTable = (title, rowsHtml) => `
             <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">${title}</h3>
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
                 <thead><tr>
-                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Check</th>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;width:150px;">Check</th>
                     <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;background:#f3f4f6;width:90px;">Completed</th>
                     <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Comments</th>
                 </tr></thead>
@@ -4439,8 +4442,7 @@
             ${serviceNotesBlock}
             ${notesBlock}
 
-            <p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
-            <p style="margin:0;">You will receive a full service report by email.</p>
+            <p style="margin:24px 0 0;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
         </div>`;
     }
 
