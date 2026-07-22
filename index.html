@@ -1018,7 +1018,7 @@
                 <button class="btn-ghost btn-icon overflow-trigger-inline topbar-push-right" id="reportOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
             </div>
 
-            <!-- Barebones report flow (v0.8.0): Details -> Preview. The Checks & Faults steps from the
+            <!-- Barebones report flow: Details -> Issues -> Preview. The old Checks & Faults steps from the
                  full builder are kept in the DOM but hidden ("back pocket") so the richer report can be
                  restored later without re-wiring. -->
             <div class="stepper" id="reportStepper">
@@ -1026,9 +1026,9 @@
                 <div class="stepper-line"></div>
                 <button class="stepper-step hidden" data-step="checks"><span class="stepper-dot">2</span>Checks</button>
                 <div class="stepper-line hidden"></div>
-                <button class="stepper-step hidden" data-step="faults"><span class="stepper-dot">3</span>Faults</button>
-                <div class="stepper-line hidden"></div>
-                <button class="stepper-step" data-step="preview"><span class="stepper-dot">2</span>Preview</button>
+                <button class="stepper-step" data-step="issues"><span class="stepper-dot">2</span>Issues</button>
+                <div class="stepper-line"></div>
+                <button class="stepper-step" data-step="preview"><span class="stepper-dot">3</span>Preview</button>
             </div>
 
             <div class="split-view report-split">
@@ -1076,6 +1076,15 @@
                         <h3 style="text-align:left; margin-bottom: var(--sp-2);">Faults Resolved</h3>
                         <p class="text-muted" style="font-size:0.86rem; margin-bottom: var(--sp-4);">Auto-drafted from the checklist. Toggle what the customer sees, edit wording freely.</p>
                         <div id="faultCardsList" class="stack-gap"></div>
+                    </div>
+
+                    <!-- Step: issues — per-item detail for the printed report: "See Faults list" toggles
+                         for general checks, and follow-up comment boxes for pack/gun parts that still
+                         have an open (unresolved) issue on at least one pack. -->
+                    <div class="report-step-panel hidden" data-step-panel="issues">
+                        <h3 style="text-align:left; margin-bottom: var(--sp-2);">Issue detail</h3>
+                        <p class="text-muted" style="font-size:0.86rem; margin-bottom: var(--sp-4);">Items checked out good need nothing here. For anything with an issue, either flag it to the Faults List or write the follow-up note the customer will see.</p>
+                        <div id="issuesEditorList" class="stack-gap"></div>
                     </div>
 
                     <!-- Step: preview -->
@@ -1452,6 +1461,9 @@
     let viewingArchivedReport = false;
     let faultItems = []; // built for the Report Builder's Faults step
     let issueResolutionState = {}; // faultId -> 'resolved' | 'followup'
+    // Customer report (barebones flow) extras:
+    let packFollowUpText = {}; // partName -> rep-written customer-facing text for still-open pack/gun issues on that part
+    let faultsListState = {}; // generalCheckItem -> { enabled: bool, text: string } — "See Faults list" toggle
 
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Sensors", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer"];
     const PonchoPartsList = ["Fabric", "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards"];
@@ -2680,6 +2692,8 @@
         generalChecksCache = {};
         issueResolutionState = {};
         Object.keys(faultIncludedState).forEach(k => delete faultIncludedState[k]);
+        packFollowUpText = {};
+        faultsListState = {};
         signatureDataUrl = ""; repSignatureDataUrl = ""; // a past service's signatures aren't ours to reprint onto a new report
         serviceStartedAt = null;
         isDirty = false; // viewing an archived service must never write back to it
@@ -4028,9 +4042,9 @@
         // historySection re-renders itself via navigateTo, so nothing to do for it here
     });
 
-    // Barebones flow only walks Details -> Preview. 'checks' and 'faults' still exist as hidden
-    // panels (back pocket) but are out of the step sequence.
-    const REPORT_STEPS = ['details', 'preview'];
+    // Barebones flow walks Details -> Issues -> Preview. 'checks' and 'faults' still exist as
+    // hidden panels (back pocket) but are out of the step sequence.
+    const REPORT_STEPS = ['details', 'issues', 'preview'];
     function setReportStep(step) {
         currentReportStep = step;
         document.querySelectorAll('.stepper-step').forEach(s => {
@@ -4043,6 +4057,7 @@
         $('stepperBackBtn').disabled = step === 'details';
         $('stepperNextBtn').classList.toggle('hidden', step === 'preview');
         if (step === 'faults') buildFaultItems();
+        if (step === 'issues') renderIssuesEditor();
         if (step === 'preview') renderLivePreview();
         if (typeof navigator.share === 'function') $('shareCustReportBtn').classList.remove('hidden');
     }
@@ -4202,27 +4217,157 @@
         `;
     }
 
-    // ---- Barebones "Laser Quest Service Completion Record" (v0.8.0) ----
-    // Simple, professional, print-ready document mirroring the customer's paper form. Autofilled
-    // from the service; no per-item comment boxes; one optional rep-notes block. The richer
-    // buildCustomerReportHtml() above is kept as the "back pocket" version.
-    function buildSimpleReportHtml() {
-        const gunDisplay = (p) => p.replace(/^G(?=[A-Z])/, ''); // GScrews -> Screws, GLEDs -> LEDs, etc.
+    // ---- Shared pack/gun issue aggregation (used by both the printed report and the Issues editor) ----
+    // Checklist rows are per-part (e.g. "Trigger"), aggregated across every pack — unlike
+    // issueResolutionState, which is keyed per pack instance (pack<N>::<part>). This walks every
+    // pack for a given part and splits it into packs whose issue is resolved vs. still follow-up.
+    function gunDisplayName(p) { return p.replace(/^G(?=[A-Z])/, ''); } // GScrews -> Screws, GLEDs -> LEDs, etc.
+    function packPartIssueSplit(part) {
+        const resolvedPacks = [];
+        const followupPacks = []; // { pack, notes }
+        for (let i = 1; i <= totalPonchos; i++) {
+            const data = PonchoDataCache[i] ? PonchoDataCache[i][part] : null;
+            if (!data || data.status !== 'Issue') continue;
+            const state = issueResolutionState[`pack${i}::${part}`] || 'followup';
+            if (state === 'resolved') resolvedPacks.push(i);
+            else followupPacks.push({ pack: i, notes: notesWithSide(data) });
+        }
+        resolvedPacks.sort((a, b) => a - b);
+        followupPacks.sort((a, b) => a.pack - b.pack);
+        return { resolvedPacks, followupPacks };
+    }
 
-        // Barebones form just confirms each item was checked — good vs. issue detail lives in the
-        // rep notes box, not per-row, so every checked item gets the same tick regardless of status.
-        const checkRows = (list, display) => {
-            return list.map(part => `<tr>
-                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(display ? display(part) : part)}</td>
-                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;font-weight:600;color:#15803d;">✓</td>
-                </tr>`).join('');
-        };
+    // ---- Issues step (report editor) — "See Faults list" toggles for general checks, and
+    // aggregated follow-up comment boxes for pack/gun parts with at least one still-open issue.
+    function renderIssuesEditor() {
+        const container = $('issuesEditorList');
+        if (!container) return;
+        let html = '';
+
+        const generalIssues = generalChecksList.filter(item => generalChecksCache[item]?.status === 'Issue');
+        if (generalIssues.length) {
+            html += `<h4 style="text-align:left;margin:0 0 8px;">System &amp; Facility</h4>`;
+            html += generalIssues.map(item => {
+                const st = faultsListState[item] || { enabled: false, text: '' };
+                return `
+                <div class="fault-card">
+                    <div class="fault-head">
+                        <div>
+                            <div class="fault-label">${esc(item)}</div>
+                            <div class="fault-sub">${esc(generalChecksCache[item].notes || 'Issue logged')}</div>
+                        </div>
+                        <button type="button" class="toggle-switch ${st.enabled ? 'on' : ''}" data-faults-item="${item}" aria-label="Show ${esc(item)} on the Faults List instead" aria-pressed="${st.enabled}"></button>
+                    </div>
+                    <textarea data-faults-text="${item}" placeholder="Describe the fault and its resolution for the Faults List..." ${st.enabled ? '' : 'disabled'}>${esc(st.text || '')}</textarea>
+                </div>`;
+            }).join('');
+        }
+
+        const partsNeedingFollowUp = [...gunPartsList, ...PonchoPartsList].filter(part => packPartIssueSplit(part).followupPacks.length > 0);
+        if (partsNeedingFollowUp.length) {
+            html += `<h4 style="text-align:left;margin:16px 0 8px;">Pack &amp; Gun follow-ups</h4>`;
+            html += partsNeedingFollowUp.map(part => {
+                const { followupPacks } = packPartIssueSplit(part);
+                const label = gunDisplayName(part);
+                const refNotes = followupPacks.map(fp => `Pack ${fp.pack}: ${esc(fp.notes || 'Issue logged')}`).join('<br>');
+                return `
+                <div class="fault-card">
+                    <div class="fault-label">${esc(label)}</div>
+                    <div class="fault-sub" style="margin-bottom:6px;">${refNotes}</div>
+                    <textarea data-followup-part="${part}" placeholder="What should the customer be told about this follow-up?">${esc(packFollowUpText[part] || '')}</textarea>
+                </div>`;
+            }).join('');
+        }
+
+        if (!generalIssues.length && !partsNeedingFollowUp.length) {
+            html = `<div class="empty-state"><svg class="icon icon-lg"><use href="#i-check-circle"></use></svg><p style="margin-top:8px;">No open issues need extra detail — everything checked out good or is already marked fixed.</p></div>`;
+        }
+
+        container.innerHTML = html;
+        container.querySelectorAll('[data-faults-item]').forEach(btn => btn.addEventListener('click', () => {
+            const item = btn.getAttribute('data-faults-item');
+            const cur = faultsListState[item] || { enabled: false, text: '' };
+            faultsListState[item] = { ...cur, enabled: !cur.enabled };
+            renderIssuesEditor();
+            renderLivePreview();
+        }));
+        container.querySelectorAll('[data-faults-text]').forEach(ta => ta.addEventListener('input', () => {
+            const item = ta.getAttribute('data-faults-text');
+            const cur = faultsListState[item] || { enabled: true, text: '' };
+            faultsListState[item] = { ...cur, text: ta.value };
+            renderLivePreview();
+        }));
+        container.querySelectorAll('[data-followup-part]').forEach(ta => ta.addEventListener('input', () => {
+            packFollowUpText[ta.getAttribute('data-followup-part')] = ta.value;
+            renderLivePreview();
+        }));
+    }
+
+    // ---- Barebones "Laser Quest Service Completion Record" ----
+    // Print-ready document mirroring the customer's paper form, now with per-item comments: general
+    // checks show the comment logged against them directly; pack/gun parts show which packs were
+    // fixed (by number) and, for anything still open, the rep's follow-up note from the Issues step.
+    // The richer buildCustomerReportHtml() above is kept as the "back pocket" version.
+    function buildSimpleReportHtml() {
+        const marker = (isAlert) => isAlert
+            ? `<span style="color:#b45309;font-weight:700;">⚠</span>`
+            : `<span style="color:#15803d;font-weight:700;">✓</span>`;
+        const dash = '<span style="color:#9ca3af;">—</span>';
+
+        const legend = `
+            <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:12px;color:#475569;margin:0 0 16px;padding:9px 13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;">
+                <span>${marker(false)} Completed — no issues found</span>
+                <span>${marker(true)} Completed — see comments</span>
+            </div>`;
+
+        // Non-pack checks: comment is the note logged directly against that item in the app, unless
+        // the rep has flagged it to the Faults List (see the Issues step), in which case the row
+        // just points there and the detail lives in the Faults List section instead.
+        const generalCheckRows = () => generalChecksList.map(item => {
+            const data = generalChecksCache[item];
+            const isIssue = data?.status === 'Issue';
+            const flagged = faultsListState[item]?.enabled;
+            const comment = flagged ? 'See Faults list' : (data?.notes ? esc(data.notes) : dash);
+            return `<tr>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(item)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;">${marker(isIssue)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${comment}</td>
+                </tr>`;
+        }).join('');
+
+        // Pack/gun checks: one row per part, aggregated across every pack. Resolved packs collapse
+        // into "Pack X, Y, Z <Item> fixed"; packs still marked follow-up get the rep's own comment
+        // from the Issues step, shown alongside the notes originally logged for reference.
+        const packPartRows = (list) => list.map(part => {
+            const { resolvedPacks, followupPacks } = packPartIssueSplit(part);
+            const label = gunDisplayName(part);
+            const isIssue = resolvedPacks.length > 0 || followupPacks.length > 0;
+            const pieces = [];
+            if (resolvedPacks.length) pieces.push(`Pack ${resolvedPacks.join(', ')} ${esc(label)} fixed`);
+            if (followupPacks.length) {
+                const refNotes = followupPacks.map(fp => `Pack ${fp.pack}: ${esc(fp.notes || 'Issue logged')}`).join('<br>');
+                const custText = packFollowUpText[part];
+                pieces.push(`
+                    <div style="${resolvedPacks.length ? 'margin-top:6px;' : ''}padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;">
+                        <div style="font-size:10px;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Follow-up</div>
+                        <div style="font-size:12px;color:#78716c;margin-bottom:5px;">${refNotes}</div>
+                        <div style="font-size:13px;">${custText ? esc(custText) : '<span style="color:#9ca3af;">Awaiting rep comment.</span>'}</div>
+                    </div>`);
+            }
+            return `<tr>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(label)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;">${marker(isIssue)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${pieces.join('') || dash}</td>
+                </tr>`;
+        }).join('');
+
         const checkTable = (title, rowsHtml) => `
             <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">${title}</h3>
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead><tr>
                     <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Check</th>
-                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;background:#f3f4f6;width:130px;">Completed</th>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;background:#f3f4f6;width:90px;">Completed</th>
+                    <th style="border:1px solid #d1d5db;padding:7px 11px;text-align:left;background:#f3f4f6;">Comments</th>
                 </tr></thead>
                 <tbody>${rowsHtml}</tbody>
             </table>`;
@@ -4230,11 +4375,27 @@
         const detailRow = (label, value) => `
             <tr>
                 <td style="border:1px solid #d1d5db;padding:8px 11px;background:#f8fafc;font-weight:600;width:220px;">${label}</td>
-                <td style="border:1px solid #d1d5db;padding:8px 11px;">${value || '<span style="color:#9ca3af;">—</span>'}</td>
+                <td style="border:1px solid #d1d5db;padding:8px 11px;">${value || dash}</td>
             </tr>`;
         const sig = (url) => url
             ? `<img src="${url}" alt="Signature" style="max-height:56px;max-width:220px;">`
-            : '<span style="color:#9ca3af;">—</span>';
+            : dash;
+
+        const faultsListEntries = generalChecksList.filter(item => faultsListState[item]?.enabled);
+        const faultsListSection = faultsListEntries.length ? `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">Faults List</h3>
+            <div style="border:1px solid #d1d5db;border-radius:6px;padding:12px 14px;">
+                ${faultsListEntries.map((item, idx) => `
+                    <div style="${idx > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;' : ''}">
+                        <strong>${esc(item)}</strong>
+                        <p style="margin:4px 0 0;white-space:pre-wrap;">${faultsListState[item].text ? toHtml(faultsListState[item].text) : dash}</p>
+                    </div>`).join('')}
+            </div>` : '';
+
+        const serviceNotes = ($('sidebarSiteNotes')?.value || '').trim();
+        const serviceNotesBlock = serviceNotes ? `
+            <h3 style="font-size:14px;text-transform:uppercase;letter-spacing:0.05em;color:#0f172a;margin:22px 0 8px;">Service Notes</h3>
+            <p style="white-space:pre-wrap;margin:0;padding:12px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f8fafc;">${toHtml(serviceNotes)}</p>` : '';
 
         const repNotes = ($('simpleRepNotes')?.value || '').trim();
         const notesBlock = repNotes ? `
@@ -4262,10 +4423,14 @@
                 </tbody>
             </table>
 
-            ${checkTable('Non-pack checks', checkRows(generalChecksList))}
-            ${checkTable('Gun checks', checkRows(gunPartsList, gunDisplay))}
-            ${checkTable('Poncho checks', checkRows(PonchoPartsList))}
+            ${legend}
 
+            ${checkTable('Non-pack checks', generalCheckRows())}
+            ${checkTable('Gun checks', packPartRows(gunPartsList))}
+            ${checkTable('Poncho checks', packPartRows(PonchoPartsList))}
+
+            ${faultsListSection}
+            ${serviceNotesBlock}
             ${notesBlock}
 
             <p style="margin:24px 0 8px;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
