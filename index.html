@@ -1718,7 +1718,13 @@
         // The "•••" overflow panel only shows in-service actions while an active
         // service/checklist screen is open — keeps it a short, contextual list (Hick's Law).
         const inServiceActions = ['serviceSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
-        $('overflowServiceActions').classList.toggle('hidden', !inServiceActions || viewingArchivedReport);
+        // Archived reports (opened from History) are otherwise read-only, but the Fix it List
+        // still needs to be reachable there — toggling an issue resolved/follow-up is what decides
+        // how that issue's comment prints on the customer report, including for a service that's
+        // already finished and is just being reprinted or updated later.
+        const archivedReportView = sectionId === 'customerReportSection' && viewingArchivedReport;
+        $('overflowServiceActions').classList.toggle('hidden', !inServiceActions || (viewingArchivedReport && !archivedReportView));
+        ['ovSiteChecksBtn', 'ovNotesBtn', 'ovGridOverlayBtn', 'ovPrintBtn', 'ovCustomerReportBtn', 'ovCompleteServiceBtn'].forEach(id => $(id).classList.toggle('hidden', archivedReportView));
 
         // The browsing sidebar collapses to a pullout for the whole service flow, including
         // the Completion Summary, so the focused screens get full width (Mockups 2-4 show no
@@ -4417,9 +4423,9 @@
                     ${detailRow('Centre', esc(currentSiteName || ''))}
                     ${detailRow('Date &amp; time of service', esc(formatServiceDateUK(activeServiceDate)))}
                     ${detailRow('Service completed by', esc(currentRepresentative || ''))}
-                    ${detailRow('Signed on completion', sig(repSignatureDataUrl))}
+                    ${repSignatureDataUrl ? detailRow('Signed on completion', sig(repSignatureDataUrl)) : ''}
                     ${detailRow('Site representative', esc(($('siteManagerNameInput')?.value || '').trim()))}
-                    ${detailRow('Signed on completion', sig(signatureDataUrl))}
+                    ${signatureDataUrl ? detailRow('Signed on completion', sig(signatureDataUrl)) : ''}
                 </tbody>
             </table>
 
