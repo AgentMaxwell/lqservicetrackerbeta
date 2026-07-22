@@ -1941,7 +1941,7 @@
         const wrap = $('offlineDownloadProgress');
         const bar = $('offlineDownloadBar');
         const stepLabel = $('offlineDownloadStep');
-        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes'], ['signoffs', 'sign-offs']];
+        const collections = [['sites', 'sites'], ['services', 'service history'], ['general_checks', 'general site checks'], ['site_notes', 'site notes'], ['signoffs', 'sign-offs'], ['report_state', 'fix it list state']];
         const totalSteps = collections.length + 1; // + the common-issues doc
 
         btn.disabled = true;
@@ -2290,6 +2290,7 @@
             const genDoc = await getDoc(doc(db, "general_checks", `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`));
             if (genDoc.exists()) { generalChecksCache = genDoc.data().checks || {}; currentFirmware = genDoc.data().firmware || currentFirmware; currentPackColour = genDoc.data().packColour || currentPackColour; }
         } catch (e) { console.warn("Could not refetch resume data:", e); }
+        await loadReportIssueState(currentSiteName, activeServiceDate);
 
         currentPonchoIndex = Math.min(resume.packIndex || 1, totalPonchos || 1);
         await loadSidebarNotes();
@@ -2665,7 +2666,8 @@
             await Promise.all([
                 deleteDoc(doc(db, 'general_checks', baseId)).catch(() => {}),
                 deleteDoc(doc(db, 'signoffs', baseId)).catch(() => {}),
-                deleteDoc(doc(db, 'site_notes', baseId)).catch(() => {})
+                deleteDoc(doc(db, 'site_notes', baseId)).catch(() => {}),
+                deleteDoc(doc(db, 'report_state', baseId)).catch(() => {})
             ]);
 
             historyServiceDocs = null; // cache is now stale — force a refetch
@@ -2696,10 +2698,8 @@
         activeServiceDate = date;
         PonchoDataCache = {};
         generalChecksCache = {};
-        issueResolutionState = {};
         Object.keys(faultIncludedState).forEach(k => delete faultIncludedState[k]);
-        packFollowUpText = {};
-        faultsListState = {};
+        await loadReportIssueState(site, date); // restores any Resolved/Follow-up toggles + notes saved earlier for this service
         signatureDataUrl = ""; repSignatureDataUrl = ""; // a past service's signatures aren't ours to reprint onto a new report
         serviceStartedAt = null;
         isDirty = false; // viewing an archived service must never write back to it
@@ -2985,6 +2985,7 @@
     async function proceedWithNewService() {
         currentPonchoIndex = 1;
         PonchoDataCache = {}; generalChecksCache = {};
+        issueResolutionState = {}; packFollowUpText = {}; faultsListState = {};
         currentFirmware = sitesData[currentSiteName]?.firmware || "";
         currentPackColour = sitesData[currentSiteName]?.packColour || "";
         activeServiceDate = new Date().toISOString().split('T')[0];
@@ -3076,6 +3077,11 @@
                 currentFirmware = genDoc.data().firmware || ""; currentPackColour = genDoc.data().packColour || "";
             }
         } catch (e) { console.log("No general checks found for this date"); }
+        // Template mode starts every status fresh (see above), so a leftover Resolved/Follow-up
+        // toggle or old follow-up note from the source date has no item to attach to — only carry
+        // this over when actually continuing to work on that same date's real service.
+        if (asTemplate) { issueResolutionState = {}; packFollowUpText = {}; faultsListState = {}; }
+        else await loadReportIssueState(currentSiteName, selectedDate);
 
         currentPonchoIndex = 1;
         serviceStartedAt = Date.now();
@@ -3386,6 +3392,42 @@
             }
         });
         setGeneralSaveState(result === WRITE_OK ? 'synced' : (result === WRITE_QUEUED ? 'queued' : 'dirty'));
+    }
+
+    /* ---- Fix it List / customer report issue state persistence ----
+       issueResolutionState, packFollowUpText and faultsListState only ever lived in memory before
+       this, so a reload — or just reopening the report later, live or from History — silently threw
+       away every Resolved/Follow-up toggle and every follow-up note a rep had typed. Same failure
+       mode signoffs used to have (see completeServiceFinalBtn), fixed the same way: one doc per
+       site+date, fetched wherever that service's data gets loaded and written back on every change. */
+    let reportStateSaveDebounce = null;
+    function scheduleReportStateSave() {
+        clearTimeout(reportStateSaveDebounce);
+        reportStateSaveDebounce = setTimeout(saveReportIssueState, 600);
+    }
+    async function saveReportIssueState() {
+        if (!currentSiteName || !activeServiceDate) return;
+        const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+        await queuedWrite(`reportstate-${docId}`, `Fix it List for ${currentSiteName}`, async () => {
+            await setDoc(doc(db, "report_state", docId), {
+                site: currentSiteName, date: activeServiceDate,
+                issueResolutionState, packFollowUpText, faultsListState,
+                lastUpdated: serverTimestamp()
+            }, { merge: true });
+        });
+    }
+    async function loadReportIssueState(site, date) {
+        issueResolutionState = {}; packFollowUpText = {}; faultsListState = {};
+        if (!site || !date) return;
+        try {
+            const snap = await getDoc(doc(db, "report_state", `${site.replace(/\s+/g, '-')}-${date}`));
+            if (snap.exists()) {
+                const data = snap.data();
+                issueResolutionState = data.issueResolutionState || {};
+                packFollowUpText = data.packFollowUpText || {};
+                faultsListState = data.faultsListState || {};
+            }
+        } catch (e) { console.warn('No saved Fix it List state for this service:', e.message); }
     }
 
     $('backToPonchosBtn').addEventListener('click', async () => { await saveGeneralChecks(); navigateTo('serviceSection'); renderPonchoUI(); });
@@ -3859,6 +3901,7 @@
         container.querySelectorAll('.resolution-toggle').forEach(btn => btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
             issueResolutionState[id] = issueResolutionState[id] === 'resolved' ? 'followup' : 'resolved';
+            scheduleReportStateSave();
             onToggle();
         }));
     }
@@ -3882,7 +3925,10 @@
         });
 
         const emptyMessage = allIssues.length === 0 ? undefined : 'No issues match this filter.';
-        renderIssuesListInto($('fixItListContainer'), issues, () => renderFixItList(), emptyMessage);
+        // Resolving/following-up here directly changes what the customer report's Comments column
+        // shows (see packPartIssueSplit) — refresh the report's live preview too, not just this list,
+        // so a toggle made here shows up immediately if the report happens to be open behind it.
+        renderIssuesListInto($('fixItListContainer'), issues, () => { renderFixItList(); renderLivePreview(); renderIssuesEditor(); }, emptyMessage);
     }
 
     $('fixItStatusFilter').addEventListener('change', (e) => { fixItFilters.status = e.target.value; renderFixItList(); });
@@ -4180,6 +4226,7 @@
         }));
         wrap.querySelectorAll('[data-fault-text]').forEach(ta => ta.addEventListener('input', () => {
             issueResolutionState[`${ta.getAttribute('data-fault-text')}::text`] = ta.value;
+            scheduleReportStateSave();
             renderLivePreview();
         }));
     }
@@ -4294,6 +4341,7 @@
             const item = btn.getAttribute('data-faults-item');
             const cur = faultsListState[item] || { enabled: false, text: '' };
             faultsListState[item] = { ...cur, enabled: !cur.enabled };
+            scheduleReportStateSave();
             renderIssuesEditor();
             renderLivePreview();
         }));
@@ -4301,10 +4349,12 @@
             const item = ta.getAttribute('data-faults-text');
             const cur = faultsListState[item] || { enabled: true, text: '' };
             faultsListState[item] = { ...cur, text: ta.value };
+            scheduleReportStateSave();
             renderLivePreview();
         }));
         container.querySelectorAll('[data-followup-part]').forEach(ta => ta.addEventListener('input', () => {
             packFollowUpText[ta.getAttribute('data-followup-part')] = ta.value;
+            scheduleReportStateSave();
             renderLivePreview();
         }));
     }
@@ -4441,8 +4491,6 @@
             ${faultsListSection}
             ${serviceNotesBlock}
             ${notesBlock}
-
-            <p style="margin:24px 0 0;padding-top:14px;border-top:1px solid #e5e7eb;">Once the service is complete, any issues we are unable to resolve on site will be taken away for repair at our head office, and we will endeavour to return them within five working days.</p>
         </div>`;
     }
 
