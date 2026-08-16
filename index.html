@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v1.1.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.1.1 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -711,7 +711,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.1.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.1.1</div>
         </div>
     </nav>
 
@@ -1466,7 +1466,7 @@
     let faultsListState = {}; // generalCheckItem -> { enabled: bool, text: string } — "See Faults list" toggle
 
     const generalChecksList = ["Chargers", "Batteries", "Racks", "PC", "RX", "Music", "HSDU", "Cables", "Screens", "Sensors", "Spare Parts", "Button Reader", "Activate Button", "Demo Key", "Printer"];
-    const PonchoPartsList = ["Fabric", "Screws", "Casings", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards"];
+    const PonchoPartsList = ["Fabric", "Screws", "Casings", "Vibrator", "Black Plates", "Battery Boxes", "LEDs", "Shoulder Casings", "Shoulder Bases", "Boards"];
     const gunPartsList = ["Trigger", "Speaker", "GButton Reader", "Laser", "IR", "Outer Casing", "Nozzle", "GScrews", "Numbered Sticker", "Screen Protector", "Plastic Front of Gun", "GLEDs", "GBoards", "Rattle"];
     const allPonchoElements = [...PonchoPartsList, ...gunPartsList];
     const allManagedParts = [...generalChecksList, ...PonchoPartsList, ...gunPartsList];
