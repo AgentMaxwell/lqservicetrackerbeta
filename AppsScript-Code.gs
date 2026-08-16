@@ -339,7 +339,7 @@ function jsonOutput(obj) {
 
 function createWeeklyTrigger() {
   deleteAllTriggers(); // avoid creating duplicates if you run this more than once
-  ScriptApp.newTrigger('sendWeeklyServiceDueEmail')
+  ScriptApp.newTrigger('sendWeeklyServiceDueEmailAuto')
     .timeBased()
     .onWeekDay(ScriptApp.WeekDay.MONDAY)
     .atHour(7)
@@ -352,9 +352,10 @@ function deleteAllTriggers() {
 
 // One-off manual send — run this any time from the editor's function dropdown (select
 // "sendServiceDueEmailNow" > Run) to test the email, or trigger it ad-hoc outside the
-// weekly schedule. It's identical to what the weekly trigger runs.
+// weekly schedule. Unlike the automated trigger, this always sends — even a "nothing due"
+// confirmation — since a human explicitly asking for a check deserves an answer either way.
 function sendServiceDueEmailNow() {
-  sendWeeklyServiceDueEmail();
+  sendWeeklyServiceDueEmail(false);
 }
 
 // Manual diagnostic for the Team tab — run this from the Apps Script editor's function
@@ -386,11 +387,19 @@ function onOpen() {
     .addToUi();
 }
 
-function sendWeeklyServiceDueEmail() {
+// suppressIfEmpty=true (used by the automated Monday trigger, via the wrapper below) skips
+// sending entirely when there's nothing to report, so the inbox doesn't get a "nothing due"
+// email every week. The manual "Send Now" menu item always calls this with suppressIfEmpty
+// false/omitted, since a human explicitly checking deserves an answer either way.
+function sendWeeklyServiceDueEmail(suppressIfEmpty) {
   const today = stripTime(new Date());
   const cutoff = new Date(today.getTime() + CONFIG.DUE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const sites = readAllSites().filter(s => s.rented);
+  // Owned (non-rented) sites aren't left out entirely — a voluntarily scheduled visit for one
+  // still belongs in the Scheduled section below — they're just exempt from the overdue/due-soon
+  // annual-requirement check, which is why the rented filter moved inside the loop instead of
+  // being applied to the whole list up front.
+  const sites = readAllSites();
 
   const scheduled = [];
   const overdue = [];
@@ -398,9 +407,10 @@ function sendWeeklyServiceDueEmail() {
 
   sites.forEach(s => {
     // A scheduled service takes priority — it no longer shows as overdue/due-soon, it gets its
-    // own section instead, regardless of what Next Service Due says.
+    // own section instead, regardless of what Next Service Due says. Applies to owned sites too.
     if (s.scheduledDate) { scheduled.push(s); return; }
 
+    if (!s.rented) return; // owned sites have no mandatory annual cadence — nothing to flag
     if (!s.nextServiceDue) return; // no date on record — nothing to flag yet
     const dueDate = parseDate(s.nextServiceDue);
     if (!dueDate) return;
@@ -412,7 +422,10 @@ function sendWeeklyServiceDueEmail() {
   overdue.sort((a, b) => parseDate(a.nextServiceDue) - parseDate(b.nextServiceDue));
   dueSoon.sort((a, b) => parseDate(a.nextServiceDue) - parseDate(b.nextServiceDue));
 
-  const subject = (overdue.length + dueSoon.length + scheduled.length) > 0
+  const totalCount = overdue.length + dueSoon.length + scheduled.length;
+  if (suppressIfEmpty && totalCount === 0) return; // nothing to report — automated run skips silently
+
+  const subject = totalCount > 0
     ? `Pack Service Tracker — ${overdue.length} overdue, ${dueSoon.length} due soon, ${scheduled.length} scheduled`
     : `Pack Service Tracker — nothing due within ${CONFIG.DUE_WINDOW_DAYS} days`;
 
@@ -425,6 +438,13 @@ function sendWeeklyServiceDueEmail() {
     subject: subject,
     htmlBody: html
   });
+}
+
+// Entry point the weekly trigger actually points at (see createWeeklyTrigger below) — thin
+// wrapper so the automated Monday run suppresses the email when empty, without changing the
+// manual "Send Now" button's always-send behaviour.
+function sendWeeklyServiceDueEmailAuto() {
+  sendWeeklyServiceDueEmail(true);
 }
 
 function buildEmailHtml(overdue, dueSoon, scheduled) {
