@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v1.1.1 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.2.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -711,7 +711,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.1.1</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.2.0</div>
         </div>
     </nav>
 
@@ -1091,7 +1091,7 @@
                     <div class="report-step-panel hidden" data-step-panel="preview">
                         <h3 style="text-align:left; margin-bottom: var(--sp-4);">Ready to send</h3>
                         <div class="action-group" style="display:flex; gap: var(--sp-3);">
-                            <button class="btn-outline" id="printCustReportBtn" style="flex:1;"><svg class="icon"><use href="#i-printer"></use></svg>Print / Save as PDF</button>
+                            <button class="btn-outline" id="downloadCustReportBtn" style="flex:1;"><svg class="icon"><use href="#i-download"></use></svg>Download as Word</button>
                             <button class="btn-outline hidden" id="shareCustReportBtn" style="flex:1;"><svg class="icon"><use href="#i-share"></use></svg>Share</button>
                         </div>
                     </div>
@@ -1602,8 +1602,14 @@
         return 'ok';
     }
     function dueBadgeHtml(site) {
-        const status = computeDueStatus(site);
         const scheduledChip = site && site.scheduledDate ? `<span class="badge badge-scheduled"><svg class="icon icon-sm"><use href="#i-calendar"></use></svg>Scheduled</span>` : '';
+        // Owned (non-rented) sites aren't subject to the annual service requirement, so they never
+        // get an Overdue/Due Soon/OK badge — just a neutral "Owned" tag instead, which also doubles
+        // as the "this site won't nag you" signal at a glance.
+        if (site && site.rented === false) {
+            return `<div class="flex-row" style="justify-content:center; flex-wrap:wrap; gap:6px;"><span class="badge badge-neutral">Owned</span>${scheduledChip}</div>`;
+        }
+        const status = computeDueStatus(site);
         let statusBadge = '';
         if (status === 'due') statusBadge = `<span class="badge badge-due">Overdue</span>`;
         else if (status === 'soon') statusBadge = `<span class="badge badge-soon">Due Soon</span>`;
@@ -2012,7 +2018,7 @@
         const select = $('siteSelect');
         const previousValue = select.value;
         select.innerHTML = '<option value="">-- Choose Site --</option>';
-        const names = Object.keys(sitesData).filter(name => sitesData[name].rented);
+        const names = Object.keys(sitesData);
         names.sort((a, b) => {
             const sa = sitesData[a], sb = sitesData[b];
             if (!!sa.scheduledDate !== !!sb.scheduledDate) return sa.scheduledDate ? -1 : 1;
@@ -2025,7 +2031,7 @@
         });
         names.forEach(name => {
             const s = sitesData[name];
-            select.innerHTML += `<option value="${name}">${name} (${s.count} Packs${s.hardware ? ' · ' + s.hardware : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
+            select.innerHTML += `<option value="${name}">${name} (${s.count} Packs${s.hardware ? ' · ' + s.hardware : ''}${s.rented === false ? ' · Owned' : ''})${s.scheduledDate ? ' 📅' : ''}</option>`;
         });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
     }
@@ -2250,7 +2256,7 @@
         }
 
         const scheduled = Object.keys(sitesData)
-            .filter(n => sitesData[n].rented && sitesData[n].scheduledDate)
+            .filter(n => sitesData[n].scheduledDate)
             .map(n => ({ name: n, ...sitesData[n] }))
             .sort((a, b) => `${a.scheduledDate}T${a.scheduledTime || '00:00'}`.localeCompare(`${b.scheduledDate}T${b.scheduledTime || '00:00'}`));
         if (scheduled.length > 0) {
@@ -2317,7 +2323,7 @@
         const tbody = $('homeSitesTableBody');
         if (!tbody) return;
         const search = ($('homeSiteSearch')?.value || '').toLowerCase();
-        let rows = Object.keys(sitesData).filter(n => sitesData[n].rented).map(n => ({ name: n, ...sitesData[n] }));
+        let rows = Object.keys(sitesData).map(n => ({ name: n, ...sitesData[n] }));
         if (search) rows = rows.filter(r => r.name.toLowerCase().includes(search));
         rows = siteRowsSorted(rows, homeSortKey, homeSortDir);
 
@@ -2372,7 +2378,7 @@
         if (rows.length === 0) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">No sites found.</div></td></tr>`; return; }
         tbody.innerHTML = rows.map(r => `
             <tr class="site-row" data-site="${r.name}">
-                <td><strong>${r.name}</strong>${!r.rented ? ' <span class="badge badge-neutral">Hidden</span>' : ''}</td>
+                <td><strong>${r.name}</strong>${!r.rented ? ' <span class="badge badge-neutral">Owned</span>' : ''}</td>
                 <td class="center">${r.count}</td>
                 <td class="center">${r.nextServiceDue || '—'}</td>
                 <td class="center">${dueBadgeHtml(r)}</td>
@@ -2474,7 +2480,7 @@
         const select = $('scheduleSiteSelect');
         const previousValue = select.value;
         select.innerHTML = '<option value="">-- Choose Site --</option>';
-        Object.keys(sitesData).sort().forEach(name => { if (!sitesData[name].rented) return; select.innerHTML += `<option value="${name}">${name}</option>`; });
+        Object.keys(sitesData).sort().forEach(name => { select.innerHTML += `<option value="${name}">${name}${sitesData[name].rented === false ? ' (Owned)' : ''}</option>`; });
         if (previousValue && sitesData[previousValue]) select.value = previousValue;
         if (!$('scheduleRepInput').value) $('scheduleRepInput').value = currentRepresentative || "";
     }
@@ -2482,7 +2488,7 @@
     function renderScheduledServicesList() {
         const container = $('scheduledServicesList');
         const scheduled = Object.keys(sitesData)
-            .filter(name => sitesData[name].rented && sitesData[name].scheduledDate)
+            .filter(name => sitesData[name].scheduledDate)
             .map(name => ({ name, ...sitesData[name] }))
             .sort((a, b) => `${a.scheduledDate}T${a.scheduledTime || '00:00'}`.localeCompare(`${b.scheduledDate}T${b.scheduledTime || '00:00'}`));
 
@@ -3850,10 +3856,10 @@
         return issues;
     }
 
-    function openCompletionSummary() {
+    async function openCompletionSummary() {
         navigateTo('completionSection');
         renderCompletionSummary();
-        initSignaturePad();
+        await initSignaturePad();
     }
 
     // Rebuilds the metrics + issues list only — used on first open AND whenever a Resolved/Follow-up
@@ -3985,20 +3991,74 @@
             if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
             $(placeholderId).classList.remove('hidden');
         }
-        return { init, clear };
+        // Redraws a previously-captured signature (e.g. one saved to Firestore from another device)
+        // onto this pad's canvas, so re-opening the completion screen shows it instead of a blank pad.
+        function loadImage(dataUrl) {
+            if (!dataUrl || !ctx) return;
+            const canvas = $(canvasId);
+            const ratio = window.devicePixelRatio || 1;
+            const img = new Image();
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width / ratio, canvas.height / ratio);
+                $(placeholderId).classList.add('hidden');
+            };
+            img.src = dataUrl;
+        }
+        return { init, clear, loadImage };
     }
 
-    const customerSignaturePad = createSignaturePad('signatureCanvas', 'signaturePlaceholder', url => { signatureDataUrl = url; });
-    const repSignaturePad = createSignaturePad('repSignatureCanvas', 'repSignaturePlaceholder', url => { repSignatureDataUrl = url; });
+    const customerSignaturePad = createSignaturePad('signatureCanvas', 'signaturePlaceholder', url => { signatureDataUrl = url; scheduleSignoffSave(); });
+    const repSignaturePad = createSignaturePad('repSignatureCanvas', 'repSignaturePlaceholder', url => { repSignatureDataUrl = url; scheduleSignoffSave(); });
 
-    function initSignaturePad() {
+    // Signatures and the site manager name used to live only in memory until "Complete Service" was
+    // pressed, so a rep who signed on a tablet then switched to a phone (or lost connection) lost
+    // them entirely. Now persisted incrementally to the same "signoffs" doc completion already
+    // writes to, and reloaded here so any device opening this service's completion screen sees the
+    // latest captured signature/name instead of a blank pad.
+    let signoffSaveDebounce = null;
+    function scheduleSignoffSave() {
+        clearTimeout(signoffSaveDebounce);
+        signoffSaveDebounce = setTimeout(saveSignoffState, 600);
+    }
+    async function saveSignoffState() {
+        if (!currentSiteName || !activeServiceDate) return;
+        const siteManagerName = ($('siteManagerNameInput')?.value || '').trim();
+        if (!signatureDataUrl && !repSignatureDataUrl && !siteManagerName) return; // nothing worth persisting yet
+        const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+        await queuedWrite(`signoff-${docId}`, `Sign-off for ${currentSiteName}`, () => setDoc(doc(db, "signoffs", docId), {
+            site: currentSiteName, date: activeServiceDate,
+            siteManagerName,
+            customerSignature: signatureDataUrl || '',
+            repSignature: repSignatureDataUrl || '',
+            representative: currentRepresentative || '',
+            lastUpdated: serverTimestamp()
+        }, { merge: true }));
+    }
+    async function loadInProgressSignoff() {
+        if (!currentSiteName || !activeServiceDate) return;
+        try {
+            const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}`;
+            const snap = await getDoc(doc(db, "signoffs", docId));
+            if (snap.exists()) {
+                const so = snap.data();
+                $('siteManagerNameInput').value = so.siteManagerName || '';
+                if (so.customerSignature) { signatureDataUrl = so.customerSignature; customerSignaturePad.loadImage(so.customerSignature); }
+                if (so.repSignature) { repSignatureDataUrl = so.repSignature; repSignaturePad.loadImage(so.repSignature); }
+            }
+        } catch (e) { console.warn('No saved sign-off state for this service:', e.message); }
+    }
+
+    async function initSignaturePad() {
         signatureDataUrl = ""; repSignatureDataUrl = "";
         $('siteManagerNameInput').value = "";
         customerSignaturePad.init();
         repSignaturePad.init();
+        await loadInProgressSignoff();
     }
-    $('clearSignatureBtn').addEventListener('click', () => { signatureDataUrl = ""; customerSignaturePad.clear(); });
-    $('clearRepSignatureBtn').addEventListener('click', () => { repSignatureDataUrl = ""; repSignaturePad.clear(); });
+    $('siteManagerNameInput').addEventListener('input', scheduleSignoffSave);
+    $('clearSignatureBtn').addEventListener('click', () => { signatureDataUrl = ""; customerSignaturePad.clear(); scheduleSignoffSave(); });
+    $('clearRepSignatureBtn').addEventListener('click', () => { repSignatureDataUrl = ""; repSignaturePad.clear(); scheduleSignoffSave(); });
 
     $('buildReportBtn').addEventListener('click', async () => {
         reportEntryScreen = 'completionSection';
@@ -4500,9 +4560,31 @@
         livePreviewDebounce = setTimeout(() => { $('livePreviewArea').innerHTML = buildSimpleReportHtml(); }, 120);
     }
 
-    $('printCustReportBtn').addEventListener('click', () => {
-        $('printOnlyArea').innerHTML = buildSimpleReportHtml();
-        window.print();
+    // Customer report used to only export as a printed/PDF page, which techs then couldn't tweak
+    // wording on after the fact (e.g. softening a fault description before it reaches the customer).
+    // Wrapping the same report markup in the Office/Word XML namespaces below is the standard trick
+    // for producing a real, directly-editable .doc — Word (and Google Docs' "Open with") recognise
+    // the markup and open it as a normal document rather than a webpage.
+    function buildWordDocumentHtml(bodyHtml) {
+        return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset="utf-8"><title>${esc(currentSiteName || 'Service Report')}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>body{font-family:Calibri,Arial,sans-serif;}</style>
+</head><body>${bodyHtml}</body></html>`;
+    }
+    $('downloadCustReportBtn').addEventListener('click', () => {
+        const html = buildWordDocumentHtml(buildSimpleReportHtml());
+        const blob = new Blob(['﻿', html], { type: 'application/msword' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const safeSite = (currentSiteName || 'Service-Report').replace(/[^a-z0-9]+/gi, '-');
+        const safeDate = (activeServiceDate || '').replace(/[^a-z0-9]+/gi, '-');
+        a.href = url;
+        a.download = `${safeSite}${safeDate ? '-' + safeDate : ''}-Service-Report.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
     $('shareCustReportBtn').addEventListener('click', async () => {
         const repNotes = ($('simpleRepNotes')?.value || '').trim();

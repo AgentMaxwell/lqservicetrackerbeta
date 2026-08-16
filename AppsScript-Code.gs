@@ -18,7 +18,10 @@
  *
  *   Site Name | Rented | Number of Packs | Hardware | Firmware | Pack Colour | Last Service Date | Completed By | Next Service Due | Scheduled Date
  *
- *  - "Rented"            TRUE/FALSE, or Yes/No — only rows marked rented show up in the app.
+ *  - "Rented"            TRUE/FALSE, or Yes/No — non-rented ("owned") sites still show up in the
+ *                        app (tagged "Owned") but are excluded from the overdue/due-soon annual
+ *                        service requirement below (readAllSites().filter(s => s.rented)) — they
+ *                        simply don't have a mandatory once-a-year cadence enforced on them.
  *  - "Hardware"           free text, e.g. "HSDU" or "WIFI".
  *  - "Pack Colour"         free text, expected values "R/G" or "R/B/P".
  *  - "Next Service Due"   left untouched by this script — keep your existing formula there
