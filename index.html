@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v1.2.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.3.0 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -711,7 +711,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.2.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.3.0</div>
         </div>
     </nav>
 
@@ -917,6 +917,28 @@
                 <button class="btn-primary btn-block" id="saveSiteBtn">Save New Site</button>
             </div>
         </div>
+
+        <!-- Quick "mark serviced" — for services done outside the app (paper, a return visit,
+             another engineer). Writes the site's last-serviced date and a marker record into
+             "services" so the visit still shows on the History timeline, with no checklist. -->
+        <div id="quickServiceModal" class="modal">
+            <div class="modal-content" style="max-width: 420px;">
+                <button class="modal-close-btn" id="closeQuickServiceModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+                <h2 style="text-align:left;"><svg class="icon"><use href="#i-check-circle"></use></svg> Mark as Serviced</h2>
+                <p class="text-muted" style="line-height:1.5;">Records a service against <strong id="quickServiceSiteName" style="color: var(--text-main);"></strong> without running the checklist. Updates the site&#39;s last-serviced date and adds an entry to History.</p>
+                <label for="quickServiceDate">Date of Service</label>
+                <input type="date" id="quickServiceDate">
+                <label for="quickServiceRep">Completed By</label>
+                <input type="text" id="quickServiceRep" placeholder="Enter your name...">
+                <label for="quickServiceNote">Note (optional)</label>
+                <textarea id="quickServiceNote" placeholder="e.g. serviced on a return visit, paperwork filed separately" style="min-height: 78px;"></textarea>
+                <div id="quickServiceMsg" class="status-msg" style="color: var(--danger);"></div>
+                <div class="action-group" style="display:flex; gap: var(--sp-3); margin-top: var(--sp-2);">
+                    <button class="btn-outline" id="cancelQuickServiceBtn" style="flex:1;">Cancel</button>
+                    <button class="btn-primary" id="confirmQuickServiceBtn" style="flex:1;">Mark Serviced</button>
+                </div>
+            </div>
+        </div>
         <div id="settingsSection" class="app-section">
             <div class="home-header">
                 <h1>Settings</h1>
@@ -951,6 +973,24 @@
                         <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Hide browser chrome while working on-site.</p>
                     </div>
                     <button class="btn-ghost" id="fullscreenToggleBtn"><svg class="icon"><use href="#i-layers"></use></svg><span>Toggle</span></button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 style="text-align:left; margin-bottom: var(--sp-4);"><svg class="icon"><use href="#i-check-circle"></use></svg> Service &amp; Reports</h3>
+                <div class="settings-row">
+                    <div>
+                        <strong>Default checklist view</strong>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">Which view a service opens on. &quot;By part&quot; shows every pack for one part at a time; &quot;Pack by pack&quot; walks each pack in turn.</p>
+                    </div>
+                    <button class="btn-ghost" id="defaultViewToggleBtn"><svg class="icon"><use href="#i-layers"></use></svg><span id="defaultViewToggleLabel">Pack by pack</span></button>
+                </div>
+                <div class="settings-row" style="border-bottom:none;">
+                    <div>
+                        <strong>Report comments</strong>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:2px;">&quot;Pack numbers only&quot; leaves the Comments column on the service record as a bare list of pack numbers, for you to write up by hand.</p>
+                    </div>
+                    <button class="btn-ghost" id="reportStyleToggleBtn"><svg class="icon"><use href="#i-file-text"></use></svg><span id="reportStyleToggleLabel">Pack numbers only</span></button>
                 </div>
             </div>
 
@@ -1194,6 +1234,37 @@
                 </div>
             </div>
         </div>
+
+        <!-- "Check by Part" — the checklist rotated 90 degrees. Instead of walking pack 1..N and
+             marking every part on each, you open one part and see every pack at once, tapping only
+             the packs with a problem. Saving a part marks every untapped pack good for it, which is
+             the whole point: most parts are fine on most packs. Settings can make this the view a
+             service opens on. -->
+        <div id="byPartSection" class="app-section">
+            <div class="service-topbar">
+                <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
+                <button class="btn-ghost btn-icon" id="byPartToPackBtn" aria-label="Switch to pack-by-pack view" title="Pack-by-pack view"><svg class="icon"><use href="#i-package"></use></svg></button>
+                <div class="service-topbar-title">
+                    <strong id="byPartCounterText">Check by Part</strong>
+                    <span class="save-indicator" id="byPartSaveIndicator"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced</span>
+                </div>
+                <span class="items-left-chip topbar-push-right" id="byPartLeftChip"><svg class="icon icon-sm"><use href="#i-alert"></use></svg><span id="byPartLeftCount">0</span> parts left</span>
+                <button class="btn-ghost btn-icon overflow-trigger-inline" id="byPartOverflowBtn" aria-label="More options"><svg class="icon"><use href="#i-menu-dots"></use></svg></button>
+            </div>
+
+            <div class="card" style="margin-bottom: var(--sp-4); padding: var(--sp-4);">
+                <p class="text-muted" style="margin:0; font-size:0.88rem;">Open a part, tap only the packs with a problem, then save. Every pack you don&#39;t tap is marked good for that part.</p>
+                <div class="progress-container" style="margin: var(--sp-4) 0 var(--sp-2);"><div class="progress-fill" id="byPartProgressFill" style="width:0%"></div></div>
+                <div class="text-muted" id="byPartProgressLabel" style="font-size:0.82rem;">0 of 0 parts done</div>
+            </div>
+
+            <div class="section-header" id="byPartPonchoHeader">Poncho Elements</div>
+            <div id="byPartPonchoContainer" class="stack-gap" style="margin-bottom: var(--sp-3);"></div>
+
+            <div class="section-header" id="byPartGunHeader">Gun Elements</div>
+            <div id="byPartGunContainer" class="stack-gap"></div>
+        </div>
+
         <div id="completionSection" class="app-section">
             <div class="service-topbar">
                 <button class="btn-ghost btn-icon open-sidebar-btn" aria-label="Open menu"><svg class="icon"><use href="#i-menu"></use></svg></button>
@@ -1256,6 +1327,7 @@
     </div>
 
     <div id="overflowServiceActions" class="stack-gap hidden" style="margin-bottom: var(--sp-4);">
+        <button class="btn-outline btn-block" id="ovByPartBtn"><svg class="icon"><use href="#i-layers"></use></svg>Check by Part</button>
         <button class="btn-outline btn-block" id="ovSiteChecksBtn"><svg class="icon"><use href="#i-check"></use></svg>General Site Checks</button>
         <button class="btn-outline btn-block" id="ovNotesBtn"><svg class="icon"><use href="#i-edit"></use></svg>General Site Notes</button>
         <button class="btn-outline btn-block" id="ovFixItBtn"><svg class="icon"><use href="#i-tag"></use></svg>Fix it List</button>
@@ -1649,8 +1721,34 @@
     }
     $('LargeToggleBtn').addEventListener('click', () => {
         const next = !document.body.classList.contains('Large-mode');
-        localStorage.setItem('Large', next ? '1' : '0');
+        // Key has to match what initLargeMode() reads back on boot — writing 'Large' here meant
+        // the preference silently reset to Off on every reload.
+        localStorage.setItem('LargeMode', next ? '1' : '0');
         applyLargeMode(next);
+    });
+
+    /* ---- Persisted work preferences (Settings -> Service & Reports) ---- */
+    const DEFAULT_VIEW_KEY = 'checklistDefaultView'; // 'pack' | 'part'
+    const REPORT_STYLE_KEY = 'reportCommentStyle';   // 'packs' | 'full'
+    function defaultChecklistView() { return localStorage.getItem(DEFAULT_VIEW_KEY) === 'part' ? 'part' : 'pack'; }
+    function reportCommentStyle() { return localStorage.getItem(REPORT_STYLE_KEY) === 'full' ? 'full' : 'packs'; }
+    function renderWorkPrefLabels() {
+        const viewLabel = $('defaultViewToggleLabel');
+        if (viewLabel) viewLabel.innerText = defaultChecklistView() === 'part' ? 'By part' : 'Pack by pack';
+        const styleLabel = $('reportStyleToggleLabel');
+        if (styleLabel) styleLabel.innerText = reportCommentStyle() === 'full' ? 'Full text' : 'Pack numbers only';
+    }
+    $('defaultViewToggleBtn').addEventListener('click', () => {
+        localStorage.setItem(DEFAULT_VIEW_KEY, defaultChecklistView() === 'part' ? 'pack' : 'part');
+        renderWorkPrefLabels();
+        showToast(`Services will now open on the ${defaultChecklistView() === 'part' ? 'by-part' : 'pack-by-pack'} view.`);
+    });
+    $('reportStyleToggleBtn').addEventListener('click', () => {
+        localStorage.setItem(REPORT_STYLE_KEY, reportCommentStyle() === 'full' ? 'packs' : 'full');
+        renderWorkPrefLabels();
+        // The report screen may be sitting behind Settings — restyle it now rather than leaving
+        // a preview that no longer matches the setting.
+        if ($('customerReportSection').classList.contains('active')) { renderIssuesEditor(); renderLivePreview(); }
     });
 
     function toggleFullscreenAction() {
@@ -1678,7 +1776,8 @@
         setupSection: 'Home', scheduleSection: 'Schedule', historySection: 'History',
         sitesSection: 'Sites', settingsSection: 'Settings', notesSection: 'Notes',
         customerReportSection: 'Customer Report', generalChecksSection: 'General Checks',
-        serviceSection: 'Checklist', completionSection: 'Service Complete', historyViewSection: 'Service Details'
+        serviceSection: 'Checklist', completionSection: 'Service Complete', historyViewSection: 'Service Details',
+        byPartSection: 'Check by Part'
     };
     const sidebarSectionIds = new Set(['setupSection', 'scheduleSection', 'historySection', 'sitesSection', 'settingsSection']);
 
@@ -1723,14 +1822,14 @@
 
         // The "•••" overflow panel only shows in-service actions while an active
         // service/checklist screen is open — keeps it a short, contextual list (Hick's Law).
-        const inServiceActions = ['serviceSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
+        const inServiceActions = ['serviceSection', 'byPartSection', 'generalChecksSection', 'notesSection', 'customerReportSection'].includes(sectionId);
         // Archived reports (opened from History) are otherwise read-only, but the Fix it List
         // still needs to be reachable there — toggling an issue resolved/follow-up is what decides
         // how that issue's comment prints on the customer report, including for a service that's
         // already finished and is just being reprinted or updated later.
         const archivedReportView = sectionId === 'customerReportSection' && viewingArchivedReport;
         $('overflowServiceActions').classList.toggle('hidden', !inServiceActions || (viewingArchivedReport && !archivedReportView));
-        ['ovSiteChecksBtn', 'ovNotesBtn', 'ovGridOverlayBtn', 'ovPrintBtn', 'ovCustomerReportBtn', 'ovCompleteServiceBtn'].forEach(id => $(id).classList.toggle('hidden', archivedReportView));
+        ['ovByPartBtn', 'ovSiteChecksBtn', 'ovNotesBtn', 'ovGridOverlayBtn', 'ovPrintBtn', 'ovCustomerReportBtn', 'ovCompleteServiceBtn'].forEach(id => $(id).classList.toggle('hidden', archivedReportView));
 
         // The browsing sidebar collapses to a pullout for the whole service flow, including
         // the Completion Summary, so the focused screens get full width (Mockups 2-4 show no
@@ -1751,6 +1850,19 @@
         if (wasGeneralActive) await saveGeneralChecks();
         if (wasServiceActive) await triggerBackgroundSave();
     }
+
+    /* The checklist has two equivalent views over the same data: pack-by-pack (serviceSection)
+       and by-part (byPartSection). Which one a service opens on is a setting; which one you get
+       back to after a detour through Notes / Site Checks / the Completion Summary is whichever
+       you were last working in. */
+    let activeChecklistView = 'pack';
+    function openChecklistView(view) {
+        activeChecklistView = view === 'part' ? 'part' : 'pack';
+        if (activeChecklistView === 'part') { navigateTo('byPartSection'); renderByPartUI(); }
+        else { navigateTo('serviceSection'); renderPonchoUI(); }
+    }
+    function enterChecklist() { openChecklistView(defaultChecklistView()); }
+    function returnToChecklist() { openChecklistView(activeChecklistView); }
 
     $('repAccordionToggle').addEventListener('click', () => {
         const c = $('repAccordionContent'); const i = $('repAccordionIcon');
@@ -1874,6 +1986,7 @@
         if (isDirty) return; // unsaved edits outrank queue state — leave "Unsaved" alone
         const state = currentSyncState();
         setChecklistSaveState(state);
+        setByPartSaveState(state);
         setGeneralSaveState(state);
     }
 
@@ -2300,8 +2413,7 @@
 
         currentPonchoIndex = Math.min(resume.packIndex || 1, totalPonchos || 1);
         await loadSidebarNotes();
-        navigateTo('serviceSection');
-        renderPonchoUI();
+        enterChecklist();
     }
 
     function siteRowsSorted(rows, sortKey, sortDir) {
@@ -2384,6 +2496,7 @@
                 <td class="center">${dueBadgeHtml(r)}</td>
                 <td class="center">
                     <div class="row-actions">
+                        <button class="btn-sm btn-ghost quick-service-btn" data-name="${r.name}" aria-label="Mark ${r.name} serviced" title="Mark serviced"><svg class="icon icon-sm"><use href="#i-check-circle"></use></svg></button>
                         <button class="btn-sm btn-ghost edit-site-btn" data-id="${r.id}" data-name="${r.name}" data-count="${r.count}" aria-label="Edit ${r.name}"><svg class="icon icon-sm"><use href="#i-edit"></use></svg></button>
                         <button class="btn-sm btn-ghost del-site-btn" data-id="${r.id}" data-name="${r.name}" aria-label="Delete ${r.name}"><svg class="icon icon-sm"><use href="#i-trash"></use></svg></button>
                     </div>
@@ -2399,6 +2512,7 @@
                 $('historySiteSelect').dispatchEvent(new Event('change'));
             });
         });
+        tbody.querySelectorAll('.quick-service-btn').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); openQuickServiceModal(btn.getAttribute('data-name')); }));
         tbody.querySelectorAll('.edit-site-btn').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); handleEditSite(e); }));
         tbody.querySelectorAll('.del-site-btn').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); handleDeleteSite(e); }));
     }
@@ -2410,6 +2524,76 @@
             sitesSortKey = key;
             renderSitesTable();
         });
+    });
+
+    /* ---- Quick "mark serviced" ------------------------------------------------------------
+       For a service done outside the app — on paper, on a return trip, by someone else. Sets the
+       site's last-serviced date and writes a marker record into "services" so the visit still
+       lands on the History timeline, without inventing any pack data for it. */
+    let quickServiceSite = "";
+    function openQuickServiceModal(siteName) {
+        if (!sitesData[siteName]) { showToast(`"${siteName}" is no longer in the site list.`); return; }
+        quickServiceSite = siteName;
+        $('quickServiceSiteName').innerText = siteName;
+        $('quickServiceDate').value = new Date().toISOString().split('T')[0];
+        $('quickServiceRep').value = currentRepresentative || localStorage.getItem('inspectorName') || "";
+        $('quickServiceNote').value = "";
+        $('quickServiceMsg').innerText = "";
+        $('quickServiceModal').style.display = 'block';
+    }
+    function closeQuickServiceModal() { $('quickServiceModal').style.display = 'none'; }
+    $('closeQuickServiceModalBtn').addEventListener('click', closeQuickServiceModal);
+    $('cancelQuickServiceBtn').addEventListener('click', closeQuickServiceModal);
+
+    $('confirmQuickServiceBtn').addEventListener('click', async () => {
+        const site = quickServiceSite;
+        const info = sitesData[site];
+        const date = $('quickServiceDate').value;
+        const msg = $('quickServiceMsg');
+        if (!info) { msg.innerText = "That site is no longer in the list."; return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { msg.innerText = "Pick a date for the service."; return; }
+
+        const rep = $('quickServiceRep').value.trim();
+        const note = $('quickServiceNote').value.trim();
+        const btn = $('confirmQuickServiceBtn');
+        btn.disabled = true; btn.innerText = 'Saving...';
+
+        const prevLastServiceDate = info.lastServiceDate || "";
+        const logDocId = `${site.replace(/\s+/g, '-')}-${date}-quick-log`;
+        try {
+            await queuedWrite(`quicklog-${logDocId}`, `Service log — ${site}`, () => setDoc(doc(db, "services", logDocId), {
+                site, PonchoId: 'Quick log', serviceDate: date, representative: rep || "Not Specified",
+                quickLogged: true, quickLogNote: note, serviceDetails: {}, lastUpdated: serverTimestamp()
+            }, { merge: true }));
+            await queuedWrite(`complete-${info.id}`, `Mark serviced — ${site}`, () =>
+                setDoc(doc(db, "sites", info.id), { lastServiceDate: date, lastServiceCompletedAt: serverTimestamp() }, { merge: true }));
+            info.lastServiceDate = date;
+            pushServiceCompletionToSheet(site, date, rep);
+
+            historyServiceDocs = null; // the timeline caches the whole collection — force a refetch
+            closeQuickServiceModal();
+            renderSitesTable();
+            showUndoToast(`${site} marked serviced on ${formatServiceDateUK(date)}`, async () => {
+                await queuedWrite(`undo-quicklog-${logDocId}`, `Undo service log — ${site}`, () => deleteDoc(doc(db, "services", logDocId)));
+                await queuedWrite(`undo-complete-${info.id}`, `Undo mark serviced — ${site}`, () =>
+                    setDoc(doc(db, "sites", info.id), { lastServiceDate: prevLastServiceDate }, { merge: true }));
+                info.lastServiceDate = prevLastServiceDate;
+                // Put the old date back on the sheet too, or it keeps showing a service that was
+                // undone here. An empty prevLastServiceDate clears the cell (the site had never
+                // been serviced); the rep is sent blank on purpose, because updateSiteRow skips a
+                // falsy completedBy — leaving whoever was recorded before rather than stamping the
+                // name of the service we just took back.
+                pushServiceCompletionToSheet(site, prevLastServiceDate, "");
+                historyServiceDocs = null;
+                renderSitesTable();
+                showToast(`Undone — ${site} is back to its previous last-serviced date.`);
+            }, 15000);
+        } catch (error) {
+            console.error('Could not mark site as serviced:', error);
+            msg.innerText = "Couldn't save that. Check your connection and try again.";
+        } finally {
+            btn.disabled = false; btn.innerText = 'Mark Serviced';
+        }
     });
 
     function siteNameTaken(name, excludeCurrent) {
@@ -2573,7 +2757,10 @@
             const date = rec.serviceDate || (match ? match[0] : null);
             if (!date) return;
             const key = `${rec.site}::${date}`;
-            if (!visits[key]) visits[key] = { site: rec.site, date, issueCount: 0, packCount: 0 };
+            if (!visits[key]) visits[key] = { site: rec.site, date, issueCount: 0, packCount: 0, quickLogged: false };
+            // A quick "marked serviced" entry has no checklist behind it — it records that the
+            // visit happened without inflating the pack-record count or the issue tally.
+            if (rec.quickLogged) { visits[key].quickLogged = true; return; }
             visits[key].packCount++;
             const details = rec.serviceDetails || {};
             Object.keys(details).forEach(part => {
@@ -2603,20 +2790,31 @@
             if (shown.length === 0) {
                 $('historyTimeline').innerHTML = `<div class="empty-state">${site ? 'No past services recorded for this site yet.' : 'No services recorded yet.'}</div>`;
             } else {
-                $('historyTimeline').innerHTML = shown.map(v => `
+                $('historyTimeline').innerHTML = shown.map(v => {
+                    // A visit that's only a quick log has no checklist to open, so View/Report are
+                    // left off it — Delete stays, so a mistaken entry can still be cleared.
+                    const quickOnly = v.quickLogged && v.packCount === 0;
+                    const detail = quickOnly
+                        ? 'Marked serviced — no checklist recorded'
+                        : `${v.packCount} pack record${v.packCount === 1 ? '' : 's'}`;
+                    const badge = quickOnly
+                        ? '<span class="badge badge-neutral">Quick log</span>'
+                        : (v.issueCount > 0 ? `<span class="badge badge-due">${v.issueCount} issue${v.issueCount === 1 ? '' : 's'}</span>` : '<span class="badge badge-ok">All good</span>');
+                    const openBtns = quickOnly ? '' : `
+                            <button class="btn-sm btn-ghost history-view-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-file-text"></use></svg>View</button>
+                            <button class="btn-sm btn-outline history-report-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-mail"></use></svg>Report</button>`;
+                    return `
                     <div class="settings-row">
                         <div>
                             <strong>${site ? esc(v.date) : esc(v.site)}</strong>
-                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${site ? '' : esc(v.date) + ' · '}${v.packCount} pack record${v.packCount === 1 ? '' : 's'}</p>
+                            <p class="text-muted" style="font-size:0.82rem; margin-top:2px;">${site ? '' : esc(v.date) + ' · '}${detail}</p>
                         </div>
                         <div class="history-row-actions">
-                            ${v.issueCount > 0 ? `<span class="badge badge-due">${v.issueCount} issue${v.issueCount === 1 ? '' : 's'}</span>` : `<span class="badge badge-ok">All good</span>`}
-                            <button class="btn-sm btn-ghost history-view-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-file-text"></use></svg>View</button>
-                            <button class="btn-sm btn-outline history-report-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}"><svg class="icon icon-sm"><use href="#i-mail"></use></svg>Report</button>
+                            ${badge}${openBtns}
                             <button class="btn-sm btn-icon btn-ghost history-delete-btn" data-site="${esc(v.site)}" data-date="${esc(v.date)}" aria-label="Delete this service" title="Delete this service"><svg class="icon icon-sm"><use href="#i-trash"></use></svg></button>
                         </div>
-                    </div>
-                `).join('') + (visits.length > shown.length
+                    </div>`;
+                }).join('') + (visits.length > shown.length
                     ? `<p class="text-muted" style="font-size:0.8rem; text-align:center; margin-top: var(--sp-4);">Showing the ${HISTORY_VISIT_LIMIT} most recent of ${visits.length} services. Filter by site to narrow this down.</p>`
                     : '');
                 $('historyTimeline').querySelectorAll('.history-report-btn').forEach(btn => btn.addEventListener('click', () =>
@@ -2999,8 +3197,7 @@
         viewingArchivedReport = false;
         startServiceModal.style.display = 'none';
         await loadSidebarNotes();
-        navigateTo('serviceSection');
-        renderPonchoUI();
+        enterChecklist();
         saveResumeState();
     }
 
@@ -3094,8 +3291,7 @@
         viewingArchivedReport = false;
         startServiceModal.style.display = 'none';
         await loadSidebarNotes();
-        navigateTo('serviceSection');
-        renderPonchoUI();
+        enterChecklist();
         saveResumeState();
     });
 
@@ -3116,11 +3312,11 @@
         else { msg.innerText = "Couldn't save — retry from Settings"; msg.style.color = "var(--danger)"; }
         setTimeout(() => msg.innerText = "", 3000);
     });
-    $('notesBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
+    $('notesBackBtn').addEventListener('click', () => returnToChecklist());
     // Lets a rep who spots a mistake while signing off return to the checklist to fix it —
     // signatures/name typed so far are left as-is, since openCompletionSummary() re-inits the
     // pads fresh only when re-entered via "Complete Service" again.
-    $('completionBackBtn').addEventListener('click', () => { navigateTo('serviceSection'); renderPonchoUI(); });
+    $('completionBackBtn').addEventListener('click', () => returnToChecklist());
     /* ============================================================
        SHARED CHECKLIST CARD COMPONENT — used by both General Site Checks
        and the pack Checklist. Cards start open; once answered they collapse
@@ -3436,7 +3632,7 @@
         } catch (e) { console.warn('No saved Fix it List state for this service:', e.message); }
     }
 
-    $('backToPonchosBtn').addEventListener('click', async () => { await saveGeneralChecks(); navigateTo('serviceSection'); renderPonchoUI(); });
+    $('backToPonchosBtn').addEventListener('click', async () => { await saveGeneralChecks(); returnToChecklist(); });
     /* ============================================================
        CHECKLIST — permanent pack grid (master) + section-grouped cards (detail)
        ============================================================ */
@@ -3528,8 +3724,187 @@
         chip.innerHTML = missing === 0 ? '<svg class="icon icon-sm"><use href="#i-check"></use></svg>All done' : `<svg class="icon icon-sm"><use href="#i-alert"></use></svg><span id="itemsLeftCount">${missing}</span> items left`;
         renderPackGrid();
     }
-    function setChecklistSaveState(state) {
-        const el = $('saveIndicator');
+    /* ============================================================
+       CHECK BY PART — the same checklist, one part across every pack
+       ============================================================ */
+    // Which part cards are open, and the packs currently tapped as "has an issue" inside each.
+    // The selection is a working copy: nothing reaches PonchoDataCache until the part is saved.
+    const expandedByPartCards = new Set();
+    const byPartSelection = {};
+
+    function byPartStats(part) {
+        const issuePacks = [];
+        let good = 0, unchecked = 0;
+        for (let i = 1; i <= totalPonchos; i++) {
+            const status = PonchoDataCache[i]?.[part]?.status;
+            if (status === 'Issue') issuePacks.push(i);
+            else if (status === 'Good') good++;
+            else unchecked++;
+        }
+        return { issuePacks, good, unchecked, done: totalPonchos > 0 && unchecked === 0 };
+    }
+
+    function byPartSaveLabel(count) {
+        return count > 0
+            ? `Save — ${count} issue${count === 1 ? '' : 's'}, rest good`
+            : `Save — all ${totalPonchos} pack${totalPonchos === 1 ? '' : 's'} good`;
+    }
+
+    function byPartCardHTML(part) {
+        const stats = byPartStats(part);
+
+        if (!expandedByPartCards.has(part)) {
+            const stateClass = stats.issuePacks.length ? 'state-issue' : (stats.done ? 'state-good' : '');
+            const detail = stats.issuePacks.length
+                ? `Issue on pack ${stats.issuePacks.join(', ')}${stats.unchecked ? ` · ${stats.unchecked} not checked` : ''}`
+                : (stats.done ? `All ${totalPonchos} packs good` : `${stats.good}/${totalPonchos} packs checked`);
+            const pill = stats.issuePacks.length
+                ? `<svg class="icon icon-sm"><use href="#i-alert"></use></svg>${stats.issuePacks.length} issue${stats.issuePacks.length === 1 ? '' : 's'}`
+                : (stats.done
+                    ? '<svg class="icon icon-sm"><use href="#i-check"></use></svg>Good'
+                    : '<svg class="icon icon-sm"><use href="#i-chevron-right"></use></svg>Open');
+            return `
+                <button type="button" class="part-pill ${stateClass}" data-bypart-expand="${esc(part)}">
+                    <div>
+                        <div class="part-header">${esc(part)}</div>
+                        <div class="pill-detail">${detail}</div>
+                    </div>
+                    <span class="pill-status">${pill}</span>
+                </button>`;
+        }
+
+        const selected = byPartSelection[part] || new Set();
+        let tiles = '';
+        for (let i = 1; i <= totalPonchos; i++) {
+            const on = selected.has(i);
+            tiles += `<button type="button" class="pack-tile ${on ? 'state-issue' : ''}" data-bypart-tile="${esc(part)}" data-pack="${i}" aria-pressed="${on}">${i}</button>`;
+        }
+        return `
+            <div class="part-section ${selected.size ? 'state-issue' : ''}">
+                <div class="part-header-row">
+                    <div class="part-header">${esc(part)}</div>
+                    <button type="button" class="btn-icon btn-ghost" style="width:28px;height:28px;min-height:28px;" data-bypart-collapse="${esc(part)}" aria-label="Collapse ${esc(part)}"><svg class="icon icon-sm"><use href="#i-chevron-down"></use></svg></button>
+                </div>
+                <p class="text-muted" style="font-size:0.82rem; margin: 0 0 var(--sp-3);">Tap the packs where ${esc(part)} needs attention — everything you leave untapped is marked good on save.</p>
+                <div class="pack-grid pack-grid-modal">${tiles}</div>
+                <button type="button" class="btn-success btn-block" style="margin-top: var(--sp-4);" data-bypart-save="${esc(part)}">${byPartSaveLabel(selected.size)}</button>
+            </div>`;
+    }
+
+    function renderByPartUI() {
+        $('byPartCounterText').innerText = totalPonchos > 0 ? `Check by Part — ${totalPonchos} packs` : 'Check by Part';
+        setByPartSaveState(isDirty ? 'dirty' : currentSyncState());
+
+        for (let i = 1; i <= totalPonchos; i++) {
+            if (!PonchoDataCache[i]) PonchoDataCache[i] = {};
+            allPonchoElements.forEach(part => { if (!PonchoDataCache[i][part]) PonchoDataCache[i][part] = { status: null, notes: "" }; });
+        }
+
+        $('byPartPonchoContainer').innerHTML = PonchoPartsList.map(byPartCardHTML).join('');
+        $('byPartGunContainer').innerHTML = gunPartsList.map(byPartCardHTML).join('');
+
+        const ponchoDone = PonchoPartsList.filter(p => byPartStats(p).done).length;
+        const gunDone = gunPartsList.filter(p => byPartStats(p).done).length;
+        $('byPartPonchoHeader').innerHTML = `Poncho Elements <span class="count-pill">${ponchoDone}/${PonchoPartsList.length}</span>`;
+        $('byPartGunHeader').innerHTML = `Gun Elements <span class="count-pill">${gunDone}/${gunPartsList.length}</span>`;
+
+        const partsDone = ponchoDone + gunDone;
+        const partsLeft = allPonchoElements.length - partsDone;
+        const chip = $('byPartLeftChip');
+        chip.classList.toggle('all-done', partsLeft === 0);
+        chip.innerHTML = partsLeft === 0
+            ? '<svg class="icon icon-sm"><use href="#i-check"></use></svg>All done'
+            : `<svg class="icon icon-sm"><use href="#i-alert"></use></svg><span id="byPartLeftCount">${partsLeft}</span> parts left`;
+        $('byPartProgressFill').style.width = `${allPonchoElements.length ? Math.round((partsDone / allPonchoElements.length) * 100) : 0}%`;
+        $('byPartProgressLabel').innerText = `${partsDone} of ${allPonchoElements.length} parts done across ${totalPonchos} pack${totalPonchos === 1 ? '' : 's'}`;
+
+        attachByPartListeners();
+        saveResumeState();
+    }
+
+    function attachByPartListeners() {
+        document.querySelectorAll('[data-bypart-expand]').forEach(btn => btn.addEventListener('click', () => {
+            const part = btn.getAttribute('data-bypart-expand');
+            // Seed from what's already logged, so re-opening a part you've saved shows the packs
+            // you flagged rather than a blank grid you'd have to re-tap.
+            byPartSelection[part] = new Set(byPartStats(part).issuePacks);
+            expandedByPartCards.add(part);
+            renderByPartUI();
+        }));
+        document.querySelectorAll('[data-bypart-collapse]').forEach(btn => btn.addEventListener('click', () => {
+            expandedByPartCards.delete(btn.getAttribute('data-bypart-collapse'));
+            renderByPartUI();
+        }));
+        document.querySelectorAll('[data-bypart-tile]').forEach(btn => btn.addEventListener('click', () => {
+            const part = btn.getAttribute('data-bypart-tile');
+            const pack = parseInt(btn.getAttribute('data-pack'), 10);
+            const selected = byPartSelection[part] || (byPartSelection[part] = new Set());
+            if (selected.has(pack)) selected.delete(pack); else selected.add(pack);
+            // Toggled in place rather than re-rendering — a full re-render per tap is visibly
+            // laggy on a 40-pack site, and this is the tap you make most often here.
+            btn.classList.toggle('state-issue', selected.has(pack));
+            btn.setAttribute('aria-pressed', String(selected.has(pack)));
+            const saveBtn = document.querySelector(`[data-bypart-save="${part}"]`);
+            if (saveBtn) saveBtn.innerText = byPartSaveLabel(selected.size);
+        }));
+        document.querySelectorAll('[data-bypart-save]').forEach(btn =>
+            btn.addEventListener('click', () => saveByPart(btn.getAttribute('data-bypart-save'))));
+    }
+
+    /* Saving a part is the whole point of this view: the packs you tapped become Issue, and every
+       pack you didn't becomes Good in one go. Only packs that actually changed get written. */
+    async function saveByPart(part) {
+        const selected = byPartSelection[part] || new Set();
+        const snapshot = {};
+        const changedPacks = [];
+
+        for (let i = 1; i <= totalPonchos; i++) {
+            if (!PonchoDataCache[i]) PonchoDataCache[i] = {};
+            if (!PonchoDataCache[i][part]) PonchoDataCache[i][part] = { status: null, notes: "" };
+            const cell = PonchoDataCache[i][part];
+            snapshot[i] = { status: cell.status, notes: cell.notes, side: Array.isArray(cell.side) ? [...cell.side] : [], partUsed: cell.partUsed };
+            if (selected.has(i)) {
+                // Existing notes are left alone — re-saving a part shouldn't wipe what was typed
+                // about it on the per-pack card.
+                if (cell.status !== 'Issue') { cell.status = 'Issue'; changedPacks.push(i); }
+            } else if (cell.status !== 'Good') {
+                // Clearing back to Good drops notes/side, exactly as tapping "Good" on the per-pack
+                // card does. The undo toast below is what makes that safe to do in bulk.
+                cell.status = 'Good'; cell.notes = ""; cell.side = []; delete cell.partUsed;
+                changedPacks.push(i);
+            }
+        }
+
+        expandedByPartCards.delete(part);
+        renderByPartUI();
+
+        if (changedPacks.length === 0) { showToast(`${part} was already up to date.`); return; }
+
+        await saveByPartPacks(changedPacks);
+        showUndoToast(`${part}: ${selected.size} issue${selected.size === 1 ? '' : 's'}, ${totalPonchos - selected.size} good`, async () => {
+            changedPacks.forEach(i => {
+                const cell = PonchoDataCache[i][part];
+                cell.status = snapshot[i].status;
+                cell.notes = snapshot[i].notes;
+                cell.side = snapshot[i].side;
+                if (snapshot[i].partUsed === undefined) delete cell.partUsed; else cell.partUsed = snapshot[i].partUsed;
+            });
+            renderByPartUI();
+            await saveByPartPacks(changedPacks);
+        }, 6000);
+    }
+
+    async function saveByPartPacks(indices) {
+        if (!indices.length) return;
+        setByPartSaveState('saving');
+        const results = await Promise.all(indices.map(i => writePackDoc(i)));
+        setByPartSaveState(results.includes(WRITE_FAILED) ? 'failed' : (results.includes(WRITE_QUEUED) ? 'queued' : 'synced'));
+        // These writes persist the whole pack doc, so any edit the pack view had pending on one of
+        // them is now on disk too — leaving isDirty set would re-save the same data on next nav.
+        if (indices.includes(currentPonchoIndex)) isDirty = false;
+    }
+
+    function applySaveIndicator(el, state) {
         if (!el) return;
         el.classList.remove('syncing', 'failed');
         if (state === 'dirty') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud-off"></use></svg>Unsaved'; el.classList.add('syncing'); }
@@ -3538,22 +3913,32 @@
         else if (state === 'failed') { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-alert"></use></svg>Sync failed'; el.classList.add('failed'); }
         else { el.innerHTML = '<svg class="icon icon-sm"><use href="#i-cloud"></use></svg>Synced'; }
     }
+    function setChecklistSaveState(state) { applySaveIndicator($('saveIndicator'), state); }
+    function setByPartSaveState(state) { applySaveIndicator($('byPartSaveIndicator'), state); }
+
+    function packServiceDocId(packIndex) { return `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-Poncho-${packIndex}`; }
+    function nextDueFromActiveService() {
+        if (!activeServiceDate) return "";
+        const dateParts = activeServiceDate.split('-');
+        if (dateParts.length !== 3) return "";
+        const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 9, parseInt(dateParts[2]));
+        return nextDateObj.toISOString().split('T')[0];
+    }
+    /* One pack's service doc. Split out of triggerBackgroundSave() because the by-part view saves
+       several packs in one action, and every one of them needs the same record written. */
+    function writePackDoc(packIndex) {
+        const docId = packServiceDocId(packIndex);
+        const dataToSave = PonchoDataCache[packIndex];
+        return queuedWrite(docId, `Pack ${packIndex} — ${currentSiteName}`, () =>
+            setDoc(doc(db, "services", docId), { site: currentSiteName, PonchoId: `Poncho ${packIndex}`, representative: currentRepresentative || "Not Specified", serviceDate: activeServiceDate, nextServiceDue: nextDueFromActiveService(), serviceDetails: dataToSave, lastUpdated: serverTimestamp() }));
+    }
 
     async function triggerBackgroundSave() {
         if (!isDirty) return;
         const PonchoToSave = currentPonchoIndex;
-        const dataToSave = PonchoDataCache[PonchoToSave];
         isDirty = false;
         setChecklistSaveState('saving');
-        const docId = `${currentSiteName.replace(/\s+/g, '-')}-${activeServiceDate}-Poncho-${PonchoToSave}`;
-        const result = await queuedWrite(docId, `Pack ${PonchoToSave} — ${currentSiteName}`, async () => {
-            let nextDueDateStr = "";
-            if (activeServiceDate) {
-                const dateParts = activeServiceDate.split('-');
-                if (dateParts.length === 3) { const nextDateObj = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1 + 9, parseInt(dateParts[2])); nextDueDateStr = nextDateObj.toISOString().split('T')[0]; }
-            }
-            await setDoc(doc(db, "services", docId), { site: currentSiteName, PonchoId: `Poncho ${PonchoToSave}`, representative: currentRepresentative || "Not Specified", serviceDate: activeServiceDate, nextServiceDue: nextDueDateStr, serviceDetails: dataToSave, lastUpdated: serverTimestamp() });
-        });
+        const result = await writePackDoc(PonchoToSave);
         // Only a hard failure puts the pack back in the dirty set — a queued write is already
         // durable, and re-marking it dirty would make the next nav re-save data Firestore has.
         if (result === WRITE_FAILED) isDirty = true;
@@ -3611,6 +3996,16 @@
     /* ---- Overflow-panel actions wired for the in-service screens ---- */
     $('serviceOverflowBtn').addEventListener('click', () => toggleOverflowPanel(true));
     $('generalOverflowBtn').addEventListener('click', () => toggleOverflowPanel(true));
+    $('byPartOverflowBtn').addEventListener('click', () => toggleOverflowPanel(true));
+
+    // Both checklist views read and write the same PonchoDataCache, so switching is just a
+    // re-render — but flush whatever the pack view had pending first so nothing is lost.
+    $('ovByPartBtn').addEventListener('click', async () => {
+        toggleOverflowPanel(false);
+        await triggerBackgroundSave();
+        openChecklistView('part');
+    });
+    $('byPartToPackBtn').addEventListener('click', () => openChecklistView('pack'));
 
     // Shared by the overflow panel's entries and the shortcut buttons pinned to the bottom of
     // the pack-grid panel — same destination, two ways to reach it.
@@ -4119,8 +4514,7 @@
                 }
                 currentSiteName = completedSite; activeServiceDate = completedDate;
                 saveResumeState();
-                navigateTo('serviceSection');
-                renderPonchoUI();
+                returnToChecklist();
                 showToast('Completion undone — back in the checklist.');
             }, 30000);
         } catch (error) {
@@ -4149,6 +4543,7 @@
     $('customerReportBackBtn').addEventListener('click', () => {
         navigateTo(reportEntryScreen);
         if (reportEntryScreen === 'serviceSection') renderPonchoUI();
+        else if (reportEntryScreen === 'byPartSection') renderByPartUI();
         else if (reportEntryScreen === 'generalChecksSection') renderGeneralChecksUI();
         else if (reportEntryScreen === 'completionSection') renderCompletionSummary();
         // historySection re-renders itself via navigateTo, so nothing to do for it here
@@ -4376,7 +4771,11 @@
             }).join('');
         }
 
-        const partsNeedingFollowUp = [...gunPartsList, ...PonchoPartsList].filter(part => packPartIssueSplit(part).followupPacks.length > 0);
+        // In pack-numbers-only mode the report never prints these comments, so asking for them
+        // would be exactly the busywork the setting exists to remove.
+        const partsNeedingFollowUp = reportCommentStyle() === 'packs'
+            ? []
+            : [...gunPartsList, ...PonchoPartsList].filter(part => packPartIssueSplit(part).followupPacks.length > 0);
         if (partsNeedingFollowUp.length) {
             html += `<h4 style="text-align:left;margin:16px 0 8px;">Pack &amp; Gun follow-ups</h4>`;
             html += partsNeedingFollowUp.map(part => {
@@ -4454,10 +4853,22 @@
         // Pack/gun checks: one row per part, aggregated across every pack. Resolved packs collapse
         // into "Pack X, Y, Z <Item> fixed"; packs still marked follow-up get the rep's own comment
         // from the Issues step, shown alongside the notes originally logged for reference.
+        // "Pack numbers only" (the default, see Settings) reduces the Comments cell to a bare list
+        // of the packs that had this part flagged, leaving the write-up to be done by hand on the
+        // exported document rather than assembled from checklist notes.
+        const packNumbersOnly = reportCommentStyle() === 'packs';
         const packPartRows = (list) => list.map(part => {
             const { resolvedPacks, followupPacks } = packPartIssueSplit(part);
             const label = gunDisplayName(part);
             const isIssue = resolvedPacks.length > 0 || followupPacks.length > 0;
+            if (packNumbersOnly) {
+                const flagged = [...resolvedPacks, ...followupPacks.map(fp => fp.pack)].sort((a, b) => a - b);
+                return `<tr>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;">${esc(label)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;text-align:center;white-space:nowrap;">${marker(isIssue)}</td>
+                    <td style="border:1px solid #d1d5db;padding:7px 11px;word-wrap:break-word;overflow-wrap:break-word;">${flagged.length ? flagged.join(', ') : dash}</td>
+                </tr>`;
+            }
             const pieces = [];
             if (resolvedPacks.length) pieces.push(`Pack ${resolvedPacks.join(', ')} ${esc(label)} fixed`);
             if (followupPacks.length) {
@@ -4597,6 +5008,7 @@
        ============================================================ */
     initTheme();
     initLargeMode();
+    renderWorkPrefLabels();
     updateGlobalSyncPill();
     renderSyncQueue();
     reconcileOrphanedWrites();
