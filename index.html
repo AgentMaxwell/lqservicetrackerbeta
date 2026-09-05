@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0B1120" id="themeColorMeta">
     <style>
         /* ============================================
-           PACK SERVICE TRACKER v1.3.0 — Tablet UX redesign
+           PACK SERVICE TRACKER v1.3.1 — Tablet UX redesign
            Design system: 8px spacing grid, dark(default)+light themes,
            inline icon sprite (no CDN — offline-safe), Large-mode scale.
 
@@ -711,7 +711,7 @@
         </div>
         <div class="sidebar-foot">
             <div class="sync-status-pill" id="globalSyncPill"><svg class="icon icon-sm"><use href="#i-cloud"></use></svg><span>Synced</span></div>
-            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.3.0</div>
+            <div class="text-dim" style="font-size: 0.68rem; padding: 2px var(--sp-2) 0; letter-spacing: 0.04em;">v1.3.1</div>
         </div>
     </nav>
 
@@ -1253,16 +1253,16 @@
             </div>
 
             <div class="card" style="margin-bottom: var(--sp-4); padding: var(--sp-4);">
-                <p class="text-muted" style="margin:0; font-size:0.88rem;">Open a part, tap only the packs with a problem, then save. Every pack you don&#39;t tap is marked good for that part.</p>
+                <p class="text-muted" style="margin:0; font-size:0.88rem;">Mark a part good across every pack in one tap, or hit Issue to pick just the packs that need attention.</p>
                 <div class="progress-container" style="margin: var(--sp-4) 0 var(--sp-2);"><div class="progress-fill" id="byPartProgressFill" style="width:0%"></div></div>
                 <div class="text-muted" id="byPartProgressLabel" style="font-size:0.82rem;">0 of 0 parts done</div>
             </div>
 
             <div class="section-header" id="byPartPonchoHeader">Poncho Elements</div>
-            <div id="byPartPonchoContainer" class="stack-gap" style="margin-bottom: var(--sp-3);"></div>
+            <div id="byPartPonchoContainer" class="checklist-grid"></div>
 
             <div class="section-header" id="byPartGunHeader">Gun Elements</div>
-            <div id="byPartGunContainer" class="stack-gap"></div>
+            <div id="byPartGunContainer" class="checklist-grid"></div>
         </div>
 
         <div id="completionSection" class="app-section">
@@ -1393,6 +1393,18 @@
     </div>
 </div>
 
+<!-- Pack picker behind the "Issue" button on a Check by Part card — same interaction as the
+     Screens/Sensors pickers: tap the packs that have a problem, everything else is marked good. -->
+<div id="byPartPacksModal" class="modal">
+    <div class="modal-content" style="max-width: 640px;">
+        <button class="modal-close-btn" id="closeByPartPacksModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
+        <h2 style="text-align:left;" id="byPartPacksTitle">Select Packs</h2>
+        <p class="text-muted" style="text-align:center; margin: 0 0 var(--sp-5);" id="byPartPacksHint"></p>
+        <div id="byPartPacksGrid" class="pack-grid pack-grid-modal"></div>
+        <button class="btn-success btn-block" id="saveByPartPacksBtn" style="margin-top: var(--sp-5);">Save</button>
+    </div>
+</div>
+
 <div id="sensorsIssueModal" class="modal">
     <div class="modal-content" style="max-width: 640px;">
         <button class="modal-close-btn" id="closeSensorsModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
@@ -1409,9 +1421,12 @@
     <div class="modal-content" style="max-width: 480px;">
         <button class="modal-close-btn" id="closeIncompleteChecklistModalBtn" aria-label="Close"><svg class="icon"><use href="#i-x"></use></svg></button>
         <h2 style="text-align:left;"><svg class="icon"><use href="#i-alert"></use></svg> Checklist Incomplete</h2>
-        <p class="text-muted" style="line-height:1.5;">These items haven't been marked "All Good" or "Issue" yet. Go back and check them before completing the service:</p>
+        <p class="text-muted" style="line-height:1.5;">These items haven't been marked "All Good" or "Issue" yet. You can go back and finish them, or complete the service and leave them unchecked:</p>
         <div id="incompleteChecklistList" style="max-height: 280px; overflow-y: auto; margin: var(--sp-3) 0; padding: var(--sp-3) var(--sp-4); text-align: left; font-size: 0.88rem; line-height: 1.6; background: var(--card-bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm);"></div>
-        <button class="btn-outline btn-block" id="closeIncompleteChecklistBtn">Go Back &amp; Finish Checking</button>
+        <div class="action-group" style="display:flex; gap: var(--sp-3);">
+            <button class="btn-outline" id="closeIncompleteChecklistBtn" style="flex:1;">Go Back &amp; Finish</button>
+            <button class="btn-primary" id="completeAnywayBtn" style="flex:1;">Complete Anyway</button>
+        </div>
     </div>
 </div>
 
@@ -1829,6 +1844,11 @@
         // already finished and is just being reprinted or updated later.
         const archivedReportView = sectionId === 'customerReportSection' && viewingArchivedReport;
         $('overflowServiceActions').classList.toggle('hidden', !inServiceActions || (viewingArchivedReport && !archivedReportView));
+        // One entry, both directions — otherwise the by-part view is a one-way trip for anyone who
+        // doesn't spot the small pack icon in its top bar.
+        $('ovByPartBtn').innerHTML = sectionId === 'byPartSection'
+            ? '<svg class="icon"><use href="#i-package"></use></svg>Pack by Pack'
+            : '<svg class="icon"><use href="#i-layers"></use></svg>Check by Part';
         ['ovByPartBtn', 'ovSiteChecksBtn', 'ovNotesBtn', 'ovGridOverlayBtn', 'ovPrintBtn', 'ovCustomerReportBtn', 'ovCompleteServiceBtn'].forEach(id => $(id).classList.toggle('hidden', archivedReportView));
 
         // The browsing sidebar collapses to a pullout for the whole service flow, including
@@ -3727,9 +3747,8 @@
     /* ============================================================
        CHECK BY PART — the same checklist, one part across every pack
        ============================================================ */
-    // Which part cards are open, and the packs currently tapped as "has an issue" inside each.
-    // The selection is a working copy: nothing reaches PonchoDataCache until the part is saved.
-    const expandedByPartCards = new Set();
+    // The packs currently tapped as "has an issue" for a part, while its picker is open. This is a
+    // working copy: nothing reaches PonchoDataCache until the picker is saved.
     const byPartSelection = {};
 
     function byPartStats(part) {
@@ -3750,46 +3769,73 @@
             : `Save — all ${totalPonchos} pack${totalPonchos === 1 ? '' : 's'} good`;
     }
 
+    /* Deliberately the same card shape as the pack view's parts: name, then one Good/Issue pair.
+       "Good" applies to every pack at once; "Issue" opens the pack picker so you can say which. */
     function byPartCardHTML(part) {
         const stats = byPartStats(part);
-
-        if (!expandedByPartCards.has(part)) {
-            const stateClass = stats.issuePacks.length ? 'state-issue' : (stats.done ? 'state-good' : '');
-            const detail = stats.issuePacks.length
-                ? `Issue on pack ${stats.issuePacks.join(', ')}${stats.unchecked ? ` · ${stats.unchecked} not checked` : ''}`
-                : (stats.done ? `All ${totalPonchos} packs good` : `${stats.good}/${totalPonchos} packs checked`);
-            const pill = stats.issuePacks.length
-                ? `<svg class="icon icon-sm"><use href="#i-alert"></use></svg>${stats.issuePacks.length} issue${stats.issuePacks.length === 1 ? '' : 's'}`
-                : (stats.done
-                    ? '<svg class="icon icon-sm"><use href="#i-check"></use></svg>Good'
-                    : '<svg class="icon icon-sm"><use href="#i-chevron-right"></use></svg>Open');
-            return `
-                <button type="button" class="part-pill ${stateClass}" data-bypart-expand="${esc(part)}">
-                    <div>
-                        <div class="part-header">${esc(part)}</div>
-                        <div class="pill-detail">${detail}</div>
-                    </div>
-                    <span class="pill-status">${pill}</span>
-                </button>`;
-        }
-
-        const selected = byPartSelection[part] || new Set();
-        let tiles = '';
-        for (let i = 1; i <= totalPonchos; i++) {
-            const on = selected.has(i);
-            tiles += `<button type="button" class="pack-tile ${on ? 'state-issue' : ''}" data-bypart-tile="${esc(part)}" data-pack="${i}" aria-pressed="${on}">${i}</button>`;
-        }
+        const isIssue = stats.issuePacks.length > 0;
+        const isGood = !isIssue && stats.done;
+        const detail = isIssue
+            ? `Pack ${stats.issuePacks.join(', ')}${stats.unchecked ? ` · ${stats.unchecked} not checked` : ''}`
+            : (isGood ? `All ${totalPonchos} packs good` : `${stats.good}/${totalPonchos} packs checked`);
         return `
-            <div class="part-section ${selected.size ? 'state-issue' : ''}">
+            <div class="part-section ${isIssue ? 'state-issue' : (isGood ? 'state-good' : '')}">
                 <div class="part-header-row">
                     <div class="part-header">${esc(part)}</div>
-                    <button type="button" class="btn-icon btn-ghost" style="width:28px;height:28px;min-height:28px;" data-bypart-collapse="${esc(part)}" aria-label="Collapse ${esc(part)}"><svg class="icon icon-sm"><use href="#i-chevron-down"></use></svg></button>
                 </div>
-                <p class="text-muted" style="font-size:0.82rem; margin: 0 0 var(--sp-3);">Tap the packs where ${esc(part)} needs attention — everything you leave untapped is marked good on save.</p>
-                <div class="pack-grid pack-grid-modal">${tiles}</div>
-                <button type="button" class="btn-success btn-block" style="margin-top: var(--sp-4);" data-bypart-save="${esc(part)}">${byPartSaveLabel(selected.size)}</button>
+                <div class="button-group-row">
+                    <div class="button-group">
+                        <button type="button" class="btn-good ${isGood ? 'active' : ''}" data-bypart-good="${esc(part)}"><svg class="icon icon-sm"><use href="#i-check"></use></svg>Good</button>
+                        <button type="button" class="btn-issue ${isIssue ? 'active' : ''}" data-bypart-issue="${esc(part)}"><svg class="icon icon-sm"><use href="#i-alert"></use></svg>Issue</button>
+                    </div>
+                </div>
+                <div class="pill-detail">${detail}</div>
             </div>`;
     }
+
+    /* ---- Pack picker behind the "Issue" button ---- */
+    let byPartModalPart = "";
+    function openByPartPacksModal(part) {
+        byPartModalPart = part;
+        // Seed from what's already logged, so re-opening a part you've saved shows the packs you
+        // flagged rather than a blank grid you'd have to re-tap.
+        byPartSelection[part] = new Set(byPartStats(part).issuePacks);
+        $('byPartPacksTitle').innerText = `${part} — which packs?`;
+        $('byPartPacksHint').innerText = `Tap every pack where ${part} needs attention. Saving marks all the other packs good for ${part}.`;
+        renderByPartPacksGrid();
+        $('byPartPacksModal').style.display = 'block';
+    }
+    function renderByPartPacksGrid() {
+        const grid = $('byPartPacksGrid');
+        const selected = byPartSelection[byPartModalPart] || new Set();
+        grid.innerHTML = '';
+        for (let i = 1; i <= totalPonchos; i++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `pack-tile ${selected.has(i) ? 'state-issue' : ''}`;
+            btn.innerText = i;
+            btn.setAttribute('aria-pressed', String(selected.has(i)));
+            btn.addEventListener('click', () => {
+                if (selected.has(i)) selected.delete(i); else selected.add(i);
+                btn.classList.toggle('state-issue', selected.has(i));
+                btn.setAttribute('aria-pressed', String(selected.has(i)));
+                $('saveByPartPacksBtn').innerText = byPartSaveLabel(selected.size);
+            });
+            grid.appendChild(btn);
+        }
+        $('saveByPartPacksBtn').innerText = byPartSaveLabel(selected.size);
+    }
+    // Closing without saving changes nothing — re-render so the Issue button drops back to
+    // whatever the part's real state is rather than looking pressed.
+    $('closeByPartPacksModalBtn').addEventListener('click', () => {
+        $('byPartPacksModal').style.display = 'none';
+        renderByPartUI();
+    });
+    $('saveByPartPacksBtn').addEventListener('click', () => {
+        const part = byPartModalPart;
+        $('byPartPacksModal').style.display = 'none';
+        saveByPart(part);
+    });
 
     function renderByPartUI() {
         $('byPartCounterText').innerText = totalPonchos > 0 ? `Check by Part — ${totalPonchos} packs` : 'Check by Part';
@@ -3823,32 +3869,14 @@
     }
 
     function attachByPartListeners() {
-        document.querySelectorAll('[data-bypart-expand]').forEach(btn => btn.addEventListener('click', () => {
-            const part = btn.getAttribute('data-bypart-expand');
-            // Seed from what's already logged, so re-opening a part you've saved shows the packs
-            // you flagged rather than a blank grid you'd have to re-tap.
-            byPartSelection[part] = new Set(byPartStats(part).issuePacks);
-            expandedByPartCards.add(part);
-            renderByPartUI();
+        // "Good" is the no-packs-flagged case of the same save, so it needs no picker at all.
+        document.querySelectorAll('[data-bypart-good]').forEach(btn => btn.addEventListener('click', () => {
+            const part = btn.getAttribute('data-bypart-good');
+            byPartSelection[part] = new Set();
+            saveByPart(part);
         }));
-        document.querySelectorAll('[data-bypart-collapse]').forEach(btn => btn.addEventListener('click', () => {
-            expandedByPartCards.delete(btn.getAttribute('data-bypart-collapse'));
-            renderByPartUI();
-        }));
-        document.querySelectorAll('[data-bypart-tile]').forEach(btn => btn.addEventListener('click', () => {
-            const part = btn.getAttribute('data-bypart-tile');
-            const pack = parseInt(btn.getAttribute('data-pack'), 10);
-            const selected = byPartSelection[part] || (byPartSelection[part] = new Set());
-            if (selected.has(pack)) selected.delete(pack); else selected.add(pack);
-            // Toggled in place rather than re-rendering — a full re-render per tap is visibly
-            // laggy on a 40-pack site, and this is the tap you make most often here.
-            btn.classList.toggle('state-issue', selected.has(pack));
-            btn.setAttribute('aria-pressed', String(selected.has(pack)));
-            const saveBtn = document.querySelector(`[data-bypart-save="${part}"]`);
-            if (saveBtn) saveBtn.innerText = byPartSaveLabel(selected.size);
-        }));
-        document.querySelectorAll('[data-bypart-save]').forEach(btn =>
-            btn.addEventListener('click', () => saveByPart(btn.getAttribute('data-bypart-save'))));
+        document.querySelectorAll('[data-bypart-issue]').forEach(btn =>
+            btn.addEventListener('click', () => openByPartPacksModal(btn.getAttribute('data-bypart-issue'))));
     }
 
     /* Saving a part is the whole point of this view: the packs you tapped become Issue, and every
@@ -3875,7 +3903,6 @@
             }
         }
 
-        expandedByPartCards.delete(part);
         renderByPartUI();
 
         if (changedPacks.length === 0) { showToast(`${part} was already up to date.`); return; }
@@ -4001,9 +4028,10 @@
     // Both checklist views read and write the same PonchoDataCache, so switching is just a
     // re-render — but flush whatever the pack view had pending first so nothing is lost.
     $('ovByPartBtn').addEventListener('click', async () => {
+        const inPartView = document.querySelector('.app-section.active')?.id === 'byPartSection';
         toggleOverflowPanel(false);
         await triggerBackgroundSave();
-        openChecklistView('part');
+        openChecklistView(inPartView ? 'pack' : 'part');
     });
     $('byPartToPackBtn').addEventListener('click', () => openChecklistView('pack'));
 
@@ -4213,6 +4241,12 @@
     }
     $('closeIncompleteChecklistModalBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
     $('closeIncompleteChecklistBtn').addEventListener('click', () => incompleteChecklistModal.style.display = "none");
+    // The unchecked list is advice, not a gate — a tech who knows an item doesn't apply to this
+    // site shouldn't be unable to close the service over it.
+    $('completeAnywayBtn').addEventListener('click', () => {
+        incompleteChecklistModal.style.display = "none";
+        openCompletionSummary();
+    });
 
     // Shared by the overflow panel's "Complete Service" and by tapping "Finish" on the last pack —
     // both should attempt the exact same end-of-service gate rather than "Finish" being a dead end.
